@@ -1,0 +1,45 @@
+<% layout('layout') %>
+<h1 id="firstHeading" class="firstHeading">Search results</h1>
+<div id="bodyContent" class="vector-body">
+<div id="mw-content-text" class="mw-body-content searchresults-page">
+  <form id="search" class="mw-search-form" action="/w/index.php" method="get" role="search">
+    <input type="hidden" name="title" value="Special:Search">
+    <input type="hidden" name="fulltext" value="1">
+    <label for="ooui-search" class="visually-hidden">Search query</label>
+    <input type="search" id="ooui-search" name="search" value="<%= it.rewritten || it.q %>" autocomplete="off" size="50">
+    <button type="submit">Search</button>
+  </form>
+<% if (!it.res) { %>
+  <p class="mw-search-help">Enter words to search the article titles and text. Press <b>Search</b> in the header to go straight to an article with that exact title.</p>
+<% } else { %>
+  <% if (it.rewritten) { %>
+  <div class="searchdidyoumean">Showing results for <a href="/w/index.php?search=<%= encodeURIComponent(it.rewritten) %>&amp;title=Special%3ASearch&amp;fulltext=1"><em><%= it.rewritten %></em></a>. No results found for <a href="<%= it.origHref %>" class="mw-search-orig"><%= it.q %></a>.</div>
+  <% } else if (it.alt) { %>
+  <div class="searchdidyoumean">Did you mean: <a href="/w/index.php?search=<%= encodeURIComponent(it.alt) %>&amp;title=Special%3ASearch&amp;fulltext=1" id="mw-search-DYM-suggestion"><em><%= it.alt %></em></a></div>
+  <% } %>
+  <% if (it.res.exact) { %>
+  <p class="mw-search-exists">There is a page named "<a href="/wiki/<%= it.wikiPath(it.res.exact.path) %>"><%= it.res.exact.title %></a>" on this wiki.</p>
+  <% } %>
+  <% if (!it.res.total) { %>
+  <p class="mw-search-nonefound">There were no results matching the query.</p>
+  <% } else { %>
+  <div class="results-info" role="status">Showing results <strong><%= it.pager.from %></strong> – <strong><%= it.pager.to %></strong> of <strong><%= it.num(it.res.total) %></strong><% if (it.res.shown < it.res.total) { %> (the first <%= it.num(it.res.shown) %> are listed)<% } %>.</div>
+  <h2 class="visually-hidden">Article results</h2>
+  <ul class="mw-search-results">
+  <% for (const r of it.res.results) { %>
+    <li class="mw-search-result">
+      <% if (r.image) { %><a class="searchResultImage-thumbnail" href="<%= r.url %>" tabindex="-1" aria-hidden="true"><img src="<%= r.image %>" alt="" loading="lazy"></a><% } %>
+      <div class="mw-search-result-heading"><a href="<%= r.url %>" title="<%= r.title %>" data-serp-pos="<%= it.pager.offset + it.res.results.indexOf(r) %>"><%= r.title %></a></div>
+      <div class="searchresult"><%~ r.snippet %></div>
+      <div class="mw-search-result-data"><%= Math.max(1, Math.round(r.text_len / 1024)) %> KB<% if (r.edited) { %> - <%= it.longDate(r.edited) %><% } %></div>
+    </li>
+  <% } %>
+  </ul>
+  <nav class="mw-search-pager" aria-label="Search result pages">
+    View (<% if (it.pager.prev) { %><a href="<%= it.pager.prev %>" class="mw-prevlink" rel="prev">previous <%= it.pager.limit %></a><% } else { %>previous <%= it.pager.limit %><% } %>  |  <% if (it.pager.next) { %><a href="<%= it.pager.next %>" class="mw-nextlink" rel="next">next <%= it.pager.limit %></a><% } else { %>next <%= it.pager.limit %><% } %>)
+    (<% it.pager.sizes.forEach((s, i) => { %><%= i ? ' | ' : '' %><% if (s.current) { %><%= s.n %><% } else { %><a href="<%= s.href %>" class="mw-numlink"><%= s.n %></a><% } %><% }) %>)
+  </nav>
+  <% } %>
+<% } %>
+</div>
+</div>

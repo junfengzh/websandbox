@@ -1,0 +1,42 @@
+<% layout('layout') %>
+<h1 id="firstHeading" class="firstHeading"><%= it.title %></h1>
+<div id="bodyContent" class="vector-body">
+<div id="mw-content-text" class="mw-body-content">
+  <form class="mw-whatlinkshere-form" action="/wiki/Special:WhatLinksHere" method="get">
+    <fieldset><legend>What links here</legend>
+      <label for="mw-whatlinkshere-target">Page:</label>
+      <input id="mw-whatlinkshere-target" name="target" value="<%= it.a ? it.a.title : it.target.replace(/_/g, ' ') %>" size="40">
+      <button type="submit">Go</button>
+    </fieldset>
+  </form>
+<% if (it.missing) { %>
+  <p class="mw-error">There is no article "<%= it.target.replace(/_/g, ' ') %>" on this wiki.</p>
+<% } else if (it.a) { %>
+  <% if (it.via) { %><p><a href="/wiki/<%= it.wikiPath(it.via.path) %>?redirect=no"><%= it.via.title %></a> is a redirect to <a href="/wiki/<%= it.wikiPath(it.a.path) %>"><%= it.a.title %></a>; showing pages that link to the article.</p><% } %>
+  <p id="mw-whatlinkshere-summary">← <a href="/wiki/<%= it.wikiPath(it.a.path) %>"><%= it.a.title %></a>: <strong><%= it.num(it.total) %></strong> article<%= it.total === 1 ? '' : 's' %> on this wiki link<%= it.total === 1 ? 's' : '' %> here; <strong><%= it.num(it.nRedirects) %></strong> redirect<%= it.nRedirects === 1 ? '' : 's' %>.</p>
+  <p class="mw-whatlinkshere-filters">Filters: <a href="<%= it.toggle('hidelinks') %>"><%= it.hidelinks ? 'Show' : 'Hide' %> links</a> | <a href="<%= it.toggle('hideredirs') %>"><%= it.hideredirs ? 'Show' : 'Hide' %> redirects</a></p>
+  <% const pager = () => { %>
+  <nav class="mw-whatlinkshere-pager" aria-label="Pages">View (<% if (it.prevHref) { %><a href="<%= it.prevHref %>" rel="prev">previous <%= it.limit %></a><% } else { %>previous <%= it.limit %><% } %>  |  <% if (it.nextHref) { %><a href="<%= it.nextHref %>" rel="next">next <%= it.limit %></a><% } else { %>next <%= it.limit %><% } %>) (<% it.sizes.forEach((s, i) => { %><%= i ? ' | ' : '' %><% if (s.current) { %><%= s.n %><% } else { %><a href="<%= s.href %>"><%= s.n %></a><% } %><% }) %>)</nav>
+  <% } %>
+  <% if (!it.hidelinks) { %>
+  <h2 id="links">Pages that link here</h2>
+  <% pager() %>
+  <% if (it.links.length) { %>
+  <ul id="mw-whatlinkshere-list">
+  <% for (const l of it.links) { %><li><a href="/wiki/<%= it.wikiPath(l.path) %>" title="<%= l.title %>"><%= l.title %></a></li>
+  <% } %>
+  </ul>
+  <% } else { %><p>No pages link to <%= it.a.title %>.</p><% } %>
+  <% pager() %>
+  <% } %>
+  <% if (!it.hideredirs && it.redirects.length) { %>
+  <h2 id="redirects">Redirects to this page</h2>
+  <ul id="mw-whatlinkshere-redirects">
+  <% for (const r of it.redirects) { %><li><a href="/wiki/<%= it.wikiPath(r.path) %>?redirect=no" class="mw-redirect"><%= r.title %></a> (redirect page)</li>
+  <% } %>
+  </ul>
+  <% if (it.nRedirects > it.redirects.length) { %><p>… and <%= it.num(it.nRedirects - it.redirects.length) %> more redirects (raise the limit to see them).</p><% } %>
+  <% } %>
+<% } %>
+</div>
+</div>

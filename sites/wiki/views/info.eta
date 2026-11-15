@@ -1,0 +1,41 @@
+<% layout('layout') %>
+<h1 id="firstHeading" class="firstHeading"><%= it.title %></h1>
+<div id="bodyContent" class="vector-body">
+<div id="mw-content-text" class="mw-body-content mw-page-info">
+  <h2 id="Basic_information">Basic information</h2>
+  <table class="wikitable mw-page-info">
+    <tbody>
+    <tr><th scope="row">Display title</th><td><%= it.a.title %></td></tr>
+    <tr><th scope="row">Page URL</th><td><a href="/wiki/<%= it.wikiPath(it.a.path) %>">/wiki/<%= it.a.path %></a></td></tr>
+    <tr><th scope="row">Page content language</th><td>en - English</td></tr>
+    <tr><th scope="row">Page content model</th><td>wikitext</td></tr>
+    <tr><th scope="row">Page ID</th><td><%= it.a.id %></td></tr>
+    <tr><th scope="row">Page length (plain text, in bytes)</th><td><%= it.num(it.a.text_len) %></td></tr>
+    <tr><th scope="row">Page length (HTML, in bytes)</th><td><%= it.num(it.a.html_len) %></td></tr>
+    <tr><th scope="row">Number of sections</th><td><%= it.info.sections %></td></tr>
+    <tr><th scope="row">Infobox</th><td><%= it.a.infobox ? 'Yes' : 'No' %></td></tr>
+    <tr><th scope="row">Page image</th><td><% if (it.a.image) { %><img src="<%= it.a.image %>" alt="Page image of <%= it.a.title %>" style="max-width:120px;height:auto"><% } else { %>None<% } %></td></tr>
+    <tr><th scope="row">Number of redirects to this page</th><td><a href="/wiki/Special:WhatLinksHere/<%= it.wikiPath(it.a.path) %>?hidelinks=1"><%= it.num(it.info.redirects) %></a></td></tr>
+    <tr><th scope="row">Number of articles on this wiki linking here</th><td><a href="/wiki/Special:WhatLinksHere/<%= it.wikiPath(it.a.path) %>"><%= it.num(it.info.linksHere) %></a></td></tr>
+    <tr><th scope="row">Number of incoming links on the full 2022 English Wikipedia</th><td><%= it.num(it.a.inlinks) %></td></tr>
+    </tbody>
+  </table>
+  <h2 id="Edit_history">Edit history</h2>
+  <table class="wikitable mw-page-info">
+    <tbody>
+    <tr><th scope="row">Date of latest edit</th><td><%= it.a.edited ? it.longDate(it.a.edited) : 'unknown' %></td></tr>
+    <tr><th scope="row">Revision ID</th><td><%= it.a.oldid || 'unknown' %></td></tr>
+    <tr><th scope="row">Snapshot</th><td>English Wikipedia, 1 May 2022 (Kiwix wikipedia_en_all_maxi_2022-05)</td></tr>
+    </tbody>
+  </table>
+  <h2 id="Page_properties">Page properties</h2>
+  <table class="wikitable mw-page-info">
+    <tbody>
+    <tr><th scope="row">Links to articles on this wiki (distinct)</th><td><%= it.num(it.info.out.links) %></td></tr>
+    <tr><th scope="row">Links to articles not on this wiki (red links)</th><td><%= it.num(it.info.out.red) %></td></tr>
+    <tr><th scope="row">External links</th><td><%= it.num(it.info.out.external) %></td></tr>
+    <tr><th scope="row">Images</th><td><%= it.num(it.info.out.images) %></td></tr>
+    </tbody>
+  </table>
+</div>
+</div>

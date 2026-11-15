@@ -1,0 +1,8 @@
+<% layout('layout') %>
+<h1 id="firstHeading" class="firstHeading"><%= it.status === 404 ? (it.title || 'Page not found') : 'Error' %></h1>
+<div id="bodyContent" class="vector-body">
+  <div id="mw-content-text" class="mw-body-content">
+    <div class="mbox mbox-error" role="alert"><p><%= it.message %></p></div>
+    <p>Return to the <a href="/wiki/Main_Page">Main Page</a>.</p>
+  </div>
+</div>

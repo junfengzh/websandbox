@@ -150,3 +150,56 @@ Kept in `work/wiki/`: `s2/stats.npz` (270 MB; the 68-min link scan),
 (2.8 GB; re-running s6 alone needs it, so a ranking/FTS change means
 re-running s4, ~3-9 h), `dirents.db` (2.3 GB; s1 recreates it in 5 min),
 test DBs and scratch HTML.
+
+## Server (`sites/wiki/server.js`, 2026-11-15)
+
+Wikipedia/Kiwix-like reader on the kit: [sites/wiki/ROUTES.md](../sites/wiki/ROUTES.md).
+`node sites/wiki/server.js --tenants 2 --port 7500 --data $WSB_DATA_ROOT/wiki`;
+tests `cd sites/wiki && npm test` (node:test, 14 tests) and `npm run smoke` (puppeteer:
+Kiwix start URL -> landing, autocomplete + Go "Christopher Nolan", filmography link, What links
+here, random article, did-you-mean search, page info, 404; no console errors/failed requests);
+`npm run bench`.
+
+- **Shared DB mode**, all routes `raw` (no lock/session); statements on the request tenant's
+  read-only connection; `mmapMB: 4096`, so tenants/processes share base.db pages through the OS
+  page cache (RSS shows ~3.4 GB after the bench, almost all file-backed mmap pages).
+- **Rendering**: zstd-napi with the trained dictionary; per-process byte-bounded LRU of rendered
+  bodies (`WSB_WIKI_CACHE_MB`, default 192); infobox moved to the top of the lead (the ZIM is the
+  mobile layout, infobox after the first paragraph); TOC built from `article.sections`
+  (MediaWiki rules: >= 4 headings, a deeper heading opens one level); `alt=""`/lazy on images.
+- **Kiwix landing page** (`User:The_other_Kiwix_guy/Landing`, WebArena's start URL): its topics
+  are plain `<span>`s in the data; rendering links those that are article titles/redirects
+  (130 links).
+- **No categories / talk pages / history**: no category UI at all (nothing derived);
+  Special:SpecialPages says so.
+- **Search**: SCHEMA ranking + exact title/redirect first + stop words dropped. Common words
+  (> 8,000 matches) use tiers (title matches + an in-link id window of ~4,000 scored matches,
+  then id order) instead of scoring every row (the full scoring took 0.2-0.8 s). A title-coverage
+  bonus was tried on 30 task-like queries: no gain (top-1 22/30, top-3 25/30 either way), not
+  used. Misses: natural-language queries whose answer article lacks the words in its title
+  and is less linked than big articles mentioning them all ("national park maine" -> Main Lake
+  Provincial Park / List of Maine state parks, not Acadia; porter also folds maine -> main),
+  "largest city in maine", "stephen king birthplace". The Go box / autocomplete find the task
+  articles by title, which is how a solver gets there.
+- **Did you mean**: title-word vocabulary built once per process (onOpen, ~1 s) + the kit's
+  `editDistance`; a word is corrected only if it is not a title word and has < 5 FTS documents
+  (kit `didYouMean` needs an unstemmed FTS table in `main`; ours is porter, so not used).
+- **Suggestions**: `suggest` scores come from whole-ZIM in-links, so navbox-inflated pages can
+  lead ("mackinac" -> Mackinac Island meteorite before Mackinac Bridge).
+
+Latency (`test/bench.js`, 2 tenants, one process, box load ~3; 300 random + 20 largest task
+articles, max 542 KB HTML):
+
+| kind | concurrency 1: p50 / p95 / max ms | concurrency 8: p50 / p95 ms |
+|---|---|---|
+| article, uncached | 2 / 12 / 96 | 18 / 60 |
+| article, cached | 1 / 6 / 18 | 8 / 21 |
+| search, task-like queries | 20 / 132 / 132 | 204 / 371 |
+| search, title words | 13 / 79 / 118 | 169 / 344 |
+| search, common words (tiered) | 49 / 88 / 88 | 366 / 543 |
+| search Go (exact title) | 1 / 1 / 3 | 4 / 9 |
+| autocomplete | 1 / 3 / 5 | 5 / 9 |
+| what links here / page info / random | 1-2 / 2-3 | 4-7 / 6-15 |
+
+At concurrency 8 on one event loop the search numbers are queueing; use `--workers` for many
+tenants (searches are CPU-bound in SQLite).

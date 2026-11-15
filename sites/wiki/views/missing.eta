@@ -1,0 +1,20 @@
+<% layout('layout') %>
+<h1 id="firstHeading" class="firstHeading"><%= it.title %></h1>
+<div id="bodyContent" class="vector-body">
+  <div id="siteSub">From Wikipedia, the free encyclopedia</div>
+  <div id="mw-content-text" class="mw-body-content noarticletext">
+    <div class="mbox mbox-notice" role="status">
+      <p><b>This offline Wikipedia does not have an article with this exact name.</b> Only a selection of about 115,000 articles from the May 2022 English Wikipedia is included.</p>
+      <ul>
+        <li><a href="/w/index.php?search=<%= encodeURIComponent(it.title) %>&amp;title=Special%3ASearch&amp;fulltext=1">Search for "<%= it.title %>"</a> in existing articles.</li>
+        <li>Look for pages within Wikipedia that <a href="/wiki/Special:AllPages?from=<%= encodeURIComponent(it.path) %>">come after this title alphabetically</a>.</li>
+      </ul>
+    </div>
+    <% if (it.near && it.near.length) { %>
+    <h2>Similar titles</h2>
+    <ul class="mw-similar-titles">
+      <% for (const s of it.near) { %><li><a href="/wiki/<%= it.wikiPath(s.article.path) %>"><%= s.title %></a><% if (s.title !== s.article.title) { %> (redirect to <%= s.article.title %>)<% } %></li><% } %>
+    </ul>
+    <% } %>
+  </div>
+</div>

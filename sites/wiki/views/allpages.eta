@@ -1,0 +1,17 @@
+<% layout('layout') %>
+<h1 id="firstHeading" class="firstHeading">All pages</h1>
+<div id="bodyContent" class="vector-body">
+<div id="mw-content-text" class="mw-body-content">
+  <form action="/wiki/Special:AllPages" method="get" class="mw-allpages-form">
+    <label for="nsfrom">Display pages starting at:</label>
+    <input id="nsfrom" name="from" value="<%= it.from %>" size="30">
+    <button type="submit">Go</button>
+  </form>
+  <nav class="mw-allpages-nav" aria-label="Pages"><% if (it.prevHref) { %><a href="<%= it.prevHref %>" rel="prev">Previous page</a><% } %><% if (it.prevHref && it.nextHref) { %> | <% } %><% if (it.nextHref) { %><a href="<%= it.nextHref %>" rel="next">Next page</a><% } %></nav>
+  <ul class="mw-allpages-chunk">
+  <% for (const r of it.rows) { %><li><a href="/wiki/<%= it.wikiPath(r.path) %>"><%= r.title %></a></li>
+  <% } %>
+  </ul>
+  <nav class="mw-allpages-nav" aria-label="Pages"><% if (it.prevHref) { %><a href="<%= it.prevHref %>" rel="prev">Previous page</a><% } %><% if (it.prevHref && it.nextHref) { %> | <% } %><% if (it.nextHref) { %><a href="<%= it.nextHref %>" rel="next">Next page</a><% } %></nav>
+</div>
+</div>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= it.title ? it.title + ' - ' : '' %><%= it.site.title %></title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/wiki.css">
+<link rel="search" type="application/opensearchdescription+xml" href="/static/opensearch.xml" title="Wikipedia (en)">
+<% if (it.canonical) { %><link rel="canonical" href="<%= it.canonical %>"><% } %>
+<% if (it.skin.css) { %><style><%~ it.skin.css %></style><% } %>
+</head>
+<body class="skin-vector skin-<%= it.skin.name %> theme-<%= it.skin.theme || 'light' %> nav-<%= it.skin.nav || 'side' %><%= it.isMain ? ' page-Main_Page' : '' %>">
+<a class="mw-jump-link" href="#content">Jump to content</a>
+<header class="mw-header" role="banner">
+  <a class="mw-logo" href="/wiki/Main_Page" title="Visit the main page">
+    <img class="mw-logo-icon" src="/static/favicon.svg" alt="" width="50" height="50">
+    <span class="mw-logo-container"><span class="mw-logo-wordmark"><%= it.site.title %></span><span class="mw-logo-tagline">The Free Encyclopedia</span></span>
+  </a>
+  <form id="searchform" class="vector-search-box" action="/w/index.php" method="get" role="search">
+    <input type="hidden" name="title" value="Special:Search">
+    <div class="vector-search-box-inner">
+      <label for="searchInput" class="visually-hidden">Search Wikipedia</label>
+      <input type="search" name="search" id="searchInput" placeholder="<%= it.L('search.placeholder', 'Search Wikipedia') %>" accesskey="f" autocomplete="off"
+        role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="searchSuggestions" value="<%= it.searchValue || '' %>">
+      <ul id="searchSuggestions" class="suggestions" role="listbox" aria-label="Search suggestions" hidden></ul>
+    </div>
+    <button type="submit" id="searchButton" class="searchButton" name="go" value="Go"><%= it.L('search.go', 'Search') %></button>
+  </form>
+</header>
+<div class="mw-page-container">
+  <nav id="mw-panel" class="vector-main-menu" aria-label="Site">
+    <div class="vector-menu" role="navigation" aria-labelledby="p-navigation-label">
+      <h2 id="p-navigation-label" class="vector-menu-heading">Navigation</h2>
+      <ul>
+      <% for (const m of it.menu) { %>
+        <li id="n-<%= m.id %>"><a href="<%= m.href %>"<% if (it.req.path === m.href) { %> aria-current="page"<% } %>><%= m.label %></a></li>
+      <% } %>
+      </ul>
+    </div>
+    <% if (it.pageTools && it.a) { %>
+    <div class="vector-menu" role="navigation" aria-labelledby="p-tb-label">
+      <h2 id="p-tb-label" class="vector-menu-heading">Tools</h2>
+      <ul>
+        <li id="t-whatlinkshere"><a href="/wiki/Special:WhatLinksHere/<%= it.wikiPath(it.a.path) %>" accesskey="j"><%= it.L('tools.whatlinkshere', 'What links here') %></a></li>
+        <li id="t-info"><a href="/w/index.php?title=<%= encodeURIComponent(it.a.path) %>&amp;action=info"><%= it.L('tools.info', 'Page information') %></a></li>
+        <li id="t-article"><a href="/wiki/<%= it.wikiPath(it.a.path) %>">Read article</a></li>
+      </ul>
+    </div>
+    <% } %>
+  </nav>
+  <main id="content" class="mw-body" role="main">
+<%~ it.body %>
+  </main>
+</div>
+<footer id="footer" class="mw-footer" role="contentinfo">
+  <% if (it.a && it.a.edited && it.footerEdit) { %><p id="footer-info-lastmod">This page was last edited on <%= it.longDate(it.a.edited) %><% if (it.a.oldid) { %> (revision <%= it.a.oldid %>)<% } %>.</p><% } %>
+  <p id="footer-info-copyright">Text is available under the <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/" class="external">Creative Commons Attribution-ShareAlike License 4.0</a>; additional terms may apply. Offline snapshot of English Wikipedia (May 2022, Kiwix). Wikipedia® is a registered trademark of the Wikimedia Foundation, Inc.</p>
+  <ul id="footer-places">
+    <li><a href="/wiki/Wikipedia">About Wikipedia</a></li>
+    <li><a href="/wiki/Special:SpecialPages">Special pages</a></li>
+  </ul>
+</footer>
+<script src="/static/wiki.js" defer></script>
+</body>
+</html>

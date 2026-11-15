@@ -1,0 +1,13 @@
+<% layout('layout') %>
+<h1 id="firstHeading" class="firstHeading">Special pages</h1>
+<div id="bodyContent" class="vector-body">
+<div id="mw-content-text" class="mw-body-content">
+  <ul>
+    <li><a href="/wiki/Special:AllPages">All pages</a></li>
+    <li><a href="/wiki/Special:Random">Random article</a></li>
+    <li><a href="/wiki/Special:Search">Search</a></li>
+    <li><a href="/wiki/Special:WhatLinksHere">What links here</a></li>
+  </ul>
+  <p>This offline wiki is a read-only selection of the May 2022 English Wikipedia (about 115,000 articles). It has no categories, talk pages, page histories or user accounts: the offline (Kiwix) edition it comes from does not include them.</p>
+</div>
+</div>

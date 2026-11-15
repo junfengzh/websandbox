@@ -1,0 +1,17 @@
+<% layout('layout') %>
+<div class="vector-page-toolbar">
+  <nav class="vector-tabs" aria-label="Namespaces"><ul><li class="selected"><a href="/wiki/<%= it.wikiPath(it.a.path) %>" aria-current="page">Article</a></li></ul></nav>
+  <nav class="vector-tabs vector-tabs-right" aria-label="Views"><ul>
+    <li class="selected"><a href="/wiki/<%= it.wikiPath(it.a.path) %>">Read</a></li>
+    <li><a href="/wiki/Special:WhatLinksHere/<%= it.wikiPath(it.a.path) %>"><%= it.L('tools.whatlinkshere', 'What links here') %></a></li>
+    <li><a href="/w/index.php?title=<%= encodeURIComponent(it.a.path) %>&amp;action=info"><%= it.L('tools.info', 'Page information') %></a></li>
+  </ul></nav>
+</div>
+<h1 id="firstHeading" class="firstHeading<%= it.isMain ? ' visually-hidden' : '' %>"><span class="mw-page-title-main"><%= it.a.title %></span></h1>
+<div id="bodyContent" class="vector-body">
+  <div id="siteSub"><%= it.isMain ? '' : 'From Wikipedia, the free encyclopedia' %></div>
+  <% if (it.rdfrom) { %><div id="contentSub"><span class="mw-redirectedfrom">(Redirected from <a href="/wiki/<%= it.wikiPath(it.rdfrom.path) %>?redirect=no" class="mw-redirect" title="<%= it.rdfrom.title %>"><%= it.rdfrom.title %></a>)</span></div><% } %>
+  <div id="mw-content-text" class="mw-body-content" lang="en" dir="ltr">
+<%~ it.html %>
+  </div>
+</div>

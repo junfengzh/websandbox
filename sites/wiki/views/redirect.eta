@@ -1,0 +1,8 @@
+<% layout('layout') %>
+<h1 id="firstHeading" class="firstHeading"><%= it.r.title %></h1>
+<div id="bodyContent" class="vector-body">
+  <div id="siteSub">From Wikipedia, the free encyclopedia</div>
+  <div id="mw-content-text" class="mw-body-content">
+    <div class="redirectMsg"><p>Redirect page</p><ul class="redirectText"><li><a href="/wiki/<%= it.wikiPath(it.a.path) %>"><%= it.a.title %></a></li></ul></div>
+  </div>
+</div>

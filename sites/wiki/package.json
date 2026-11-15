@@ -1,0 +1,22 @@
+{
+  "name": "@websandbox/wiki",
+  "version": "0.1.0",
+  "private": true,
+  "description": "websandbox wiki site (wiki.wa): Wikipedia/Kiwix-like reader on the kit over the 2022-05 English Wikipedia ZIM subset",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "smoke": "node test/smoke.js",
+    "bench": "node test/bench.js"
+  },
+  "dependencies": {
+    "zstd-napi": "^0.0.13"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.43.1"
+  }
+}
