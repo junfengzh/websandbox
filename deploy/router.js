@@ -195,7 +195,7 @@ const server = http.createServer((req, res) => {
       const to = `https://${isPublic || xfp ? name : DOMAIN}${req.url.startsWith('/') ? req.url : '/'}`;
       return send(res, req.method === 'GET' || req.method === 'HEAD' ? 301 : 308, '', undefined, { location: to });
     }
-    if (xfp === 'https') res.setHeader('strict-transport-security', HSTS);
+    if (xfp === 'https' && HSTS !== 'off') res.setHeader('strict-transport-security', HSTS);
   }
   const ip = clientIp(req);
   if (blockedPath(req.url)) { counters.blocked++; return send(res, 404, 'Not found.\n'); }

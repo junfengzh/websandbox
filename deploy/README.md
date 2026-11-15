@@ -28,7 +28,7 @@ set. Uploads are capped at 5 MB by the router, so the proxy's body limit only ne
 router then redirects every request the proxy marks `X-Forwarded-Proto: http` -- and any plain
 request for `WSB_DOMAIN` that arrives without that header -- to the same `https://` URL (301 for
 GET/HEAD, 308 otherwise, so methods and bodies are kept), and sends
-`Strict-Transport-Security: max-age=31536000` (`WSB_HSTS` overrides the value) on HTTPS
+`Strict-Transport-Security: max-age=31536000` (`WSB_HSTS` overrides the value; `WSB_HSTS=off` if your proxy already sends HSTS) on HTTPS
 responses. Requests without `X-Forwarded-Proto` for any other host -- direct access to the
 container port on your network, health checks -- are served as before. Set `HTTPS_ONLY=0` when
 you serve the demo over plain HTTP.
