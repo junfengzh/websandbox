@@ -25,7 +25,10 @@ function urlWith(req, changes = {}, path) {
 const int = (v, d) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : d; };
 
 // paginate(req, total, {perPage, maxPerPage}) -> {page, perPage, offset, limit, total, pages, prev, next, links}
-function paginate(req, total, { perPage = 20, maxPerPage = 100, window = 2 } = {}) {
+// cap: pass total from countCapped(); totals above cap show as "cap+" (capped: true).
+function paginate(req, total, { perPage = 20, maxPerPage = 100, window = 2, cap } = {}) {
+  const capped = cap != null && total > cap;
+  if (capped) total = cap;
   perPage = Math.min(Math.max(int(req.query.per_page, perPage), 1), maxPerPage);
   const pages = Math.max(1, Math.ceil(total / perPage));
   const page = Math.min(Math.max(int(req.query.page, 1), 1), pages);
@@ -40,7 +43,7 @@ function paginate(req, total, { perPage = 20, maxPerPage = 100, window = 2 } = {
     }
   }
   return {
-    page, perPage, pages, total, offset: (page - 1) * perPage, limit: perPage, links,
+    page, perPage, pages, total, capped, offset: (page - 1) * perPage, limit: perPage, links,
     from: total ? (page - 1) * perPage + 1 : 0, to: Math.min(total, page * perPage),
     prev: page > 1 ? href(page - 1) : null, next: page < pages ? href(page + 1) : null,
   };
@@ -139,6 +142,15 @@ function validate(input, rules) {
   return { ok: !Object.keys(errors).length, values, errors };
 }
 
+// count(*) that stops at cap+1 rows -- counting millions of rows on every list page is slow.
+// countCapped(db, 'FROM notes n WHERE n.tag = ?', ['work'], 10000)
+function countCapped(db, fromWhere, params = [], cap = 10000) {
+  const { als } = require('./context');
+  const c = als.getStore();
+  const prep = c && c.db === db ? (x) => c.tenant.sql(x) : (x) => db.prepare(x);
+  return prep(`SELECT count(*) FROM (SELECT 1 ${fromWhere} LIMIT ${(cap | 0) + 1})`).pluck().get(...params);
+}
+
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-module.exports = { urlWith, paginate, sorter, filters, validate, escapeHtml, queryOf };
+module.exports = { urlWith, paginate, countCapped, sorter, filters, validate, escapeHtml, queryOf };

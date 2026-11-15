@@ -11,6 +11,8 @@ const build = require('./lib/build');
 // Context accessors: valid inside route handlers, jobs and tenant.run().
 const tenant = () => ctx().tenant;
 const db = () => ctx().db;
+// kit.sql('SELECT ...') -> cached prepared statement on the current tenant's connection.
+const sql = (text) => ctx().tenant.sql(text);
 const now = () => (als.getStore() ? tenant().now() : new Date());
 const nowSql = () => sqlTime(now());
 const jobs = { enqueue: (type, payload, o) => tenant().enqueue(type, payload, o) };
@@ -36,7 +38,7 @@ function authRoutes(app, { loginPath = '/login', logoutPath = '/logout', view = 
 
 module.exports = {
   site, SITE_INDEX, fmt,
-  tenant, db, now, nowSql, jobs, ctx,
+  tenant, db, sql, now, nowSql, jobs, ctx,
   HttpError, httpError, sqlTime, parseTime,
   ...web, // urlWith, paginate, sorter, filters, validate, escapeHtml
   search, auth, grader, build, authRoutes,

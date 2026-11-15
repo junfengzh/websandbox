@@ -18,6 +18,15 @@ CREATE TEMP TABLE IF NOT EXISTS kit_jobs (
 CREATE INDEX IF NOT EXISTS temp.kit_jobs_due ON kit_jobs(status, run_at, id);
 `;
 
+// At most COPY_SLOTS concurrent base.db copies (disk bandwidth).
+const COPY_SLOTS = 4;
+let copying = 0; const waiting = [];
+async function slot(fn) {
+  if (copying >= COPY_SLOTS) await new Promise((r) => waiting.push(r));
+  copying++;
+  try { return await fn(); } finally { copying--; const n = waiting.shift(); if (n) n(); }
+}
+
 // Copy base.db to the tenant file once; reuse it while base.db is unchanged.
 // Nothing is ever committed to a tenant copy, so a reused copy == base.
 async function ensureCopy(base, dest, fresh) {
@@ -27,7 +36,7 @@ async function ensureCopy(base, dest, fresh) {
   if (!fresh && fs.existsSync(dest) && fs.existsSync(marker) && fs.readFileSync(marker, 'utf8') === stamp) return false;
   for (const f of [dest, dest + '-wal', dest + '-shm', marker]) fs.rmSync(f, { force: true });
   fs.mkdirSync(path.dirname(dest), { recursive: true });
-  await fs.promises.copyFile(base, dest + '.tmp');
+  await slot(() => fs.promises.copyFile(base, dest + '.tmp'));
   fs.renameSync(dest + '.tmp', dest);
   fs.writeFileSync(marker, stamp);
   return true;
@@ -57,6 +66,7 @@ class Tenant {
       this.db = new Database(base, { readonly: true, fileMustExist: true });
     }
     const db = this.db;
+    this.stmts = new Map();
     db.pragma(`cache_size = -${Math.round(cacheMB * 1024)}`);
     db.pragma('temp_store = MEMORY');
     db.function('now', { deterministic: false }, () => this.nowSql());
@@ -74,6 +84,16 @@ class Tenant {
     this.clearUploads();
     db.exec('BEGIN');
     return this;
+  }
+
+  // Cached prepared statement (modes reset on every call, so .pluck()/.raw() are safe).
+  sql(text) {
+    let st = this.stmts.get(text);
+    if (!st) {
+      if (this.stmts.size >= 1000) this.stmts.clear();
+      this.stmts.set(text, (st = this.db.prepare(text)));
+    } else if (st.reader) st.raw(false).pluck(false).expand(false);
+    return st;
   }
 
   // ---- clock: fixed per-site "today"; running (advances with real time) or frozen

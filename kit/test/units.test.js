@@ -14,10 +14,11 @@ const fakeReq = (url) => {
 };
 
 test('search.match sanitises user input into a safe FTS5 expression', () => {
-  assert.equal(search.match('quick brown'), '"quick" "brown"*');
-  assert.equal(search.match('quick brown', { prefix: 'none' }), '"quick" "brown"');
-  assert.equal(search.match('"brown fox" jumps'), '"brown fox" "jumps"*');
-  assert.equal(search.match('a" OR b* NEAR(c) -d ^e:f'), '"a" "or" "b" "near" "c" "d" "e" "f"*');
+  assert.equal(search.match('quick brown'), '"quick" AND "brown"*');
+  assert.equal(search.match('quick brown', { prefix: 'none' }), '"quick" AND "brown"');
+  assert.equal(search.match('"brown fox" jumps'), '"brown fox" AND "jumps"*');
+  assert.equal(search.match('a" OR b* NEAR(c) -d ^e:f'), '"a" AND "or" AND "b" AND "near" AND "c" AND "d" AND "e" AND "f"*');
+  assert.equal(search.match('garden bike', { synonyms: { bike: ['bicycle'] } }), '"garden" AND ("bike"* OR "bicycle")');
   assert.equal(search.match('!!! ***'), null);
   assert.equal(search.match('bike', { synonyms: { bike: ['bicycle'] } }), '("bike"* OR "bicycle")');
   const db = new Database(':memory:');
@@ -36,6 +37,7 @@ test('search.match sanitises user input into a safe FTS5 expression', () => {
   assert.equal(search.markup('<b>\u0002x\u0003'), '&lt;b&gt;<mark>x</mark>');
   const syn = search.prepare(db, 't', 'bike', { synonyms: 'syn' });
   assert.equal(db.prepare('SELECT title FROM t WHERE t MATCH ?').pluck().get(syn.match), 'bicycle repair');
+  assert.equal(db.prepare('SELECT title FROM t WHERE t MATCH ?').pluck().get(search.match('flat bike', { db, synonyms: 'syn' })), 'bicycle repair');
   assert.equal(search.didYouMean(db, 't', 'quikc borwn'), 'quick brown');
   assert.equal(search.didYouMean(db, 't', 'lazy'), null);
   assert.equal(search.didYouMean(db, 't', 'bicycel'), 'bicycle');

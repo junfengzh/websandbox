@@ -22,7 +22,7 @@ class Session {
     if (v === undefined) delete this.data[k]; else this.data[k] = v;
     this.save();
   }
-  save() { this.tenant.db.prepare('UPDATE kit_sessions SET data = ? WHERE id = ?').run(JSON.stringify(this.data), this.ensure().id); }
+  save() { this.tenant.sql('UPDATE kit_sessions SET data = ? WHERE id = ?').run(JSON.stringify(this.data), this.ensure().id); }
   ensure() {
     if (!this.row) this.row = createSession(this.tenant, null, this.data);
     if (this.reply && !this.cookieSet) { this.reply.setCookie(COOKIE, this.row.id, cookieOpts); this.cookieSet = true; }
@@ -32,7 +32,7 @@ class Session {
 
 function createSession(tenant, userId, data = {}) {
   const row = { id: rid(), user_id: userId ?? null, data: JSON.stringify(data), csrf: rid(), created_at: tenant.nowSql() };
-  tenant.db.prepare('INSERT INTO kit_sessions (id, user_id, data, csrf, created_at) VALUES (@id, @user_id, @data, @csrf, @created_at)').run(row);
+  tenant.sql('INSERT INTO kit_sessions (id, user_id, data, csrf, created_at) VALUES (@id, @user_id, @data, @csrf, @created_at)').run(row);
   return row;
 }
 
@@ -78,7 +78,7 @@ function decorate(site, req, reply) {
     const t = req.tenant;
     const keep = req.session.data;
     delete keep._flash;
-    if (req.session.row) t.db.prepare('DELETE FROM kit_sessions WHERE id = ?').run(req.session.row.id);
+    if (req.session.row) t.sql('DELETE FROM kit_sessions WHERE id = ?').run(req.session.row.id);
     const id = site.cfg.auth && site.cfg.auth.idOf ? site.cfg.auth.idOf(user) : user.id;
     const row = createSession(t, id, keep);
     req.session = new Session(t, row);
@@ -87,7 +87,7 @@ function decorate(site, req, reply) {
     req.user = user;
   };
   req.logout = () => {
-    if (req.session.row) req.tenant.db.prepare('DELETE FROM kit_sessions WHERE id = ?').run(req.session.row.id);
+    if (req.session.row) req.tenant.sql('DELETE FROM kit_sessions WHERE id = ?').run(req.session.row.id);
     reply.clearCookie(COOKIE, { path: '/' });
     req.session = new Session(req.tenant, null);
     req.session.reply = reply;

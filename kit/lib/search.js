@@ -41,7 +41,7 @@ function match(q, o = {}) {
     for (const s of synonymsOf(o.db, o.synonyms, t.word)) alts.push(quote(String(s).toLowerCase()));
     return alts.length > 1 ? `(${alts.join(' OR ')})` : alts[0];
   });
-  return parts.join(o.op === 'OR' ? ' OR ' : ' ');
+  return parts.join(o.op === 'OR' ? ' OR ' : ' AND ');
 }
 
 const colCache = new WeakMap();

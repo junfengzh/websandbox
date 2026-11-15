@@ -31,6 +31,8 @@ CREATE TABLE notes (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NU
 CREATE INDEX notes_user ON notes(user_id, created_at);
 CREATE INDEX notes_created ON notes(created_at);
 CREATE INDEX notes_tag ON notes(tag, created_at);
+CREATE INDEX notes_likes ON notes(likes);
+CREATE INDEX notes_title ON notes(title COLLATE NOCASE);
 CREATE VIRTUAL TABLE notes_fts USING fts5(title, body, content='notes', content_rowid='id', tokenize='unicode61');
 CREATE TRIGGER notes_ai AFTER INSERT ON notes BEGIN INSERT INTO notes_fts(rowid, title, body) VALUES (new.id, new.title, new.body); END;
 CREATE TRIGGER notes_ad AFTER DELETE ON notes BEGIN INSERT INTO notes_fts(notes_fts, rowid, title, body) VALUES ('delete', old.id, old.title, old.body); END;

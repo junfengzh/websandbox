@@ -8,7 +8,7 @@ module.exports = async function routes(app, kit) {
   const FILTERS = {
     tag: { col: 'n.tag', label: 'Tag' },
     status: { col: 'n.status', label: 'Status' },
-    author: { col: 'u.username', label: 'Author' },
+    author: { sql: 'n.user_id IN (SELECT id FROM users WHERE username = ?)', label: 'Author' },
     likes_min: { col: 'n.likes', op: '>=', type: 'int', label: 'Min likes' },
   };
   const TAGS = ['work', 'personal', 'ideas', 'travel', 'food', 'music', 'tech', 'finance'];
@@ -20,14 +20,14 @@ module.exports = async function routes(app, kit) {
     const sort = kit.sorter(req, SORT);
     const q = String(req.query.q || '').trim();
     const s = q ? kit.search.prepare(db, 'notes_fts', q, { weights: { title: 5, body: 1 }, synonyms: 'synonyms' }) : null;
-    const from = s && s.match ? 'notes_fts JOIN notes n ON n.id = notes_fts.rowid JOIN users u ON u.id = n.user_id' : 'notes n JOIN users u ON u.id = n.user_id';
+    const from = s && s.match ? 'notes_fts JOIN notes n ON n.id = notes_fts.rowid' : 'notes n';
     const where = s && s.match ? `notes_fts MATCH ? AND ${f.where}` : f.where;
     const params = s && s.match ? [s.match, ...f.params] : f.params;
-    const total = db.prepare(`SELECT count(*) FROM ${from} WHERE ${where}`).pluck().get(...params);
-    const pager = kit.paginate(req, total, { perPage: 20 });
+    const total = kit.countCapped(db, `FROM ${from} WHERE ${where}`, params, 10000);
+    const pager = kit.paginate(req, total, { perPage: 20, cap: 10000 });
     // relevance first when searching unless the user picked a sort
     const order = s && s.match && !req.query.sort ? `${s.rank}, n.id` : sort.orderBy;
-    const rows = db.prepare(`SELECT n.id, n.title, n.tag, n.status, n.likes, n.created_at, u.username,
+    const rows = kit.sql(`SELECT n.id, n.title, n.tag, n.status, n.likes, n.created_at, (SELECT username FROM users WHERE id = n.user_id) AS username,
         ${s && s.match ? s.snippet('body', 14) : "substr(n.body, 1, 120)"} AS snip
       FROM ${from} WHERE ${where} ORDER BY ${order} LIMIT ? OFFSET ?`).all(...params, pager.limit, pager.offset);
     const suggestion = q && !total ? kit.search.didYouMean(db, 'notes_fts', q) : null;
@@ -35,7 +35,7 @@ module.exports = async function routes(app, kit) {
   });
 
   const load = (id) => {
-    const n = kit.db().prepare('SELECT n.*, u.username, u.display_name FROM notes n JOIN users u ON u.id = n.user_id WHERE n.id = ?').get(id);
+    const n = kit.sql('SELECT n.*, u.username, u.display_name FROM notes n JOIN users u ON u.id = n.user_id WHERE n.id = ?').get(id);
     if (!n) throw kit.httpError(404, `Note ${id} not found`);
     return n;
   };

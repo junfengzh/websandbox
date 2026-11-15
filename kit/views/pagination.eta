@@ -6,4 +6,4 @@
   <% if (p.next) { %><a href="<%= p.next %>" rel="next">Next &raquo;</a><% } else { %><span class="disabled">Next &raquo;</span><% } %>
 </nav>
 <% } %>
-<% if (p) { %><p class="kit-count">Showing <%= p.from %>&ndash;<%= p.to %> of <%= p.total %></p><% } %>
+<% if (p) { %><p class="kit-count">Showing <%= p.from %>&ndash;<%= p.to %> of <%= p.total %><%= p.capped ? '+' : '' %></p><% } %>

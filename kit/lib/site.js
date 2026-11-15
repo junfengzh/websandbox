@@ -112,6 +112,7 @@ function buildApp(rt, o) {
   const app = Fastify({
     logger: o.log,
     bodyLimit: 25 * 1024 * 1024,
+    pluginTimeout: 0,
     trustProxy: false,
     routerOptions: { ignoreTrailingSlash: true, maxParamLength: 1000 },
     serverFactory: (h) => { handler = h; return http.createServer(h); },
@@ -287,13 +288,13 @@ async function start(rt, opts = {}) {
   if (!fs.existsSync(o.base)) throw new Error(`${cfg.name}: base DB not found: ${o.base}`);
   rt.o = o;
   rt.tenants = new Map();
+  const app = buildApp(rt, o);
+  await app.ready();
   for (const i of o.owned) {
     rt.tenants.set(i, new Tenant(rt, i, {
       mode: o.mode, base: o.base, file: path.join(o.tenantDir, `t${i}.db`), uploadDir: path.join(o.uploads, String(i)), cacheMB: o.cacheMB, fresh: o.fresh,
     }));
   }
-  const app = buildApp(rt, o);
-  await app.ready();
   await Promise.all([...rt.tenants.values()].map((t) => t.ready));
 
   // listeners
