@@ -51,6 +51,19 @@ def money_alts(x):
             f"|| CASE WHEN {x} = CAST({x} AS INTEGER) THEN ' |OR| ' || printf('%d', CAST({x} AS INTEGER)) ELSE '' END)")
 
 
+def widen(ref):
+    """Numeric must_include references: the kit grader matches whole numbers only ("406" is not in
+    "$406.00"), so add the other common written forms: 406 -> 406.00, 27.6 -> 27.60."""
+    out = []
+    for alt in str(ref).split(' |OR| '):
+        out.append(alt)
+        if re.fullmatch(r'\d+', alt):
+            out.append(alt + '.00')
+        elif re.fullmatch(r'\d+\.\d', alt):
+            out.append(alt + '0')
+    return ' |OR| '.join(dict.fromkeys(out))
+
+
 def has_all(expr, needles):
     """SQL: expr contains every needle (case-insensitive); a needle may be a list of alternatives."""
     parts = []
@@ -129,7 +142,7 @@ def latest_order_total(where):
 
 
 def latest_order_number(status):
-    return f"SELECT CAST(CAST(o.increment_id AS INTEGER) AS TEXT) FROM orders o WHERE {MY_BASE_ORDERS} AND o.status = {lit(status)} ORDER BY o.created_at DESC LIMIT 1"
+    return f"SELECT CAST(CAST(o.increment_id AS INTEGER) AS TEXT) || ' |OR| ' || o.increment_id FROM orders o WHERE {MY_BASE_ORDERS} AND o.status = {lit(status)} ORDER BY o.created_at DESC LIMIT 1"
 
 
 def spent_between(a, b):
@@ -275,7 +288,13 @@ def convert(t, B):
         ev = {'type': 'answer', 'answer': {'must_include': refs}}
     elif tpl in (171, 210, 207):  # product URL
         pid = B.pid_by_key(key_of(ref_url))
-        url_eval(B.product_urls(pid), 'Kept the product (same data); URL also accepted as /catalog/product/view/id/<id>.')
+        urls = B.product_urls(pid)
+        if tid == 286:
+            urls += B.product_urls(B.one("SELECT id FROM products WHERE sku = 'B07SNHB4RC'"))
+        url_eval(urls, 'Kept the product (same data); URL also accepted as /catalog/product/view/id/<id>.')
+        if tid == 286:
+            ch.append('Also accepted: SK hynix Gold S31 1TB internal SSD ($97.99), the cheapest product whose NAME says SSD with >= 1TB; '
+                      'the reference ($32.17 "External Hard Drive 2TB") is called an external SSD only in its description.')
     elif tpl == 136:  # criticisms
         refs = ra.get('must_include')
         if refs is None:
@@ -301,6 +320,9 @@ def convert(t, B):
             ch.append(f'Reference {ra["must_include"]} re-derived by answer_sql (same value).')
     elif tpl == 370:  # brand price range
         brand = t['instantiation_dict']['brand']
+        intent = f'What is the price range for products from {brand}? Count every product whose brand or product name starts with "{brand}".'
+        ch.append('Intent tightened: the Brand attribute (lifted from the Amazon details table) is missing or spelled differently on many products '
+                  '(e.g. "Amazon Basics ..." mattresses have no brand, UGREEN has 3 spellings), so "products from X" = brand or name starts with X.')
         ev = {'type': 'answer', 'answer': {'must_include': '$sql'}, 'answer_sql': brand_price_range(brand)}
         ch.append('answer_sql: min/max final price of products whose Brand or name starts with the brand '
                   '(the WebArena reference was read off Magento search results).')
@@ -311,7 +333,7 @@ def convert(t, B):
         if st in ('cancelled', 'pending', 'complete'):
             s = {'cancelled': 'canceled'}.get(st, st)
             ref = str(int(ra['must_include'][0]) + ORDER_OFFSET)
-            ev = {'type': 'answer', 'answer': {'must_include': [ref]}, 'answer_sql': latest_order_number(s)}
+            ev = {'type': 'answer', 'answer': {'must_include': [f'{ref} |OR| {int(ref):09d}']}, 'answer_sql': latest_order_number(s)}
             ch.append(f'Order number renumbered (+1000): {ra["must_include"][0]} -> {ref} (order {int(ref):09d}); answer_sql re-derives it.')
         else:
             keep_answer(f'no {st} order')
@@ -508,6 +530,12 @@ def convert(t, B):
         keep_answer('the storefront has no way to change an order\'s address')
     else:
         raise ValueError(f'unhandled template {tpl} (task {tid})')
+    a = ev.get('answer') if isinstance(ev, dict) else None
+    if a and isinstance(a.get('must_include'), list) and tpl not in (213, 206):
+        w = [widen(r) for r in a['must_include']]
+        if w != a['must_include']:
+            a['must_include'] = w
+            ch.append('Numeric references widened to the usual written forms (e.g. 406 |OR| 406.00): the grader matches whole numbers only.')
     return intent, start, ev, ch, 'verified', None
 
 
