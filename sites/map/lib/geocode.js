@@ -319,7 +319,8 @@ class Geocoder {
   }
 
   _nearQuery(what, where, limit, opts, inside) {
-    const loc = this._search(where, opts, 5)[0];
+    // the place as the search box would find it ("CMU Hunt Library" needs the name+place fallback)
+    const loc = this._search(where, opts, 5).find((x) => this._covers(x, tokens(where))) || this.search(where, { ...opts, limit: 1 })[0];
     if (!loc) return null;
     const cat = this._category(what);
     if (cat) {

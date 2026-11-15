@@ -23,7 +23,7 @@ search and directions pages fit the map to their results when loaded without a h
 | URL | Page |
 |---|---|
 | `/` | welcome sidebar + map |
-| `/search?query=<text>` (alias `q=`) | "Search Results" -- up to 15 Nominatim-like results: `<li class="search_results_entry">` with `.result-type` (University, Cafe, City, ...) and `a.set_position` = full display name linking to the place page. Understands names, addresses (`401 Shady Ave, Pittsburgh`), `<category> near <place>` / `<category> in <place>` (results sorted by straight-line distance, shown as "(350m away, straight line)"), bare categories (near the map view). A coordinate pair as the query is treated like `lat=&lon=`. Ranking uses the map view centre (header `X-Map-Center: lon,lat`, sent by the page script; default CMU), like OSM's viewbox |
+| `/search?query=<text>` (alias `q=`) | "Search Results" -- up to 15 Nominatim-like results: `<li class="search_results_entry">` with `.result-type` (University, Cafe, City, ...) and `a.set_position` = full display name linking to the place page. Understands names, addresses (`401 Shady Ave, Pittsburgh`), `<category> near <place>` / `<category> in <place>` (results sorted by straight-line distance, shown as "(350m away, straight line)"), bare categories (near the map view). A coordinate pair as the query is treated like `lat=&lon=`. Ranking uses the map view centre (header `X-Map-Center: lon,lat`, sent by the page script on in-place navigation; default CMU for a plain page load), like OSM's viewbox. Also understood: `<name> at <place>`; US state codes after a comma (`Scranton, PA`); `NYC`/`Philly`; when no result has all the words, `<name words> <place words>` in either order (`AMC theatre pittsburgh`, `CMU Hunt library`, `gates building at CMU`: POIs named by the leading/trailing words within 30 km of the place); a rare category near a place looks up to 50 km (`airports near CMU`) |
 | `/search?lat=<lat>&lon=<lon>[&zoom=<z>]` | "Where is this?" (reverse geocoding): the coordinates, then the nearest building/POI/address, street, neighbourhood and city results |
 | `/node/<osm id>`, `/way/<osm id>`, `/relation/<osm id>` | place page of an OSM object in the geocoder (404 if it is not) |
 | `/place/<place_id>` | place page by geocoder `place_id` -- for results without an OSM object: house numbers (`/place/a%3A<street_id>%3A<id>`, i.e. `a:<street_id>:<id>`) and postcodes |
@@ -52,6 +52,15 @@ extra tags) and up to 10 named places within 250 m.
 Map click (JS): a popup with "Directions from here", "Directions to here" (keeping the other end
 of the current directions form), "Show address" (`/search?lat=&lon=&zoom=`), "Query features",
 "Centre map here".
+
+## Grading (`grade.js`)
+
+The site is read-only, so WebArena's DOM checks of the last page are checks of the final URL:
+`directions` (engine + From/To names = the `from`/`to` params + route end points near the
+expected places), `place` (the final URL is the page of one of the listed OSM objects / its
+name+address contain given strings) and `search` (`/search?query=<category> near <place>`, any
+category wording, any name of the place). Answers go to the kit grader (`answer.numeric` for
+times, distances and coordinates). Tasks start at `__MAP__/#map=15/40.4443/-79.9436` (CMU).
 
 ## JSON API
 

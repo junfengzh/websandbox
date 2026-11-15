@@ -276,3 +276,53 @@ starts with the first tenant; routing requests wait for it.
   comma segment on a boundary/place row -- gets 1/3 of the view-proximity bonus). Bare "Allentown"
   is unchanged; `build/check_places.js` top hits are otherwise identical (fixture q -> "Allentown, PA").
   Restart map servers started before 9d3578c to pick it up. The 19 map cross tasks: docs/NOTES-cross.md.
+
+## WebArena map tasks (tasks/map) -- 2026-11-15
+
+`tasks/map/convert.js` (needs a running map server) writes `tasks/map/webarena.jsonl`: the 109
+tasks with `sites == ["map"]`; every route time/distance is re-derived through the directions form
+of our site (the values an agent reads) and written into each task's `changes`. Verification
+(`tasks/map/verify.jsonl`): each task done in headless Chrome with `tasks/tools/browse.js`
+(search box, place pages, "What's nearby?", directions form, mode switch), graded with
+`tasks/tools/grade.js` (`sites/map/grade.js`), plus a negative check per task (usually the old
+WebArena value or a wrong mode/place). 108 verified, 1 dropped.
+
+- **Graders.** Kit `answer.numeric` (`{value, unit, tol_pct, tol_abs}`, units min/h/s, m/km/mi,
+  `deg` for coordinates; answer spec lists) replaces fuzzy/exact for times, distances and
+  coordinates: short trips +-1 min, else 10 % (3 % / >= 5 min over 2 h), distances 10 %,
+  coordinates +-0.0015 deg. `sites/map/grade.js` adds `directions` / `place` / `search` checks of
+  the final URL for the program_html and url_match tasks (ROUTES.md "Grading").
+- **Determinism.** `start_url` = `__MAP__/#map=15/40.4443/-79.9436` (CMU, as WebArena). Search
+  ranking depends on the map view only through in-place navigation (X-Map-Center = current
+  centre), so a given sequence of actions gives the same results; plain URL loads always rank
+  from CMU. Task queries are view-stable inside Pittsburgh (checked from CMU, PIT, Downtown, East
+  Liberty); chain names ("Walmart", "Five Guys") follow the view, as on OSM. Note: browse.js
+  starts Chrome with `--disable-gpu`, so the MapLibre canvas (and with it in-place navigation)
+  does not run there; the state-border tasks and one in-place flow were checked with
+  swiftshader WebGL (`--use-angle=swiftshader --enable-unsafe-swiftshader`).
+- **Geocoder fixes** (lib/geocode.js, tests): name words + place words fallback (AMC theatre
+  pittsburgh -> AMC Waterfront 22; CMU Hunt library; gates building at CMU -> Gates and Hillman
+  Centers; Carnegie Science Museum / Pittsburgh science museum -> Kamin), `X at Y`, state codes
+  after a comma (`ct` used to fold to "court"), exact match on the first comma segment
+  (Scranton, PA -> the city, not Penn State Scranton), NYC/Philly, near-queries limited to 30 km
+  for names, rare categories widen to 50 km (airports near CMU), `nearby` filters classes in SQL
+  (~10x faster for wide boxes).
+- **Changed references** (details in each task's `changes`): car within ~10 % and walking 10-20 %
+  shorter than WebArena; task 9 radius 30 -> 35 km (CMoA -> PIT is 32 km here); 32/33 "a Hilton
+  hotel" -> "a DoubleTree by Hilton hotel" (Hilton Garden Inn and Embassy Suites are also near
+  PIT); 34 shortest walk from the Hyatt is to Shop & Save (2h 17min; the Moon Township markets
+  are 3h 52min+ around the airfield); 61 Hunan Express (La Prima is a cafe); 71 zip 15217 (what
+  the place page shows); 98 "tea cafe" -> "Fuku Tea" (several tea cafes 300-450 m from Pitt);
+  99 Five Guys 5207 Liberty Ave (newer, nearer); 220 only The Oaklander (Wyndham University
+  Center not in OSM); 221 Oakland Post Office; 236 Schiller's or University Pharmacy; 256
+  carnegieart.org; 377 CMU ArtPark Lab (not in OSM) -> CMU Hunt Library; 767 Market District
+  (Giant Eagle brand, closest); renamed places keep their old names as aliases.
+- **Dropped:** 90 (Pennsylvania's neighbours Ohio, West Virginia, Maryland, Delaware are outside
+  the Northeast extract; the map shows only NY and NJ).
+- **Task 425 (cross-site, Mackinac Bridge): keep.** The bridge is in the geocoder (Overpass
+  extract): search "Mackinac Bridge" -> `/way/375341624` place page "Mackinac Bridge, Michigan,
+  United States" (sidebar contains "Mackinac Bridge"). No tiles/routing there, which the task
+  (find its page) does not need; a `place` check `osm: ['W375341624']` fits. 426 (Flight 93 /
+  Somerset County) also resolves (`/way/295270550`).
+- Known search gaps left as is (Nominatim behaves the same): "Upitt", "PIT airport", "SCS CMU",
+  bare "Whole Foods" (exact-name objects elsewhere outrank the local "Whole Foods Market").

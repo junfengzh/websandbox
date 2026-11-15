@@ -18,9 +18,10 @@
 //   type 'search'      eval.search = { category: [[class, type], ...], near: [lat, lon], radius_m }
 //       The final URL is /search?query=<category> near|around|close to|in <place> (WebArena
 //       url_match "/search?query=hotels near carnegie mellon university", but any wording of the
-//       category (categories.json) and any name of the place passes: the most important object
-//       whose name has all the place words (geocoder name index, via SQL) must lie within
-//       radius_m (default 600 m) of `near`).
+//       category (categories.json) and any name of the place passes: among the objects whose
+//       name has all the place words (else the longest run of them) -- an exact name match, else
+//       the most important (geocoder name index, via SQL) -- must lie within radius_m (default
+//       600 m) of `near`).
 //
 //   grade(task, {answer, url, query, fuzzy}) -> {pass, score, checks}
 const kit = require('../../kit');
@@ -115,11 +116,23 @@ async function checkSearch(spec, url, query) {
     if (!toks.length) fails.push('no place');
     else {
       if (!query) throw new Error('grader: search.near needs a query function');
-      // the most important object with all the place words in its name (the geocoder's pick
-      // without a map view) must lie within radius_m of the expected place
-      const rows = await query(`SELECT p.name, p.lat, p.lon FROM places_fts f JOIN places p ON p.id = f.rowid
-        WHERE places_fts MATCH 'name : (${ftsq(toks).replace(/'/g, "''")})' ORDER BY p.importance DESC, p.rank LIMIT 1`);
-      const r = rows[0] && (Array.isArray(rows[0]) ? { name: rows[0][0], lat: rows[0][1], lon: rows[0][2] } : rows[0]);
+      // the geocoder's pick without a map view, approximated: among objects whose name has all
+      // the place words (else the longest run of them: "CMU Hunt Library" -> "hunt library"),
+      // an exact name match first, else the most important one; it must lie within radius_m
+      let r = null;
+      for (let len = toks.length; len >= 1 && !r; len--) {
+        for (let i = 0; i + len <= toks.length && !r; i++) {
+          const sub = toks.slice(i, i + len);
+          const rows = (await query(`SELECT p.name, p.names, p.lat, p.lon FROM places_fts f JOIN places p ON p.id = f.rowid
+            WHERE places_fts MATCH 'name : (${ftsq(sub).replace(/'/g, "''")})' ORDER BY p.importance DESC, p.rank LIMIT 50`))
+            .map((x) => (Array.isArray(x) ? { name: x[0], names: x[1], lat: x[2], lon: x[3] } : x));
+          if (!rows.length) continue;
+          const want = sub.join(' ');
+          const nm = (v) => tokens(v).filter((t) => !STOP.has(t)).join(' ');
+          const exact = (x) => nm(x.name) === want || (() => { try { return Object.values(JSON.parse(x.names || '{}')).some((v) => nm(v) === want); } catch { return false; } })();
+          r = rows.find(exact) || rows[0];
+        }
+      }
       const n = r ? Math.round(hav(r.lat, r.lon, spec.near[0], spec.near[1])) : null;
       c.place_match = r ? `${r.name} (${n} m)` : null;
       if (r && n > (spec.radius_m || 600)) fails.push(`"${m[2]}" is ${r.name}, ${n} m from the expected place`);
