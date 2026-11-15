@@ -136,6 +136,32 @@ test('grader: answers, URLs, state', async () => {
   assert.equal(r.pass, false); assert.match(r.checks[0].error, /read-only/);
 });
 
+test('grader: cross-site state checks and answer_site', async () => {
+  const shop = new Database(':memory:'); const forum = new Database(':memory:');
+  shop.exec("CREATE TABLE reviews(title, rating); INSERT INTO reviews VALUES ('Broke fast', 1), ('Great', 5)");
+  forum.exec("CREATE TABLE submissions(title, body); INSERT INTO submissions VALUES ('feedback', 'Broke fast')");
+  const q = (db) => async (sql) => db.prepare(sql).all();
+  const queries = { shopping: q(shop), forum: q(forum) };
+  const task = { site: 'cross', grade_site: 'forum', sites: ['shopping', 'forum'], eval: {
+    type: 'state',
+    state: [
+      { site: 'forum', sql: "SELECT count(*) FROM submissions WHERE body LIKE '%Broke fast%'", expect: 1 },
+      { site: 'shopping', sql: 'SELECT count(*) FROM reviews WHERE rating <= 2', expect: 1 },
+    ] } };
+  let r = await grader.grade(task, { queries });
+  assert.equal(r.pass, true); assert.deepEqual(r.checks.map((c) => c.site), ['forum', 'shopping']);
+  // `query` stands for the grading site; a missing site's query function fails only its check
+  r = await grader.grade(task, { query: q(forum) });
+  assert.equal(r.pass, false); assert.equal(r.checks[0].pass, true); assert.match(r.checks[1].error, /site 'shopping'/);
+  // state_sql (grading site) and state together; inferred type
+  r = await grader.grade({ grade_site: 'forum', eval: { state_sql: 'SELECT count(*) FROM submissions', state_expect: 1,
+    state: [{ site: 'shopping', sql: 'SELECT count(*) FROM reviews', expect: 2 }] } }, { queries });
+  assert.equal(r.pass, true); assert.equal(r.checks.length, 2);
+  r = await grader.grade({ grade_site: 'forum', eval: { answer: { exact: '$sql' }, answer_sql: "SELECT title FROM reviews WHERE rating = 1", answer_site: 'shopping' } },
+    { answer: 'broke fast', queries });
+  assert.equal(r.pass, true);
+});
+
 test('grader: numeric answers with units and tolerance', async () => {
   const n = (a, spec) => grader.numericMatch(a, spec);
   // durations: compound forms are summed, h:mm, plural/abbreviated units

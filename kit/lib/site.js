@@ -49,6 +49,7 @@ function resolveOptions(rt, o = {}) {
   return {
     tenants, port, data, workers, wid, owned,
     bind: o.bind || 'ports',
+    loopbackPort: o.loopbackPort != null ? +o.loopbackPort : null, // --bind rl: port of the 127.0.0.1 listener (default port; 0 = none)
     mode: o.dbMode || dbc.mode || 'overlay',
     base: path.resolve(data, o.dbFile || dbc.file || 'base.db'),
     tenantDir: path.resolve(o.tenantDir || path.join(data, 'tenants')),
@@ -303,7 +304,9 @@ async function start(rt, opts = {}) {
   if (o.bind === 'rl') {
     if (o.siteIndex == null) throw new Error(`${cfg.name}: --bind rl needs cfg.siteIndex (127.10.<i>.<k>)`);
     for (const i of o.owned) plan.push({ host: `127.10.${i}.${o.siteIndex}`, port: o.port, tenant: i });
-    if (o.wid === 0) plan.push({ host: '127.0.0.1', port: o.port, tenant: null });
+    // several sites can share port 80 on their 127.10.<i>.<k> addresses; their 127.0.0.1 listeners
+    // then need distinct ports (--loopback-port Q) or none (--loopback-port 0)
+    if (o.wid === 0 && o.loopbackPort !== 0) plan.push({ host: '127.0.0.1', port: o.loopbackPort ?? o.port, tenant: null });
   } else if (o.bind === 'ports') {
     for (const i of o.owned) plan.push({ host: '127.0.0.1', port: o.port ? o.port + i : 0, tenant: i });
   } else {
@@ -353,6 +356,7 @@ const ARGS = {
   port: { type: 'string' },
   data: { type: 'string' },
   bind: { type: 'string', default: 'ports' }, // rl | ports | <host>
+  'loopback-port': { type: 'string' }, // --bind rl: 127.0.0.1 listener port (default --port, 0 = none)
   workers: { type: 'string', default: '1' },
   'db-mode': { type: 'string' }, // copy | shared
   'db-file': { type: 'string' },
@@ -373,7 +377,7 @@ const camel = (s) => s.replace(/-(\w)/g, (_, c) => c.toUpperCase());
 async function main(rt, argv = process.argv.slice(2)) {
   const { values } = parseArgs({ args: argv, options: ARGS, allowPositionals: false });
   if (values.help) {
-    console.log(`usage: node server.js --tenants N --port P --data DIR [--bind rl|ports|HOST] [--workers W]\n  [--db-mode copy|shared] [--uploads DIR] [--media DIR] [--cache-mb MB] [--control-token T] [--fresh] [--log]`);
+    console.log(`usage: node server.js --tenants N --port P --data DIR [--bind rl|ports|HOST] [--loopback-port Q] [--workers W]\n  [--db-mode copy|shared] [--uploads DIR] [--media DIR] [--cache-mb MB] [--control-token T] [--fresh] [--log]`);
     return;
   }
   const o = {};

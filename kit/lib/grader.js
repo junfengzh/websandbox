@@ -2,8 +2,12 @@
 // Task grader for the eval format in docs/CONVENTIONS.md ("WebArena tasks"):
 //   eval: { type: 'answer'|'url'|'state' | [...], answer: {exact|must_include|fuzzy|numeric: ...} | [specs],
 //           answer_sql, url, state_sql, state_expect }
-// grade(task, {answer, url, query, fuzzy}) -> {pass: true|false|null, score, checks: [...]}
+// grade(task, {answer, url, query, queries, fuzzy}) -> {pass: true|false|null, score, checks: [...]}
 // `query(sql)` -> rows (array of objects or arrays); see remoteQuery()/tenant.query().
+// Cross-site tasks: `queries` = {<site>: query fn} (task site names: shopping, shopping_admin, gitlab,
+// forum, wiki, map); eval.state = [{site, sql, expect}] runs each check on its site's DB and
+// eval.answer_site names the site of answer_sql. Checks without a site use `query` (the task's own /
+// grading site), or queries[task.grade_site || task.site].
 // `fuzzy({intent, answer, reference})` -> boolean|score (the RL stack's LLM judge). Without it,
 // fuzzy checks come back {pass: null, pending: 'fuzzy'} and the overall pass is null.
 
@@ -187,16 +191,22 @@ function stateMatch(rows, expect) {
   throw new Error('grader: unknown state_expect form ' + JSON.stringify(expect));
 }
 
-async function grade(task, { answer = '', url = '', query, fuzzy } = {}) {
+async function grade(task, { answer = '', url = '', query, queries, fuzzy } = {}) {
   const ev = task.eval || task;
   let types = ev.type ? [].concat(ev.type) : [];
   if (!types.length) {
     if (ev.answer || ev.answer_sql) types.push('answer');
     if (ev.url) types.push('url');
-    if (ev.state_sql) types.push('state');
+    if (ev.state_sql || ev.state) types.push('state');
   }
   const checks = [];
-  const needQuery = () => { if (!query) throw new Error('grader: this task needs a query function (control API or tenant)'); return query; };
+  const own = task.grade_site || task.site;
+  const needQuery = (site) => {
+    const q = site && queries && queries[site] ? queries[site]
+      : !site || site === own ? query || (queries && own && queries[own]) : null;
+    if (!q) throw new Error(site ? `grader: this task needs a query function for site '${site}'` : 'grader: this task needs a query function (control API or tenant)');
+    return q;
+  };
 
   for (const type of types) {
     try {
@@ -204,7 +214,7 @@ async function grade(task, { answer = '', url = '', query, fuzzy } = {}) {
         // answer: one spec, or a list of specs (each its own check), e.g.
         // [{must_include: ['Hyatt Regency']}, {numeric: {value: 15, unit: 'min'}}]
         let sqlRef = null;
-        if (ev.answer_sql) sqlRef = firstCol(await needQuery()(ev.answer_sql)).map((v) => (v == null ? '' : String(v)));
+        if (ev.answer_sql) sqlRef = firstCol(await needQuery(ev.answer_site)(ev.answer_sql)).map((v) => (v == null ? '' : String(v)));
         for (const spec of Array.isArray(ev.answer) ? ev.answer : [ev.answer || {}]) {
           const mode = ['exact', 'must_include', 'fuzzy', 'numeric'].find((m) => m in spec) || (sqlRef ? 'must_include' : null);
           if (!mode) throw new Error('answer check without answer.exact/must_include/fuzzy/numeric or answer_sql');
@@ -233,11 +243,24 @@ async function grade(task, { answer = '', url = '', query, fuzzy } = {}) {
         const ok = refs.some((r) => urlMatch(url, r, { mode: ev.url_match || 'subset', ignore: ev.url_ignore_params || [] }));
         checks.push({ type, pass: ok, reference: ev.url, got: url });
       } else if (type === 'state') {
-        const sqls = [].concat(ev.state_sql);
-        const exps = Array.isArray(ev.state_sql) ? ev.state_expect : [ev.state_expect];
-        for (let i = 0; i < sqls.length; i++) {
-          const rows = await needQuery()(sqls[i]);
-          checks.push({ type, sql: sqls[i], expect: exps[i], got: rows.slice(0, 20), pass: stateMatch(rows, exps[i]) });
+        // state_sql/state_expect (the task's own site) and/or state: [{site, sql, expect}] (cross-site);
+        // each check is graded on its own, so one failing site does not hide the others' results
+        const items = [];
+        if (ev.state_sql != null) {
+          const sqls = [].concat(ev.state_sql);
+          const exps = Array.isArray(ev.state_sql) ? ev.state_expect : [ev.state_expect];
+          sqls.forEach((sql, i) => items.push({ sql, expect: exps[i] }));
+        }
+        for (const it of [].concat(ev.state || [])) items.push(it);
+        if (!items.length) throw new Error('state check without state_sql or state');
+        for (const it of items) {
+          const c = { type, sql: it.sql, expect: it.expect };
+          if (it.site) c.site = it.site;
+          try {
+            const rows = await needQuery(it.site)(it.sql);
+            Object.assign(c, { got: rows.slice(0, 20), pass: stateMatch(rows, it.expect) });
+          } catch (e) { Object.assign(c, { pass: false, error: String(e.message || e) }); }
+          checks.push(c);
         }
       } else throw new Error(`unknown eval type '${type}'`);
     } catch (e) {

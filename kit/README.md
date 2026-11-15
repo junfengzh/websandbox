@@ -86,6 +86,8 @@ Performance (BENCH.md): kit overhead ≈ a bare Fastify route; reset < 1 ms serv
 node sites/<site>/server.js --tenants N --port P --data $WSB_DATA_ROOT/<site> [options]
   --bind ports        (default) tenant i on 127.0.0.1:P+i                      -- dev, tests
   --bind rl           tenant i on 127.10.<i>.<k>:P (+ 127.0.0.1:P, tenant via X-WSB-Tenant)  -- RL stack (P=80)
+  --loopback-port Q   with --bind rl: the 127.0.0.1 listener on Q instead of P (0 = none), so several
+                      sites can share P=80 on their own 127.10.<i>.<k> addresses (tasks/tools/sites.sh)
   --bind HOST         one listener; tenant from the 127.10.<i>.x local address or X-WSB-Tenant
   --workers W         W processes, worker w owns tenants i % W == w (needs --bind rl or ports)
   --db-mode overlay|copy|shared   --db-file base.db   --tenant-dir DATA/tenants   --cache-mb 32 (SQLite page cache per tenant)   --mmap-mb 0
@@ -382,6 +384,11 @@ curl -s -XPOST -H 'content-type: application/json' -d '{"sql":"SELECT count(*) n
   compared numerically: `"55.00"` == 55), rows `[[..], ..]` / `[{col: v}]` (order-insensitive
   unless `{rows, ordered: true}`; object rows match the listed columns only), `{count: n}`,
   `{nonempty: true}`, `{empty: true}`, `{includes: [rows]}`, `{min, max}`.
+
+- **Cross-site tasks** (CONVENTIONS.md "Cross-site tasks"): `grade(task, {..., queries: {site: fn}})`;
+  `eval.state: [{site, sql, expect}]` runs each check on its site's query function (one check
+  each, so a failing site does not hide the others), `eval.answer_site` names the DB of
+  `answer_sql`; checks without a site use `query`, or `queries[task.grade_site || task.site]`.
 
 `query` comes from `kit.grader.remoteQuery('http://127.10.3.4', {tenant, token})` (control
 API) or in-process `(sql, p) => tenant.query(sql, p).then(r => r.rows)`.
