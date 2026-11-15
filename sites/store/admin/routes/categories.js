@@ -119,7 +119,11 @@ module.exports = (r, ctx) => {
     const position = U.str(b.position) === '' ? null : parseInt(U.str(b.position), 10) || 0;
     if (c) {
       const moved = parentId !== c.parent_id;
-      kit.db().prepare(`UPDATE categories SET ${Object.keys(v).map((k) => `${k} = @${k}`).join(', ')}, parent_id = @parent_id, position = coalesce(@position, position), updated_at = @now WHERE id = @id`).run({ ...v, parent_id: parentId, position, now, id: c.id });
+      // SET name only when it changed: the categories_names_au trigger (AFTER UPDATE OF name) fires even for an
+      // unchanged name and rewrites category_names (+ the products FTS) of every product in the category --
+      // re-saving Default Category (105k products) took ~50 s and stalled the worker (docs/BENCH-FULL.md)
+      const cols = Object.keys(v).filter((k) => k !== 'name' || v.name !== c.name);
+      kit.db().prepare(`UPDATE categories SET ${cols.map((k) => `${k} = @${k}`).join(', ')}, parent_id = @parent_id, position = coalesce(@position, position), updated_at = @now WHERE id = @id`).run({ ...v, parent_id: parentId, position, now, id: c.id });
       id = c.id;
       if (moved || v.url_key !== c.url_key) {
         const nu = moved ? urlPathUnder(parent, v.url_key) : (c.url_path ? c.url_path.replace(/[^/]*$/, v.url_key) : urlPathUnder(parent, v.url_key));

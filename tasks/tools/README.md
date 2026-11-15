@@ -76,7 +76,7 @@ node tasks/tools/grade.js --site http://127.0.0.1:7200 --tasks tasks/forum/webar
 
 ```
 tasks/tools/sites.sh up [--tenants N] [--base 7700] [--stride 10] [--only store,forum,code,wiki,map]
-                        [--bind ports|rl] [--port 80] [--workers W] [--data-root DIR] [--control-token T] [--fresh]
+                        [--bind ports|rl] [--port 80] [--workers W|W,site=W,...] [--data-root DIR] [--control-token T] [--fresh]
 tasks/tools/sites.sh status | down | urls [--tenant I] | reset [--tenant I | --all]   (same --base)
 ```
 
@@ -92,10 +92,19 @@ seconds; the map loads its routing graph). Pids and logs: `$WSB_TMP/wsb-sites/<b
 - `--bind rl`: tenant i of each site on its own address `127.10.<i>.<k>:PORT` (shopping .2,
   shopping_admin .3 -- the same store process --, forum .4, gitlab .5, wiki .6, map .7; the RL
   `hostMap` scheme), so every site keeps its own cookies; the control API of each site on
-  `127.0.0.1:BASE + k*STRIDE` (kit `--loopback-port`), tenant by `X-WSB-Tenant`. PORT 80 (the
+  `127.0.0.1:BASE + k*STRIDE` (kit `--loopback-port`), tenant by `X-WSB-Tenant` -- served by worker 0 only, so with
+  `--workers W > 1` sites.sh (`reset`, `urls`) uses each tenant's own address `127.10.<i>.<k>:PORT/__rl/...` instead.
+- `--workers 4,wiki=2,map=1`: a default and per-site worker counts. `up` waits until every tenant is healthy. PORT 80 (the
   RL default) needs CAP_NET_BIND_SERVICE; any free port works locally (`--port 7799`).
 - `urls --tenant I` prints the host placeholders for tenant I (`__REDDIT__=http://127.10.1.4:7799`,
   ...) and the `--sites ... --tenant I` arguments for grade.js / `tasks/cross/check_refs.js`.
 
 Example (cross-site verification): `sites.sh up --tenants 2 --bind rl --port 7799`, then
 `grade.js --tasks tasks/cross/webarena.jsonl --id 552 $(sites.sh urls --tenant 1 | tail -1)`.
+
+## bench-full.js -- full-stack load benchmark
+
+`node tasks/tools/bench-full.js --base B --port P --tenants 16 --rollouts 32 --seconds 300 --think 1000-3000 [--procs 4] [--out F.json]`
+against `sites.sh up --bind rl`: concurrent simulated agent rollouts (random tasks of the splits, link clicks /
+searches / allowlisted form posts with page assets, think time, reset at the end); prints per-site latency, reset
+and memory (PSS) stats. Results and method: docs/BENCH-FULL.md.

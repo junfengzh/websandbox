@@ -236,6 +236,25 @@ test('uploads go to the tenant dir and reset empties it', async () => {
   assert.equal((await fetch(A + att)).status, 404);
 });
 
+test('media files: served with a cache header, 404 when missing, no path traversal', async () => {
+  const media = path.join(dir, 'media-t');
+  fs.mkdirSync(path.join(media, 'a', 'b'), { recursive: true });
+  fs.writeFileSync(path.join(media, 'a', 'b', 'x.txt'), 'media file');
+  const s2 = await startNotes(dir, { tenants: 1, media, uploads: path.join(dir, 'up-media') });
+  try {
+    const u = s2.url(0);
+    const r = await fetch(u + '/media/a/b/x.txt');
+    assert.equal(r.status, 200);
+    assert.equal(await r.text(), 'media file');
+    assert.match(r.headers.get('cache-control'), /max-age=86400/);
+    assert.equal((await fetch(u + '/media/a/b/nope.txt')).status, 404);
+    for (const p of ['/media/a/../../base.db', '/media/%2e%2e/base.db', '/media/a/%2e%2e/%2e%2e/base.db', '/media/..%2fbase.db']) {
+      const t = await fetch(u + p);
+      assert.ok(t.status === 403 || t.status === 404, `${p}: ${t.status}`);
+    }
+  } finally { await s2.close(); }
+});
+
 test('404 page, skins and stats', async () => {
   const r = await new Client(A).get('/no/such/page', { headers: { accept: 'text/html' } });
   assert.equal(r.status, 404);

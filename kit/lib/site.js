@@ -140,7 +140,10 @@ function buildApp(rt, o) {
   });
   app.register(require('@fastify/static'), { root: KIT_PUBLIC, prefix: '/_kit/', maxAge: 3600 * 1000 });
   if (cfg.dir && fs.existsSync(path.join(cfg.dir, 'public'))) app.register(require('@fastify/static'), { root: path.join(cfg.dir, 'public'), prefix: '/static/', decorateReply: false, maxAge: 3600 * 1000 });
-  if (fs.existsSync(o.media)) app.register(require('@fastify/static'), { root: o.media, prefix: cfg.mediaPrefix || '/media/', decorateReply: false, maxAge: 24 * 3600 * 1000 });
+  // Media through reply.sendFile, not a second wildcard @fastify/static: since 10.1 its wildcard
+  // route re-reads every directory of the path on each request to validate the spelling (a readdir of
+  // the store's 194k-file image directory = ~300 ms per image). sendFile keeps the ../ guards.
+  if (fs.existsSync(o.media)) app.get(`${cfg.mediaPrefix || '/media/'}*`, (req, reply) => reply.sendFile(req.params['*'], o.media, { maxAge: 24 * 3600 * 1000 }));
 
   app.decorateRequest('tenant', null);
   app.decorateRequest('user', null);

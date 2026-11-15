@@ -244,6 +244,20 @@ test('customers, CMS page, cart price rule, admin user', async () => {
   }
 });
 
+test('re-saving a huge category is fast; a rename still updates the products', async () => {
+  const c = await adminClient();
+  // Default Category holds ~105k products: an unchanged name must not fire the category_names trigger (was ~50 s)
+  let t0 = Date.now();
+  let r = await c.post('/admin/catalog/category/save/id/2/', { name: 'Default Category', is_active: '1', include_in_menu: '1', is_anchor: '1', display_mode: 'PRODUCTS', description: '' }, '/admin/catalog/category/edit/id/2/');
+  assert.equal(r.status, 302);
+  assert.ok(Date.now() - t0 < 3000, `re-save took ${Date.now() - t0} ms`);
+  const cat = (await query(base, "SELECT c.id, c.name FROM categories c WHERE c.level > 1 AND (SELECT count(*) FROM product_categories pc WHERE pc.category_id = c.id) BETWEEN 1 AND 50 ORDER BY c.id LIMIT 1"))[0];
+  r = await c.post(`/admin/catalog/category/save/id/${cat.id}/`, { name: 'Zqx Renamed', is_active: '1', include_in_menu: '1', display_mode: 'PRODUCTS' }, `/admin/catalog/category/edit/id/${cat.id}/`);
+  assert.equal(r.status, 302);
+  const pid = await one(base, 'SELECT product_id FROM product_categories WHERE category_id = ? LIMIT 1', [cat.id]);
+  assert.match(await one(base, 'SELECT category_names FROM products WHERE id = ?', [pid]), /Zqx Renamed/);
+});
+
 test('task-conversion fixes: phone keyword, SKU from name, last shown report, SQL functions', async () => {
   await ctrl(base, '/__rl/reset');
   const c = await adminClient();

@@ -2,8 +2,9 @@
 # Start / stop all websandbox sites locally with one command (cross-site task runs, RL integration).
 #
 #   tasks/tools/sites.sh up     [--tenants N] [--base P] [--stride S] [--only store,forum,...]
-#                               [--bind ports|rl] [--port 80] [--workers W] [--data-root DIR]
+#                               [--bind ports|rl] [--port 80] [--workers W|site=W,...] [--data-root DIR]
 #                               [--control-token T] [--fresh] [--timeout SEC]
+#   (--workers 4,wiki=2,map=1: 4 worker processes per site, 2 for the wiki, 1 for the map)
 #   tasks/tools/sites.sh down   [--base P] [--only ...]
 #   tasks/tools/sites.sh status [--base P]
 #   tasks/tools/sites.sh urls   [--base P] [--tenant I]     # host placeholders + grade.js --sites
@@ -53,7 +54,10 @@ STATE=${WSB_SITES_STATE:-${WSB_TMP:-/tmp}/wsb-sites/$base}
 ctl_port() { echo $((base + ${IDX[$1]} * stride)); }           # tenant 0's port (ports) / control listener (rl)
 mode() { cat "$STATE/bind" 2>/dev/null || echo "$bind"; }
 ctl_url() {                                                      # site, tenant -> control API base (+ X-WSB-Tenant)
-  if [ "$(mode)" = rl ]; then echo "http://127.0.0.1:$(ctl_port "$1")"; else echo "http://127.0.0.1:$(( $(ctl_port "$1") + $2 ))"; fi
+  # rl: the tenant's own address -- the 127.0.0.1 control listener lives in worker 0 only, so with
+  # --workers W > 1 it serves tenants i % W == 0 alone ("tenant 1 is not served by this process")
+  if [ "$(mode)" = rl ]; then tenant_url "$1" "$2"
+  else echo "http://127.0.0.1:$(( $(ctl_port "$1") + $2 ))"; fi
 }
 tenant_url() {                                                   # site, tenant -> browser URL
   local s=$1 i=$2
@@ -73,18 +77,23 @@ case "$cmd" in
     mkdir -p "$STATE"; echo "$bind" >"$STATE/bind"; echo "$port" >"$STATE/port"; echo "$tenants" >"$STATE/tenants"
     for s in "${SITES[@]}"; do
       if alive "$s"; then echo "$s: already running (pid $(cat "$STATE/$s.pid"))"; continue; fi
-      args=(--tenants "$tenants" --data "$data_root/$s" --workers "$workers" --uploads "/dev/shm/wsb-$s-$base")
+      w=1; IFS=, read -r -a WS <<<"$workers"                     # default first, site=W overrides
+      for x in "${WS[@]}"; do case "$x" in *=*) ;; *) w=$x ;; esac; done
+      for x in "${WS[@]}"; do case "$x" in "$s="*) w=${x#*=} ;; esac; done
+      args=(--tenants "$tenants" --data "$data_root/$s" --workers "$w" --uploads "/dev/shm/wsb-$s-$base")
       if [ "$bind" = rl ]; then args+=(--bind rl --port "$port" --loopback-port "$(ctl_port "$s")")
       else args+=(--bind ports --port "$(ctl_port "$s")"); fi
       [ -n "$token" ] && args+=(--control-token "$token")
       [ -n "$fresh" ] && args+=("$fresh")
       setsid node "$ROOT/sites/$s/server.js" "${args[@]}" >"$STATE/$s.log" 2>&1 </dev/null &
       echo $! >"$STATE/$s.pid"
-      echo "$s: pid $! port $(ctl_port "$s") (log $STATE/$s.log)"
+      echo "$s: pid $! port $(ctl_port "$s") workers $w (log $STATE/$s.log)"
     done
     t0=$(date +%s)
     for s in "${SITES[@]}"; do
-      until health "$s" | grep -q '"ok":true'; do
+      # every tenant (each worker process serves its own share; the store/map load for seconds)
+      all_ok() { local i; for ((i = 0; i < tenants; i++)); do health "$1" "$i" | grep -q '"ok":true' || return 1; done; }
+      until all_ok "$s"; do
         alive "$s" || { echo "$s: exited; tail of $STATE/$s.log:" >&2; tail -20 "$STATE/$s.log" >&2; exit 1; }
         [ $(( $(date +%s) - t0 )) -lt "$timeout" ] || { echo "$s: not healthy after ${timeout}s" >&2; exit 1; }
         sleep 1

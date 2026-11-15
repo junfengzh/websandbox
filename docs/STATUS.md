@@ -16,6 +16,12 @@ with the final graders ([../tasks/REGRADE.md](../tasks/REGRADE.md)) and split te
 
 All sites: `tasks/tools/sites.sh up [--bind rl]`; reset per tenant in milliseconds (kit transaction rollback).
 
+**Full-stack load benchmark** ([BENCH-FULL.md](BENCH-FULL.md), all sites x 16 tenants, `--workers 4,map=1`, 32
+concurrent simulated rollouts from the task splits): reset p95 1.0 ms server-side (3.3 ms round trip); page p95
+59 ms with 1-3 s think time, 176 ms with none (949 req/s); RAM 9.6 GB PSS (14.1 GB after the stress run); startup
+10.7 s warm / 19.9 s cold -- every PLAN §9 target met (after fixing slow `/media` serving in the kit and a 50 s
+category save in the store admin).
+
 ## Tasks
 
 | Set | Files | Tasks | Templates |
@@ -55,9 +61,9 @@ Collected from docs/NOTES-*.md:
 - **Forum.** The clock (2023-07-11) is past the data (ends 2023-03-31), so time-window sorts are empty;
   nobody moderates a forum in the data (moderation tasks use the admin); downloaded images re-uploaded
   do not match the original (re-encoded WebP).
-- **Code.** 13 open gcc-mirror/gcc MR pages return HTTP 500 (merge base outside the stored history) and
-  processwire/processwire!247 takes minutes (rev-list) -- no task uses them now ([../tasks/REGRADE.md](../tasks/REGRADE.md)).
-  Imported issues/MRs are authored by root ("Created by" in the body); `closed_at`/`merged_at` are NULL
+- **Code.** Open MRs whose merge base is outside a truncated import's history (13 on gcc-mirror/gcc) or too large to
+  check (processwire!247's line-ending rewrite) show a "Merge blocked" reason instead of a merge button (fixed from
+  HTTP 500 / minutes; every MR and issue page now renders, p95 <= 26 ms, docs/NOTES-code.md). Imported issues/MRs are authored by root ("Created by" in the body); `closed_at`/`merged_at` are NULL
   for imported rows; profile website shows its scheme; README pages with external images never fire `load`
   offline (harnesses should not wait for `load` or should block external requests).
 - **Wiki.** No categories / talk pages / history; full-text search ranks question-style queries weakly (the Go
