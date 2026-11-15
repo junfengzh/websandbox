@@ -1,0 +1,66 @@
+{
+  "_comment": "Articles the 23 WebArena tasks with 'wikipedia' in sites need. 'core' articles are always included and their direct out-links (one hop) too. 'facts' are strings that must appear in the named article's text (verified by s5_verify.py) because the task answer is read from it.",
+  "groups": [
+    {
+      "tasks": [97],
+      "why": "Top CS school in Massachusetts = MIT (task answer is a CMU->MIT drive distance on the map); solver searches for CS rankings / universities in Massachusetts.",
+      "core": ["Massachusetts_Institute_of_Technology", "Carnegie_Mellon_University", "List_of_colleges_and_universities_in_Massachusetts", "MIT_Computer_Science_and_Artificial_Intelligence_Laboratory", "MIT_Schwarzman_College_of_Computing", "Harvard_University", "Computer_science", "College_and_university_rankings", "Massachusetts"],
+      "facts": {"Massachusetts_Institute_of_Technology": ["Cambridge"]}
+    },
+    {
+      "tasks": [265, 266, 267, 268],
+      "why": "Closest national park to Boston / Portland ME (largest city in Maine) / Stephen King's hometown / Vinalhaven = Acadia. Solver opens the US national parks list, Acadia, the city articles and Stephen King.",
+      "core": ["List_of_national_parks_of_the_United_States", "National_park", "National_Park_Service", "Acadia_National_Park", "Boston", "Maine", "Portland,_Maine", "List_of_municipalities_in_Maine", "Stephen_King", "Bangor,_Maine", "Durham,_Maine", "Vinalhaven,_Maine", "Mount_Desert_Island", "Bar_Harbor,_Maine", "Cuyahoga_Valley_National_Park", "Shenandoah_National_Park", "New_River_Gorge_National_Park_and_Preserve", "List_of_areas_in_the_United_States_National_Park_System"],
+      "facts": {"Portland,_Maine": ["largest city"], "Stephen_King": ["Portland, Maine"], "Acadia_National_Park": ["Mount Desert Island"]}
+    },
+    {
+      "tasks": [424],
+      "why": "Mister Rogers' Neighborhood was taped at WQED in Pittsburgh.",
+      "core": ["Mister_Rogers'_Neighborhood", "Fred_Rogers", "WQED_(TV)", "Pittsburgh", "Fred_Rogers_Productions"],
+      "facts": {"Mister_Rogers'_Neighborhood": ["Pittsburgh", "WQED"]}
+    },
+    {
+      "tasks": [425],
+      "why": "Expected answer Mackinac Bridge (longest suspension bridge between anchorages in the Western Hemisphere).",
+      "core": ["Mackinac_Bridge", "List_of_longest_bridges", "List_of_longest_suspension_bridge_spans", "Lake_Pontchartrain_Causeway", "Western_Hemisphere", "Suspension_bridge", "Verrazzano-Narrows_Bridge", "Golden_Gate_Bridge"],
+      "facts": {"Mackinac_Bridge": ["Western Hemisphere"]}
+    },
+    {
+      "tasks": [426],
+      "why": "United Airlines Flight 93 crashed near Shanksville, Somerset County, PA.",
+      "core": ["United_Airlines_Flight_93", "September_11_attacks", "Shanksville,_Pennsylvania", "Somerset_County,_Pennsylvania", "Flight_93_National_Memorial", "Stonycreek_Township,_Somerset_County,_Pennsylvania"],
+      "facts": {"United_Airlines_Flight_93": ["Shanksville", "Somerset County"]}
+    },
+    {
+      "tasks": [427],
+      "why": "Expected answer MIT. The 2022-05 Turing Award article has no affiliation column; the counts are in the university articles (MIT: 26 Turing Award winners as of Dec 2021; Stanford: 29 as of Apr 2021; Berkeley: 25; Princeton 16; Harvard 14; CMU 13) -- see NOTES: the ZIM text favours Stanford.",
+      "core": ["Turing_Award", "Massachusetts_Institute_of_Technology", "Stanford_University", "University_of_California,_Berkeley", "Carnegie_Mellon_University", "Harvard_University", "Princeton_University"],
+      "facts": {"Massachusetts_Institute_of_Technology": ["26 Turing Award winners"], "Stanford_University": ["29 Turing Award laureates"]}
+    },
+    {
+      "tasks": [428],
+      "why": "Nash equilibrium -> John Forbes Nash Jr. -> undergrad at Carnegie Institute of Technology (now Carnegie Mellon University).",
+      "core": ["Nash_equilibrium", "John_Forbes_Nash_Jr.", "Carnegie_Mellon_University", "Princeton_University", "A_Beautiful_Mind_(film)"],
+      "facts": {"John_Forbes_Nash_Jr.": ["Carnegie"]}
+    },
+    {
+      "tasks": [429, 430],
+      "why": "The Chair (Netflix, 2021) was filmed at Chatham University (Pittsburgh) and Washington & Jefferson College (Washington, PA).",
+      "core": ["The_Chair_(2021_TV_series)", "The_Chair", "Chatham_University", "Washington_&_Jefferson_College", "Washington,_Pennsylvania", "Sandra_Oh", "Pittsburgh"],
+      "facts": {"The_Chair_(2021_TV_series)": ["Chatham University", "Washington & Jefferson College"]}
+    },
+    {
+      "tasks": [556, 557, 558, 559, 560, 561],
+      "why": "Christopher Nolan films (all, before/after 2010), career-timeline section headings, Academy Award winners, BAFTA nominees. Solver uses the biography, filmography, awards list and the film articles.",
+      "core": ["Christopher_Nolan", "Christopher_Nolan_filmography", "List_of_awards_and_nominations_received_by_Christopher_Nolan", "Following", "Memento_(film)", "Insomnia_(2002_film)", "Batman_Begins", "The_Prestige_(film)", "The_Dark_Knight_(film)", "Inception", "The_Dark_Knight_Rises", "Interstellar_(film)", "Dunkirk_(2017_film)", "Tenet_(film)", "Oppenheimer_(film)", "Batman_in_film", "Doodlebug_(film)", "Emma_Thomas", "Jonathan_Nolan", "Syncopy_Inc.", "Academy_Awards", "British_Academy_Film_Awards"],
+      "facts": {"Christopher_Nolan": ["1993–2003: Early career and breakthrough", "2003–2013: Widespread recognition", "2014–2019: Established Hollywood auteur", "2020–present", "Following", "Memento", "Insomnia", "Batman Begins", "The Prestige", "The Dark Knight", "Inception", "The Dark Knight Rises", "Interstellar", "Dunkirk", "Tenet", "Oppenheimer"], "List_of_awards_and_nominations_received_by_Christopher_Nolan": ["BAFTA", "Academy Award"]}
+    },
+    {
+      "tasks": [737, 738, 739, 740, 741],
+      "why": "Home stadiums: 76ers -> Wells Fargo Center (in the 1970s: the Spectrum, 3601 South Broad Street); Yankees in the 1980s -> Yankee Stadium (1923); NYC NBA team (Knicks) -> Madison Square Garden; Boston NBA team (Celtics) -> TD Garden. Route starts at CMU.",
+      "core": ["Philadelphia_76ers", "Wells_Fargo_Center_(Philadelphia)", "Spectrum_(arena)", "South_Philadelphia_Sports_Complex", "Philadelphia_Convention_Hall_and_Civic_Center", "New_York_Yankees", "Yankee_Stadium_(1923)", "Yankee_Stadium", "New_York_Knicks", "Brooklyn_Nets", "Madison_Square_Garden", "Boston_Celtics", "TD_Garden", "Boston_Garden", "Carnegie_Mellon_University", "List_of_National_Basketball_Association_arenas", "National_Basketball_Association"],
+      "facts": {"Spectrum_(arena)": ["3601 South Broad Street"], "Philadelphia_76ers": ["Wells Fargo Center", "Spectrum"], "Yankee_Stadium_(1923)": ["161st Street"], "New_York_Knicks": ["Madison Square Garden"], "Boston_Celtics": ["TD Garden"]}
+    }
+  ],
+  "always": ["User:The_other_Kiwix_guy/Landing", "Main_Page", "Wikipedia"]
+}

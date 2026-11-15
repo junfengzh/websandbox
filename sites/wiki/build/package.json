@@ -1,0 +1,13 @@
+{
+  "name": "@websandbox/wiki-build",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Verification of the wiki base.db with the runtime stack",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=20" },
+  "scripts": { "verify": "node verify.js" },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "zstd-napi": "^0.0.13"
+  }
+}
