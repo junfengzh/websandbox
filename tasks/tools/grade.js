@@ -15,6 +15,9 @@
 // --fuzzy-exact: grade fuzzy answers by WebArena-cleaned exact match instead of leaving them
 // pending (offline verification only; real runs use the LLM judge).
 // --sql-only: just print answer_sql / state_sql results of the task (no grading).
+// Cross-site tasks (tasks/cross/): --sites shopping=URL,forum=URL,gitlab=URL,... gives each site's
+// control API (`tasks/tools/sites.sh urls` prints it); eval.state [{site, sql, expect}] checks run on
+// their site, the rest on the grading site (task.grade_site; --site defaults to its URL).
 const fs = require('node:fs');
 const path = require('node:path');
 const { parseArgs } = require('node:util');
@@ -27,30 +30,44 @@ const kitGrader = require(path.join(ROOT, 'kit', 'lib', 'grader'));
     answer: { type: 'string', default: '' }, url: { type: 'string', default: '' }, tenant: { type: 'string' },
     grader: { type: 'string' }, token: { type: 'string' }, log: { type: 'string' }, how: { type: 'string', default: '' },
     notes: { type: 'string', default: '' }, 'expect-fail': { type: 'boolean', default: false }, 'sql-only': { type: 'boolean', default: false },
-    'fuzzy-exact': { type: 'boolean', default: false },
+    'fuzzy-exact': { type: 'boolean', default: false }, sites: { type: 'string' },
   } });
   if (!a.tasks || !a.id) { console.error('usage: grade.js --site URL --tasks FILE.jsonl --id ID [--answer S] [--url U] [--log verify.jsonl --how ... --notes ...]'); process.exit(3); }
   const tasks = fs.readFileSync(a.tasks, 'utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
   const task = tasks.find((t) => String(t.task_id) === a.id);
   if (!task) throw new Error(`task ${a.id} not in ${a.tasks}`);
-  const query = kitGrader.remoteQuery(a.site, { tenant: a.tenant, token: a.token || process.env.WSB_CONTROL_TOKEN });
+  const qo = { tenant: a.tenant, token: a.token || process.env.WSB_CONTROL_TOKEN };
+  const own = task.grade_site || task.site;
+  const queries = {};
+  for (const kv of (a.sites || '').split(',').filter(Boolean)) {
+    const i = kv.indexOf('=');
+    queries[kv.slice(0, i)] = kitGrader.remoteQuery(kv.slice(i + 1), qo);
+  }
+  const siteUrl = process.argv.includes('--site') || !queries[own] ? a.site : null;
+  const query = siteUrl ? kitGrader.remoteQuery(siteUrl, qo) : queries[own];
   if (a['sql-only']) {
     const ev = task.eval || {};
-    for (const q of [].concat(ev.answer_sql || [], ev.state_sql || [])) console.log(JSON.stringify({ sql: q, rows: await query(q) }));
+    const qf = (site) => (site && site !== own ? queries[site] : query);
+    for (const q of [].concat(ev.answer_sql || [])) console.log(JSON.stringify({ site: ev.answer_site, sql: q, rows: await qf(ev.answer_site)(q) }));
+    for (const q of [].concat(ev.state_sql || [])) console.log(JSON.stringify({ sql: q, rows: await query(q) }));
+    for (const it of [].concat(ev.state || [])) console.log(JSON.stringify({ site: it.site, sql: it.sql, rows: await qf(it.site)(it.sql) }));
     return;
   }
+  // site grader by the task's (grading) site; site names -> sites/<dir>
+  const DIRS = { shopping: 'store', shopping_admin: 'store', gitlab: 'code', reddit: 'forum' };
+  const dir = own && (DIRS[own] || own);
   let gpath = a.grader;
-  if (!gpath && task.site && fs.existsSync(path.join(ROOT, 'sites', task.site, 'grade.js'))) gpath = path.join(ROOT, 'sites', task.site, 'grade.js');
+  if (!gpath && dir && fs.existsSync(path.join(ROOT, 'sites', dir, 'grade.js'))) gpath = path.join(ROOT, 'sites', dir, 'grade.js');
   const g = gpath ? require(path.resolve(gpath)) : kitGrader.grade;
   // --fuzzy-exact: offline stand-in for the LLM judge (cleaned answer == reference); the RL
   // stack passes its real judge as `fuzzy`.
   const fuzzy = a['fuzzy-exact'] ? ({ answer, reference }) => kitGrader.exactMatch(answer, [].concat(reference).join(', ')) : undefined;
-  const r = await (typeof g === 'function' ? g : g.grade)(task, { answer: a.answer, url: a.url, query, fuzzy });
+  const r = await (typeof g === 'function' ? g : g.grade)(task, { answer: a.answer, url: a.url, query, queries, fuzzy });
   const out = { task_id: task.task_id, pass: r.pass, checks: r.checks };
   console.log(JSON.stringify(out, null, 1));
   if (a.log) {
     const ok = a['expect-fail'] ? r.pass === false : r.pass === true;
-    const observed = { answer: a.answer || undefined, checks: r.checks.map((c) => ({ type: c.type, mode: c.mode, pass: c.pass, got: c.got, reference: c.reference, drift: c.drift, error: c.error })) };
+    const observed = { answer: a.answer || undefined, checks: r.checks.map((c) => ({ type: c.type, site: c.site, mode: c.mode, pass: c.pass, got: c.got, reference: c.reference, drift: c.drift, error: c.error })) };
     const line = { task_id: task.task_id, when: new Date().toISOString(), how: a.how, final_url: a.url || null, observed, ok, notes: a.notes };
     if (a['expect-fail']) line.negative = true;
     fs.appendFileSync(a.log, JSON.stringify(line) + '\n');

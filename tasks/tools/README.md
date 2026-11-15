@@ -64,6 +64,38 @@ node tasks/tools/grade.js --site http://127.0.0.1:7200 --tasks tasks/forum/webar
   (`observed` = the answer and each check's got/reference/drift). `--expect-fail` logs a
   negative check (`negative: true`, `ok` = the grader failed it), used to show a grader is
   not trivially passable.
-- `--sql-only` prints the task's `answer_sql` / `state_sql` results.
+- `--sql-only` prints the task's `answer_sql` / `state_sql` / `state` results.
+- Cross-site tasks (`tasks/cross/webarena.jsonl`): `--sites shopping=URL,forum=URL,gitlab=URL,...`
+  gives every site's control API (`sites.sh urls` prints it); `state: [{site, sql, expect}]`
+  checks run on their site, the rest on `grade_site` (`--site` defaults to its `--sites` URL);
+  the site grader is `sites/<dir>/grade.js` of `grade_site` (gitlab = code, shopping* = store).
 
 `kit/bin/wsb-grade.js` is the kit's minimal equivalent (no logging, no site-grader default).
+
+## sites.sh -- all sites up with one command
+
+```
+tasks/tools/sites.sh up [--tenants N] [--base 7700] [--stride 10] [--only store,forum,code,wiki,map]
+                        [--bind ports|rl] [--port 80] [--workers W] [--data-root DIR] [--control-token T] [--fresh]
+tasks/tools/sites.sh status | down | urls [--tenant I] | reset [--tenant I | --all]   (same --base)
+```
+
+Starts `sites/{store,forum,code,wiki,map}/server.js` (store = storefront + `/admin`) with the data in
+`$WSB_DATA_ROOT/<site>` and waits until every site's `/__rl/health` is ok (a few
+seconds; the map loads its routing graph). Pids and logs: `$WSB_TMP/wsb-sites/<base>/`.
+`down` kills by pid (process group; workers too).
+
+- `--bind ports` (default): site k (store 0, forum 1, code 2, wiki 3, map 4) on
+  `127.0.0.1:BASE + k*STRIDE + i` for tenant i. **Cookies are per host, not per port**, and all
+  sites use `wsb_sid`: in one browser, logging in on one site logs you out of another. Fine for
+  single-site work; use `--bind rl` for cross-site runs.
+- `--bind rl`: tenant i of each site on its own address `127.10.<i>.<k>:PORT` (shopping .2,
+  shopping_admin .3 -- the same store process --, forum .4, gitlab .5, wiki .6, map .7; the RL
+  `hostMap` scheme), so every site keeps its own cookies; the control API of each site on
+  `127.0.0.1:BASE + k*STRIDE` (kit `--loopback-port`), tenant by `X-WSB-Tenant`. PORT 80 (the
+  RL default) needs CAP_NET_BIND_SERVICE; any free port works locally (`--port 7799`).
+- `urls --tenant I` prints the host placeholders for tenant I (`__REDDIT__=http://127.10.1.4:7799`,
+  ...) and the `--sites ... --tenant I` arguments for grade.js / `tasks/cross/check_refs.js`.
+
+Example (cross-site verification): `sites.sh up --tenants 2 --bind rl --port 7799`, then
+`grade.js --tasks tasks/cross/webarena.jsonl --id 552 $(sites.sh urls --tenant 1 | tail -1)`.

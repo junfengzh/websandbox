@@ -57,6 +57,7 @@ Rules for everyone (human or agent) building websandbox. Read with
 | code hosting | 7400-7499 | `wsb-code-*` |
 | wiki | 7500-7599 | `wsb-wiki-*` |
 | map | 7600-7699 | `wsb-map-*` |
+| cross-site tasks | 7700-7799 | -- |
 
 If you run the original WebArena sites, use them for reference (read-only browsing;
 do not log in and change state there): shopping `http://<webarena-host>:7770`,
@@ -81,6 +82,21 @@ down; they are not required.
   "answer_sql": "...", "url": "...", "state_sql": "...", "state_expect": ... }`.
   `answer_sql` / `state_sql` run read-only on the tenant DB through the
   control API. The kit's grader runs these.
+- **Cross-site tasks** (`tasks/cross/webarena.jsonl`, the 48 tasks with more
+  than one site): `site: "cross"`, `sites` (every site the task uses, as task
+  site names: `shopping`, `shopping_admin`, `gitlab`, `forum`, `wiki`, `map`),
+  `grade_site` (the site whose grader -- `sites/<dir>/grade.js` -- handles the
+  url / map checks of the final page, and whose DB answers checks without a
+  site), `login_user` = `{site: user}` (null when nothing needs a login).
+  State checks on other sites: `eval.state: [{site, sql, expect}]` (same
+  expect forms as `state_expect`; may be combined with `state_sql`), and
+  `eval.answer_site` names the DB of `answer_sql`. The grader gets
+  `queries: {site: query fn}` (one control API per site; `shopping` and
+  `shopping_admin` are the same store DB) besides `query` (the grading
+  site's). `reference_sql: [{site, sql, expect}]` (optional, not graded)
+  records how a static reference was re-derived on our data
+  (`tasks/cross/check_refs.js` re-checks it). All sites up at once:
+  `tasks/tools/sites.sh` (tasks/tools/README.md).
 - Verification log: `tasks/<site>/verify.jsonl`, one line per task:
   `task_id`, `when`, `how` (browser steps summary), `final_url`, `observed`
   (value read from the page / state query result), `ok`, `notes`.
