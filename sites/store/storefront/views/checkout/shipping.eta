@@ -1,0 +1,38 @@
+<% layout('layout') %>
+<% const E = it.errors || {}; %>
+<div class="checkout-container">
+<ul class="opc-progress-bar" aria-label="Checkout steps"><li class="opc-progress-bar-item _active" aria-current="step"><span>Shipping</span></li><li class="opc-progress-bar-item"><span>Review &amp; Payments</span></li></ul>
+<form method="post" action="/checkout/shipping/" class="form form-shipping-address" id="co-shipping-form">
+  <%~ it.csrfInput() %>
+  <div class="opc-wrapper">
+  <section class="checkout-shipping-address" id="shipping" aria-labelledby="shipping-title">
+    <h2 class="step-title" id="shipping-title">Shipping Address</h2>
+    <% if (!it.customer) { %>
+      <%~ include('_field', { ...it, name: 'email', label: 'Email Address', value: it.email, required: true, type: 'email', autocomplete: 'email', errors: E, id: 'customer-email' }) %>
+      <p class="note">You can create an account after checkout. Already have one? <a href="/customer/account/login/?next=%2Fcheckout%2F">Sign in</a></p>
+    <% } %>
+    <% if (it.saved.length) { %>
+      <fieldset class="shipping-address-items" role="radiogroup" aria-label="Saved shipping addresses"><legend class="sr-only">Saved addresses</legend>
+      <% for (const a of it.saved) { %><label class="shipping-address-item<%= a.id === it.selected ? ' selected-item' : '' %>"><input type="radio" name="address_id" value="<%= a.id %>"<%= a.id === it.selected ? ' checked' : '' %>> <span class="addr"><% for (const l of it.fmtAddr(a)) { %><%= l %><br><% } %></span></label><% } %>
+      <label class="shipping-address-item new-address"><input type="radio" name="address_id" value="new"<%= !it.selected ? ' checked' : '' %>> New Address</label>
+      </fieldset>
+    <% } else { %><input type="hidden" name="address_id" value="new"><% } %>
+    <fieldset class="fieldset address new-shipping-address" id="new-shipping-address"><legend class="legend"><span><%= it.saved.length ? 'New Address' : 'Address' %></span></legend>
+      <%~ include('_address_fields', { ...it, a: it.a }) %>
+      <% if (it.customer) { %><div class="field choice"><input type="checkbox" name="save_in_address_book" value="1" id="save_in_address_book" checked> <label for="save_in_address_book">Save in address book</label></div><% } %>
+    </fieldset>
+  </section>
+  <section class="checkout-shipping-method" aria-labelledby="method-title">
+    <h2 class="step-title" id="method-title">Shipping Methods</h2>
+    <% if (E.shipping_method) { %><div class="message error" role="alert"><%= E.shipping_method %></div><% } %>
+    <table class="table-checkout-shipping-method"><caption class="sr-only">Shipping methods</caption>
+      <thead><tr><th scope="col" class="col col-method">Select Method</th><th scope="col" class="col col-price">Price</th><th scope="col" class="col col-method">Method Title</th><th scope="col" class="col col-carrier">Carrier Title</th></tr></thead>
+      <tbody><% for (const m of it.methods) { %><tr class="row"><td class="col col-method"><input type="radio" class="radio" name="shipping_method" value="<%= m.code %>" id="s_method_<%= m.code %>" aria-labelledby="label_method_<%= m.code %> label_carrier_<%= m.code %>"<%= m.code === it.method ? ' checked' : '' %>></td>
+        <td class="col col-price"><span class="price"><%= it.money(m.price) %></span></td><td class="col col-method" id="label_method_<%= m.code %>"><%= m.method %></td><td class="col col-carrier" id="label_carrier_<%= m.code %>"><%= m.carrier %></td></tr><% } %></tbody>
+    </table>
+    <div class="actions-toolbar" id="shipping-method-buttons-container"><button type="submit" class="button action continue primary"><span>Next</span></button></div>
+  </section>
+  </div>
+</form>
+<aside class="opc-sidebar"><div class="opc-block-summary"><span class="title">Order Summary</span><%~ include('checkout/_summary', it) %><%~ include('checkout/_items', it) %></div></aside>
+</div>

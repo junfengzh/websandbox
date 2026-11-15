@@ -1,0 +1,47 @@
+<% layout('layout') %>
+<% const o = it.o; %>
+<div class="columns account">
+<%~ include('_account_nav', it) %>
+<div class="column main">
+<div class="order-status-header">
+  <span class="order-status" data-status="<%= o.status %>"><%= o.status_label %></span>
+  <div class="order-date"><span class="label">Order Date:</span> <date><%= it.date.long(o.created_at) %></date></div>
+  <div class="actions-toolbar order-actions-toolbar"><div class="actions">
+    <% if (o.canReorder) { %><form method="post" action="/sales/order/reorder/order_id/<%= o.id %>/" class="inline"><%~ it.csrfInput() %><button type="submit" class="action order link"><span>Reorder</span></button></form><% } %>
+    <a class="action print" href="/sales/order/print/order_id/<%= o.id %>/" target="_blank" rel="noopener"><span>Print Order</span></a>
+  </div></div>
+</div>
+<ul class="items order-links" role="tablist">
+  <% for (const [k, label, n] of [['view', 'Items Ordered', 1], ['invoice', 'Invoices', o.invoices.length], ['shipment', 'Order Shipments', o.shipments.length], ['creditmemo', 'Refunds', o.creditmemos.length]]) { if (!n) continue; %>
+  <li class="nav item<%= it.tab === k ? ' current' : '' %>" role="presentation"><% if (it.tab === k) { %><strong role="tab" aria-selected="true"><%= label %></strong><% } else { %><a href="/sales/order/<%= k %>/order_id/<%= o.id %>/" role="tab" aria-selected="false"><%= label %></a><% } %></li><% } %>
+</ul>
+<div class="order-details-items <%= it.tab === 'view' ? 'ordered' : it.tab === 'invoice' ? 'invoice' : it.tab === 'shipment' ? 'shipments' : 'creditmemo' %>">
+<% if (it.tab === 'view') { %>
+  <div class="order-title"><strong>Items Ordered</strong></div>
+  <%~ include('sales/_items', it) %>
+  <% if (o.history.length) { %><div class="block block-order-details-comments"><div class="block-title"><strong>About Your Order</strong></div><div class="block-content"><dl class="order-comments"><% for (const h of o.history) { %><dt class="comment-date"><%= it.date.datetime(h.created_at) %></dt><dd class="comment-content"><%= h.comment %></dd><% } %></dl></div></div><% } %>
+<% } else if (it.tab === 'invoice') { %>
+  <% for (const inv of o.invoices) { %><div class="order-title"><strong>Invoice #<%= inv.increment_id %></strong></div>
+  <div class="table-wrapper table-order-items invoice"><table class="data table table-order-items invoice"><caption class="table-caption">Items Invoiced</caption>
+    <thead><tr><th class="col name">Product Name</th><th class="col sku">SKU</th><th class="col price">Price</th><th class="col qty">Qty Invoiced</th><th class="col subtotal">Subtotal</th></tr></thead>
+    <tbody><% for (const i of inv.items) { %><tr><td><%~ it.htmlName(i.name) %></td><td><%= i.sku %></td><td><%= it.money(i.price) %></td><td><%= +i.qty %></td><td><%= it.money(i.row_total) %></td></tr><% } %></tbody>
+    <tfoot><tr><th colspan="4" scope="row">Subtotal</th><td><%= it.money(inv.subtotal) %></td></tr><tr><th colspan="4" scope="row">Shipping &amp; Handling</th><td><%= it.money(inv.shipping_amount) %></td></tr><tr><th colspan="4" scope="row"><strong>Grand Total</strong></th><td><strong><%= it.money(inv.grand_total) %></strong></td></tr></tfoot>
+  </table></div><% } %>
+<% } else if (it.tab === 'shipment') { %>
+  <% for (const s of o.shipments) { %><div class="order-title"><strong>Shipment #<%= s.increment_id %></strong></div>
+  <% if (s.tracks.length) { %><dl class="order-tracking"><dt class="tracking-title">Tracking Number(s):</dt><% for (const t of s.tracks) { %><dd class="tracking-content"><%= t.title %>: <%= t.track_number %></dd><% } %></dl><% } %>
+  <div class="table-wrapper order-items-shipment"><table class="data table table-order-items shipment"><caption class="table-caption">Items Shipped</caption>
+    <thead><tr><th class="col name">Product Name</th><th class="col sku">SKU</th><th class="col qty">Qty Shipped</th></tr></thead>
+    <tbody><% for (const i of s.items) { %><tr><td><%~ it.htmlName(i.name) %></td><td><%= i.sku %></td><td><%= +i.qty %></td></tr><% } %></tbody></table></div><% } %>
+<% } else { %>
+  <% for (const m of o.creditmemos) { %><div class="order-title"><strong>Refund #<%= m.increment_id %></strong></div>
+  <div class="table-wrapper table-order-items creditmemo"><table class="data table table-order-items creditmemo"><caption class="table-caption">Items Refunded</caption>
+    <thead><tr><th class="col name">Product Name</th><th class="col sku">SKU</th><th class="col price">Price</th><th class="col qty">Qty</th><th class="col subtotal">Subtotal</th></tr></thead>
+    <tbody><% for (const i of m.items) { %><tr><td><%~ it.htmlName(i.name) %></td><td><%= i.sku %></td><td><%= it.money(i.price) %></td><td><%= +i.qty %></td><td><%= it.money(i.row_total) %></td></tr><% } %></tbody>
+    <tfoot><tr><th colspan="4" scope="row">Subtotal</th><td><%= it.money(m.subtotal) %></td></tr><tr><th colspan="4" scope="row">Shipping &amp; Handling</th><td><%= it.money(m.shipping_amount) %></td></tr><% if (m.adjustment) { %><tr><th colspan="4" scope="row">Adjustment</th><td><%= it.money(m.adjustment) %></td></tr><% } %><tr><th colspan="4" scope="row"><strong>Grand Total</strong></th><td><strong><%= it.money(m.grand_total) %></strong></td></tr></tfoot>
+  </table></div><% } %>
+<% } %>
+<div class="actions-toolbar"><div class="secondary"><a class="action back" href="/sales/order/history/"><span>Back to My Orders</span></a></div></div>
+</div>
+<%~ include('sales/_info', it) %>
+</div></div>

@@ -1,0 +1,14 @@
+<% layout('layout') %>
+<% const v = it.values || {}; const E = it.errors || {}; %>
+<form class="form contact" action="/contact/index/post/" id="contact-form" method="post">
+  <%~ it.csrfInput() %>
+  <fieldset class="fieldset">
+    <legend class="legend"><span>Write Us</span></legend>
+    <div class="field note no-label">Jot us a note and we’ll get back to you as quickly as possible.</div>
+    <%~ include('_field', { ...it, name: 'name', label: 'Name', value: v.name, required: true, title: 'Name', errors: E }) %>
+    <%~ include('_field', { ...it, name: 'email', label: 'Email', value: v.email, required: true, type: 'email', title: 'Email', errors: E }) %>
+    <%~ include('_field', { ...it, name: 'telephone', label: 'Phone Number', value: v.telephone, type: 'tel', title: 'Phone Number', errors: E }) %>
+    <%~ include('_field', { ...it, name: 'comment', label: 'What’s on your mind?', value: v.comment, required: true, type: 'textarea', title: 'What’s on your mind?', errors: E }) %>
+  </fieldset>
+  <div class="actions-toolbar"><div class="primary"><button type="submit" title="Submit" class="action submit primary"><span>Submit</span></button></div></div>
+</form>

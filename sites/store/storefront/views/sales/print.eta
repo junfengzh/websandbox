@@ -1,0 +1,7 @@
+<% layout('layout') %>
+<% const o = it.o; %>
+<div class="order-print">
+<p class="order-status"><%= o.status_label %></p><p class="order-date">Order Date: <%= it.date.long(o.created_at) %></p>
+<div class="order-details-items ordered"><%~ include('sales/_items', it) %></div>
+<%~ include('sales/_info', it) %>
+</div>

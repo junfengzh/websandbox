@@ -1,0 +1,7 @@
+<% layout('layout') %>
+<div class="checkout-success">
+  <% if (it.customer) { %><p>Your order number is: <a href="/sales/order/view/order_id/<%= it.o.id %>/" class="order-number"><strong><%= it.o.increment_id %></strong></a>.</p>
+  <% } else { %><p>Your order # is: <span><%= it.o.increment_id %></span>.</p><% } %>
+  <p>We'll email you an order confirmation with details and tracking info.</p>
+  <div class="actions-toolbar"><div class="primary"><a class="action primary continue" href="/"><span>Continue Shopping</span></a></div></div>
+</div>

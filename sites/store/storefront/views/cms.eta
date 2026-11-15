@@ -1,0 +1,2 @@
+<% layout('layout') %>
+<div class="cms-content-wrapper cms-page-view"><%~ it.html %></div>

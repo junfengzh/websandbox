@@ -1,0 +1,15 @@
+<% layout('layout') %>
+<div class="columns account">
+<%~ include('_account_nav', it) %>
+<div class="column main">
+<form class="form-address-edit" action="/customer/address/formPost/<%= it.a.id ? `id/${it.a.id}/` : '' %>" method="post" id="form-validate">
+  <%~ it.csrfInput() %>
+  <fieldset class="fieldset"><legend class="legend"><span>Contact Information</span></legend></fieldset>
+  <fieldset class="fieldset"><legend class="legend"><span>Address</span></legend>
+    <%~ include('_address_fields', it) %>
+    <% if (it.isDefaultBilling) { %><div class="message info">It's a default billing address.</div><% } else { %><div class="field choice set billing"><input type="checkbox" id="primary_billing" name="default_billing" value="1" class="checkbox"> <label class="label" for="primary_billing"><span>Use as my default billing address</span></label></div><% } %>
+    <% if (it.isDefaultShipping) { %><div class="message info">It's a default shipping address.</div><% } else { %><div class="field choice set shipping"><input type="checkbox" id="primary_shipping" name="default_shipping" value="1" class="checkbox"> <label class="label" for="primary_shipping"><span>Use as my default shipping address</span></label></div><% } %>
+  </fieldset>
+  <div class="actions-toolbar"><div class="primary"><button type="submit" class="action save primary" title="Save Address"><span>Save Address</span></button></div><div class="secondary"><a class="action back" href="/customer/address/"><span>Go back</span></a></div></div>
+</form>
+</div></div>

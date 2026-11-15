@@ -1,0 +1,16 @@
+<% layout('layout') %>
+<% const l = it.list; const c = it.c; %>
+<div class="columns">
+<aside class="sidebar sidebar-main">
+  <% if (it.subcats.length) { %><div class="block block-categories"><strong class="block-title">Category</strong><ol class="items"><% for (const s of it.subcats) { %><li class="item"><a href="<%= it.catUrl(s) %>"><%~ it.htmlName(s.name) %></a></li><% } %></ol></div><% } %>
+  <%~ include('_layered', { ...it, list: l }) %>
+</aside>
+<div class="column main">
+  <% if (c.description) { %><div class="category-description"><%~ c.description %></div><% } %>
+  <% if (!l.products.length) { %><div class="message info empty"><div>We can't find products matching the selection.</div></div><% } else { %>
+  <%~ include('_toolbar', { ...it, list: l }) %>
+  <%~ include('_products', { ...it, products: l.products, mode: l.mode }) %>
+  <%~ include('_toolbar', { ...it, list: l, bottom: true }) %>
+  <% } %>
+</div>
+</div>

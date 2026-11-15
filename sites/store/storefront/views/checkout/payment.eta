@@ -1,0 +1,35 @@
+<% layout('layout') %>
+<div class="checkout-container">
+<ul class="opc-progress-bar" aria-label="Checkout steps"><li class="opc-progress-bar-item _complete"><a href="/checkout/">Shipping</a></li><li class="opc-progress-bar-item _active" aria-current="step"><span>Review &amp; Payments</span></li></ul>
+<div class="opc-wrapper">
+<section class="checkout-payment-method" aria-labelledby="payment-title">
+  <h2 class="step-title" id="payment-title">Payment Method</h2>
+  <form method="post" action="/checkout/placeOrder/" id="co-payment-form" class="form payments">
+    <%~ it.csrfInput() %>
+    <fieldset class="fieldset payment-methods" role="radiogroup" aria-label="Payment method"><legend class="sr-only">Payment Method</legend>
+      <div class="payment-method _active"><label class="label" for="checkmo"><input type="radio" name="payment_method" value="checkmo" id="checkmo" checked> <span>Check / Money order</span></label></div>
+      <div class="payment-method"><label class="label" for="cashondelivery"><input type="radio" name="payment_method" value="cashondelivery" id="cashondelivery"> <span>Cash On Delivery</span></label></div>
+    </fieldset>
+    <div class="billing-address-same-as-shipping-block field choice"><input type="checkbox" name="billing_same" id="billing-address-same-as-shipping" value="1" checked> <label for="billing-address-same-as-shipping"><span>My billing and shipping address are the same</span></label></div>
+    <div class="billing-address-details"><address><% for (const l of it.fmtAddr(it.addr)) { %><%= l %><br><% } %></address>
+      <% if (it.billing) { %><p class="note">Unchecked: your default billing address is used:</p><address class="muted"><% for (const l of it.fmtAddr(it.billing)) { %><%= l %><br><% } %></address><% } %></div>
+    <div class="field comment"><label for="order-comment">Order Comment (optional)</label><textarea id="order-comment" name="comment" rows="2"></textarea></div>
+    <div class="actions-toolbar"><button class="action primary checkout" type="submit" title="Place Order"><span>Place Order</span></button></div>
+  </form>
+  <div class="payment-option discount-code">
+    <form id="discount-form" action="/checkout/cart/couponPost/" method="post"><%~ it.csrfInput() %><input type="hidden" name="return_url" value="/checkout/payment/">
+      <% if (it.c.coupon_code) { %><input type="hidden" name="remove" value="1"><% } %>
+      <label for="discount-code">Apply Discount Code</label> <input type="text" class="input-text" id="discount-code" name="coupon_code" value="<%= it.c.coupon_code || '' %>" placeholder="Enter discount code"<%= it.c.coupon_code ? ' readonly' : '' %>>
+      <button class="action action-apply" type="submit"><span><%= it.c.coupon_code ? 'Cancel coupon' : 'Apply Discount' %></span></button></form>
+  </div>
+</section>
+</div>
+<aside class="opc-sidebar">
+  <div class="opc-block-summary"><span class="title">Order Summary</span><%~ include('checkout/_summary', it) %><%~ include('checkout/_items', it) %></div>
+  <div class="opc-block-shipping-information">
+    <div class="ship-to"><div class="shipping-information-title"><span>Ship To:</span> <a href="/checkout/" class="action action-edit">Edit</a></div><div class="shipping-information-content"><% for (const l of it.fmtAddr(it.addr)) { %><%= l %><br><% } %></div></div>
+    <div class="ship-via"><div class="shipping-information-title"><span>Shipping Method:</span> <a href="/checkout/" class="action action-edit">Edit</a></div><div class="shipping-information-content"><span class="value"><%= it.method.title %></span></div></div>
+    <% if (it.email) { %><p class="muted">Order confirmation goes to <%= it.email %></p><% } %>
+  </div>
+</aside>
+</div>

@@ -1,0 +1,140 @@
+<% layout('layout') %>
+<% const p = it.p; const st = it.stats; const pct = st.pct == null ? null : Math.round(st.pct); %>
+<div class="product-info-main">
+  <div class="page-title-wrapper product"><h1 class="page-title"><span class="base" data-ui-id="page-title-wrapper" itemprop="name"><%~ it.htmlName(p.name) %></span></h1></div>
+  <div class="product-reviews-summary">
+    <% if (st.n) { %><%~ include('_stars', { ...it, pct }) %>
+    <div class="reviews-actions"><a class="action view" href="#reviews"><span itemprop="reviewCount"><%= st.n %></span>&nbsp;<span>Review<%= st.n === 1 ? '' : 's' %></span></a> <a class="action add" href="#review-form">Add Your Review</a></div>
+    <% } else { %><div class="reviews-actions"><a class="action add" href="#review-form">Be the first to review this product</a></div><% } %>
+  </div>
+  <div class="product-info-price">
+    <%~ include('_price', { ...it, p }) %>
+    <div class="product-info-stock-sku">
+      <div class="stock <%= p.is_in_stock ? 'available' : 'unavailable' %>" title="Availability"><span><%= p.is_in_stock ? 'In stock' : 'Out of stock' %></span></div>
+      <div class="product attribute sku"><strong class="type">SKU</strong> <div class="value" itemprop="sku"><%= p.sku %></div></div>
+    </div>
+  </div>
+  <% if (p.short_description) { %><div class="product attribute overview"><div class="value"><%~ p.short_description %></div></div><% } %>
+
+  <div class="product-add-form">
+  <form method="post" action="/checkout/cart/add/" id="product_addtocart_form" data-product-id="<%= p.id %>">
+    <%~ it.csrfInput() %>
+    <input type="hidden" name="product" value="<%= p.id %>">
+    <% if (it.config) { %>
+    <div class="product-options-wrapper swatch-opt" id="product-options-wrapper" data-config='<%= JSON.stringify(it.config.children.map((c) => ({ id: c.id, price: c.price, regular: c.regular, in_stock: c.in_stock, attrs: c.attrs }))) %>'>
+      <% for (const a of it.config.axes) { %>
+      <fieldset class="swatch-attribute <%= a.code %>" data-attribute-code="<%= a.code %>">
+        <legend class="swatch-attribute-label"><%= a.label %><span class="req">*</span> <span class="swatch-attribute-selected-option" aria-live="polite"></span></legend>
+        <div class="swatch-attribute-options" role="radiogroup" aria-label="<%= a.label %>">
+          <% for (const o of a.options) { %><label class="swatch-option <%= a.code === 'color' ? 'color' : 'text' %>" title="<%= o.label %>"<% if (a.code === 'color' && o.swatch) { %> style="--swatch:<%= o.swatch %>"<% } %>>
+            <input type="radio" name="super_attribute[<%= a.code %>]" value="<%= o.id %>" required aria-label="<%= a.label %> <%= o.label %>"><span><%= o.label %></span></label><% } %>
+        </div>
+      </fieldset>
+      <% } %>
+    </div>
+    <% } %>
+    <% if (it.options.length) { %>
+    <div class="product-options-wrapper" id="product-custom-options">
+      <% for (const o of it.options) { %>
+      <fieldset class="field<%= o.is_require ? ' required' : '' %>">
+        <legend class="label"><span><%= o.title %></span><% if (o.is_require) { %><span class="req">*</span><% } %></legend>
+        <div class="control">
+        <% if (o.type === 'drop_down') { %><select name="options[<%= o.id %>]" <%= o.is_require ? 'required' : '' %> aria-label="<%= o.title %>"><option value="">-- Please Select --</option><% for (const v of o.values) { %><option value="<%= v.id %>"><%= v.title %><%= v.price ? ` +${it.money(v.price)}` : '' %></option><% } %></select>
+        <% } else if (o.type === 'radio' || o.type === 'checkbox' || o.type === 'multiple') { %><% for (const v of o.values) { %><label class="choice"><input type="<%= o.type === 'radio' ? 'radio' : 'checkbox' %>" name="options[<%= o.id %>]<%= o.type === 'radio' ? '' : '[]' %>" value="<%= v.id %>" <%= o.is_require && o.type === 'radio' ? 'required' : '' %>> <%= v.title %><%= v.price ? ` +${it.money(v.price)}` : '' %></label><% } %>
+        <% } else if (o.type === 'area') { %><textarea name="options[<%= o.id %>]" rows="3" <%= o.is_require ? 'required' : '' %> aria-label="<%= o.title %>"<%= o.max_characters ? ` maxlength="${o.max_characters}"` : '' %>></textarea>
+        <% } else { %><input type="text" name="options[<%= o.id %>]" <%= o.is_require ? 'required' : '' %> aria-label="<%= o.title %>"<%= o.max_characters ? ` maxlength="${o.max_characters}"` : '' %>><% } %>
+        </div>
+      </fieldset>
+      <% } %>
+    </div>
+    <% } %>
+    <div class="box-tocart"><div class="fieldset">
+      <div class="field qty"><label class="label" for="qty"><span>Qty</span></label><input type="number" name="qty" id="qty" min="1" value="1" title="Qty" class="input-text qty"></div>
+      <div class="actions"><button type="submit" title="Add to Cart" class="action primary tocart" id="product-addtocart-button"<%= p.is_in_stock ? '' : ' disabled' %>><span>Add to Cart</span></button></div>
+    </div></div>
+  </form>
+  </div>
+  <div class="product-social-links"><div class="product-addto-links" data-role="add-to-links">
+    <form method="post" action="/wishlist/index/add/" class="inline"><%~ it.csrfInput() %><input type="hidden" name="product" value="<%= p.id %>"><button type="submit" class="action towishlist link"><span><%= it.inWish ? 'In your Wish List' : 'Add to Wish List' %></span></button></form>
+    <form method="post" action="/catalog/product_compare/add/" class="inline"><%~ it.csrfInput() %><input type="hidden" name="product" value="<%= p.id %>"><button type="submit" class="action tocompare link"><span>Add to Compare</span></button></form>
+  </div></div>
+</div>
+
+<div class="product media">
+  <div class="gallery" id="gallery" aria-label="Product images">
+    <% if (it.images.length) { %>
+      <figure class="gallery-main"><img id="gallery-main" src="/media/<%= it.images[0].file %>" alt="<%= it.plainName(it.images[0].label && it.images[0].label !== 'Image' ? it.images[0].label : p.name) %>" width="<%= it.images[0].width || 600 %>" height="<%= it.images[0].height || 600 %>"></figure>
+      <% if (it.images.length > 1) { %><ul class="gallery-thumbs"><% it.images.forEach((im, i) => { %><li><button type="button" class="gallery-thumb<%= i === 0 ? ' active' : '' %>" data-src="/media/<%= im.file %>" aria-label="Image <%= i + 1 %> of <%= it.images.length %>"><img src="/media/<%= im.file %>" alt="" width="70" height="70" loading="lazy"></button></li><% }) %></ul><% } %>
+    <% } else { %><div class="product-image-placeholder large" role="img" aria-label="<%= it.plainName(p.name) %>">No image available</div><% } %>
+  </div>
+</div>
+
+<div class="product info detailed">
+  <div class="product data items" role="tablist">
+    <h2 class="data item title" id="tab-label-description"><a class="data switch" href="#description">Details</a></h2>
+    <div class="data item content" id="description" role="tabpanel" aria-labelledby="tab-label-description">
+      <div class="product attribute description"><div class="value"><%~ p.description || '' %></div></div>
+    </div>
+    <% if (it.info.length) { %>
+    <h2 class="data item title" id="tab-label-additional"><a class="data switch" href="#additional">More Information</a></h2>
+    <div class="data item content" id="additional" role="tabpanel" aria-labelledby="tab-label-additional">
+      <div class="additional-attributes-wrapper table-wrapper"><table class="data table additional-attributes" id="product-attribute-specs-table">
+        <caption class="table-caption">More Information</caption>
+        <tbody><% for (const a of it.info) { %><tr><th class="col label" scope="row"><%= a.label %></th><td class="col data" data-th="<%= a.label %>"><%= it.plainName(a.value) %></td></tr><% } %></tbody>
+      </table></div>
+    </div>
+    <% } %>
+    <h2 class="data item title" id="tab-label-reviews"><a class="data switch" href="#reviews">Reviews <span class="counter"><%= st.n %></span></a></h2>
+    <div class="data item content" id="reviews" role="tabpanel" aria-labelledby="tab-label-reviews">
+      <% if (st.n) { %>
+      <div class="block review-summary">
+        <div class="rating-overall"><%~ include('_stars', { ...it, pct }) %> <span><%= (pct / 20).toFixed(1) %> out of 5 (<%= st.n %> review<%= st.n === 1 ? '' : 's' %>)</span></div>
+        <table class="rating-histogram"><caption class="sr-only">Rating histogram</caption><tbody>
+        <% for (const h of it.hist) { const w = st.n ? Math.round(100 * h.n / st.n) : 0; %><tr><th scope="row"><%= h.stars %> star<%= h.stars === 1 ? '' : 's' %></th><td><div class="bar" role="img" aria-label="<%= w %>%"><span style="width:<%= w %>%"></span></div></td><td class="n"><%= h.n %></td></tr><% } %>
+        </tbody></table>
+      </div>
+      <div class="block review-list" id="customer-reviews">
+        <div class="block-title"><strong>Customer Reviews</strong></div>
+        <ol class="items review-items">
+        <% for (const r of it.reviews) { %>
+          <li class="item review-item" id="review-<%= r.id %>">
+            <div class="review-title"><%= r.title %></div>
+            <% if (r.pct != null) { %><div class="review-ratings"><div class="rating-summary item"><span class="label rating-label"><span>Rating</span></span><div class="rating-result" role="img" aria-label="<%= Math.round(r.pct) %>% (<%= Math.round(r.pct / 20) %> out of 5 stars)"><span style="width:<%= Math.round(r.pct) %>%"><span><%= Math.round(r.pct) %>%</span></span></div></div></div><% } %>
+            <div class="review-content"><%= r.detail %></div>
+            <div class="review-details"><p class="review-author"><span class="review-details-label">Review by</span> <strong class="review-details-value"><%= r.nickname %></strong></p>
+              <p class="review-date"><span class="review-details-label">Posted on</span> <time class="review-details-value" datetime="<%= it.date.iso(r.created_at) %>"><%= it.date.short(r.created_at) %></time></p></div>
+          </li>
+        <% } %>
+        </ol>
+        <% if (it.rpages > 1) { %><nav class="pages" aria-label="Review pages"><ul class="items pages-items">
+          <% if (it.rp > 1) { %><li class="item pages-item-previous"><a class="action previous" href="<%= it.reviewHref(it.rp - 1) %>">Previous</a></li><% } %>
+          <% for (let n = Math.max(1, it.rp - 3); n <= Math.min(it.rpages, it.rp + 3); n++) { %><li class="item<%= n === it.rp ? ' current' : '' %>"><% if (n === it.rp) { %><strong class="page"><%= n %></strong><% } else { %><a class="page" href="<%= it.reviewHref(n) %>"><%= n %></a><% } %></li><% } %>
+          <% if (it.rp < it.rpages) { %><li class="item pages-item-next"><a class="action next" href="<%= it.reviewHref(it.rp + 1) %>">Next</a></li><% } %>
+        </ul><p class="muted">Page <%= it.rp %> of <%= it.rpages %></p></nav><% } %>
+      </div>
+      <% } %>
+      <div class="block review-add" id="review-form">
+        <div class="block-title"><strong>Write Your Own Review</strong></div>
+        <form method="post" action="/review/product/post/id/<%= p.id %>/" class="review-form" id="review-form-el">
+          <%~ it.csrfInput() %>
+          <fieldset class="fieldset review-fieldset">
+            <legend class="legend review-legend"><span>You're reviewing:</span> <strong><%~ it.htmlName(p.name) %></strong></legend>
+            <% for (const r of it.ratings) { %>
+            <fieldset class="field review-field-ratings required"><legend class="label"><span><%= r.code %></span><span class="req">*</span></legend>
+              <div class="control review-control-vote" role="radiogroup" aria-label="<%= r.code %>">
+              <% for (let v = 1; v <= 5; v++) { %><label class="rating-<%= v %>" for="<%= r.code %>_<%= v %>"><input type="radio" name="ratings[<%= r.id %>]" id="<%= r.code %>_<%= v %>" value="<%= v %>" class="radio" required> <%= v %> star<%= v === 1 ? '' : 's' %></label><% } %>
+              </div></fieldset>
+            <% } %>
+            <div class="field review-field-nickname required"><label for="nickname_field" class="label"><span>Nickname</span></label><input type="text" name="nickname" id="nickname_field" class="input-text" required value="<%= it.customer ? it.customer.firstname : '' %>"></div>
+            <div class="field review-field-summary required"><label for="summary_field" class="label"><span>Summary</span></label><input type="text" name="title" id="summary_field" class="input-text" required></div>
+            <div class="field review-field-text required"><label for="review_field" class="label"><span>Review</span></label><textarea name="detail" id="review_field" cols="5" rows="3" required></textarea></div>
+          </fieldset>
+          <div class="actions-toolbar review-form-actions"><button type="submit" class="action submit primary"><span>Submit Review</span></button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<% if (it.related.length) { %>
+<section class="block related" aria-labelledby="related-title"><h2 class="block-title title" id="related-title"><strong>Related Products</strong></h2><%~ include('_products', { ...it, products: it.related, mode: 'grid' }) %></section>
+<% } %>

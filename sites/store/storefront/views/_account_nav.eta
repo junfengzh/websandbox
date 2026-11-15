@@ -1,0 +1,7 @@
+<aside class="sidebar sidebar-main account-nav" aria-label="My Account">
+<ul class="nav items">
+<% for (const [k, label, href] of [['account', 'My Account', '/customer/account/'], ['orders', 'My Orders', '/sales/order/history/'], ['downloadable', 'My Downloadable Products', '/downloadable/customer/products/'], ['wishlist', 'My Wish List', '/wishlist/'], ['address', 'Address Book', '/customer/address/'], ['edit', 'Account Information', '/customer/account/edit/'], ['vault', 'Stored Payment Methods', '/vault/cards/listaction/'], ['reviews', 'My Product Reviews', '/review/customer/'], ['newsletter', 'Newsletter Subscriptions', '/newsletter/manage/']]) { %>
+  <li class="nav item<%= it.nav === k ? ' current' : '' %>"><% if (it.nav === k) { %><strong aria-current="page"><%= label %></strong><% } else { %><a href="<%= href %>"><%= label %></a><% } %></li>
+<% } %>
+</ul>
+</aside>

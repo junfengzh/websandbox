@@ -1,0 +1,232 @@
+'use strict';
+// Home, categories, products, search, autocomplete, compare, URL resolution.
+const C = require('../lib/catalog');
+const S = require('../../shared');
+const cart = require('../lib/cart');
+
+module.exports = async function catalogRoutes(app, kit) {
+  const db = () => kit.db();
+
+  // ---------------------------------------------------------------- home
+  app.get('/', async (req, reply) => {
+    const host = String(req.headers.host || '');
+    if (/^shopping-admin\b/i.test(host)) return reply.redirect('/admin');
+    const page = kit.db().prepare("SELECT * FROM cms_pages WHERE identifier = 'home-shop' AND is_active = 1").get();
+    // "Product Showcases" widget: 24 products, 12 per page (?pbaocw=2), as on the original home page
+    const showIds = db().prepare(`SELECT id FROM products p WHERE p.status = 1 AND p.visibility IN ${C.VIS_CATALOG} AND p.source = 'shop' ORDER BY p.id LIMIT 24`).pluck().all();
+    const pg = Math.min(Math.max(parseInt(req.query.pbaocw, 10) || 1, 1), 2);
+    const showcase = C.cards(db(), showIds.slice((pg - 1) * 12, pg * 12));
+    const t = C.tree(db());
+    const departments = C.activeChildren(t.root, true).map((c) => ({ c, url: C.catUrl(c), img: db().prepare(`SELECT i.file FROM product_categories pc JOIN products p ON p.id = pc.product_id JOIN product_images i ON i.product_id = p.id AND i.file IS NOT NULL
+        WHERE pc.category_id = ? AND p.status = 1 AND p.visibility IN (2,4) ORDER BY pc.position, p.id LIMIT 1`).pluck().get(c.id) }));
+    const deals = C.cards(db(), db().prepare(`SELECT id FROM products p WHERE p.status = 1 AND p.visibility IN (2,4) AND p.special_price IS NOT NULL AND p.special_price < p.price
+        AND (p.special_from IS NULL OR substr(p.special_from, 1, 10) <= today()) AND (p.special_to IS NULL OR substr(p.special_to, 1, 10) >= today()) ORDER BY p.id LIMIT 6`).pluck().all());
+    return reply.render('home', { title: (page && page.title) || 'One Stop Market', pageTitle: false, showcase, showPage: pg, departments, deals, bodyClass: 'cms-home' });
+  });
+
+  // ---------------------------------------------------------------- category
+  function renderCategory(req, reply, c) {
+    const t = C.tree(db());
+    const list = C.listing(req, { category: c });
+    const crumbs = [['Home', '/'], ...C.ancestors(t, c).map((a) => [a.name, C.catUrl(a)]), [c.name]];
+    const subcats = C.activeChildren(c, false);
+    return reply.render('category', { title: c.name, c, list, crumbs, subcats, catUrl: C.catUrl, bodyClass: 'catalog-category-view' });
+  }
+  app.get('/catalog/category/view/id/:id', async (req, reply) => {
+    const c = C.tree(db()).byId.get(+req.params.id);
+    if (!c || !c.is_active || c.level < 1) throw kit.httpError(404, 'Page not found');
+    return renderCategory(req, reply, c);
+  });
+
+  // ---------------------------------------------------------------- product
+  function loadProduct(where, arg) {
+    const p = db().prepare(`SELECT p.*, ${C.PRICE} AS final_price FROM products p WHERE ${where} AND p.status = 1 AND p.visibility IN (2,3,4) ORDER BY p.visibility DESC, p.id LIMIT 1`).get(arg);
+    return p ? C.decorate(p) : null;
+  }
+  function productData(p) {
+    const d = db();
+    const images = d.prepare('SELECT file, label, width, height, is_base FROM product_images WHERE product_id = ? AND file IS NOT NULL AND coalesce(disabled, 0) = 0 ORDER BY is_base DESC, position, id').all(p.id);
+    // configurable: axes + children (super attributes)
+    let config = null;
+    if (p.type === 'configurable') {
+      const axes = d.prepare('SELECT a.attribute_code AS code, coalesce(a.label, at.label) AS label, at.typed_column FROM product_variant_axes a LEFT JOIN attributes at ON at.code = a.attribute_code WHERE a.product_id = ? ORDER BY a.position').all(p.id);
+      const kids = d.prepare('SELECT c.* FROM product_variants v JOIN products c ON c.id = v.child_id WHERE v.parent_id = ? AND c.status = 1 ORDER BY c.id').all(p.id);
+      const today = C.today();
+      const children = kids.map((k) => ({ id: k.id, sku: k.sku, price: S.finalPrice(k, today), regular: k.price, in_stock: !!k.is_in_stock && (k.qty == null || k.qty > 0 || !k.manage_stock), attrs: Object.fromEntries(axes.map((a) => [a.code, k[`${a.typed_column || a.code}_option_id`] ?? null])) }));
+      for (const a of axes) {
+        const ids = [...new Set(children.map((c) => c.attrs[a.code]).filter((x) => x != null))];
+        a.options = ids.length ? d.prepare(`SELECT id, label, swatch, position FROM attribute_options WHERE id IN (SELECT value FROM json_each(?)) ORDER BY position, id`).all(JSON.stringify(ids)) : [];
+      }
+      config = { axes, children };
+    }
+    const options = d.prepare('SELECT * FROM product_options WHERE product_id = ? ORDER BY position, id').all(p.id);
+    for (const o of options) o.values = d.prepare('SELECT * FROM product_option_values WHERE option_id = ? ORDER BY position, id').all(o.id);
+    // "More Information": visible attributes
+    const attrs = d.prepare(`SELECT a.code, a.label, a.position, group_concat(coalesce(o.label, pa.value), ', ') AS value FROM product_attributes pa JOIN attributes a ON a.code = pa.attribute_code
+        LEFT JOIN attribute_options o ON o.id = pa.option_id
+        WHERE pa.product_id = ? AND (a.is_visible_on_front = 1 OR a.code LIKE 'spec\\_%' ESCAPE '\\') AND pa.value IS NOT NULL AND pa.value != '' GROUP BY a.code ORDER BY a.position, a.code`).all(p.id)
+      .filter((a) => !(a.value === '0' && /^(eco_collection|erin_recommends|new|performance_fabric|sale)$/.test(a.code)));
+    const info = [];
+    if (p.brand) info.push({ label: 'Brand', value: p.brand });
+    for (const a of attrs) info.push({ label: a.label, value: a.value === '1' && /^(eco_collection|erin_recommends|new|performance_fabric|sale)$/.test(a.code) ? 'Yes' : a.value });
+    if (p.weight) info.push({ label: 'Weight', value: `${p.weight} lbs` });
+    // reviews
+    const stats = d.prepare(`SELECT count(DISTINCT r.id) AS n, avg(v.percent) AS pct FROM reviews r LEFT JOIN review_votes v ON v.review_id = r.id WHERE r.product_id = ? AND r.status = 'approved'`).get(p.id);
+    const hist = [5, 4, 3, 2, 1].map((s) => ({ stars: s, n: 0 }));
+    for (const h of d.prepare(`SELECT v.value, count(*) n FROM reviews r JOIN review_votes v ON v.review_id = r.id WHERE r.product_id = ? AND r.status = 'approved' GROUP BY v.value`).all(p.id)) {
+      const x = hist.find((y) => y.stars === h.value); if (x) x.n = h.n;
+    }
+    const related = C.cards(d, d.prepare(`SELECT l.linked_product_id FROM product_links l JOIN products x ON x.id = l.linked_product_id WHERE l.product_id = ? AND l.link_type IN ('related', 'upsell') AND x.status = 1 AND x.visibility IN (2,4) ORDER BY l.link_type, l.position LIMIT 8`).pluck().all(p.id));
+    const ratings = d.prepare('SELECT id, code FROM ratings WHERE coalesce(is_active, 1) = 1 ORDER BY position, id').all();
+    return { images, config, options, info, stats, hist, related, ratings };
+  }
+  function renderProduct(req, reply, p) {
+    const d = productData(p);
+    const t = C.tree(db());
+    const cat = db().prepare('SELECT c.id FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = ? AND c.is_active = 1 AND c.level >= 2 ORDER BY c.level DESC, c.id LIMIT 1').pluck().get(p.id);
+    const cc = cat && t.byId.get(cat);
+    const crumbs = [['Home', '/'], ...(cc ? [...C.ancestors(t, cc), cc].map((a) => [a.name, C.catUrl(a)]) : []), [p.name]];
+    // reviews list: 20 per page (?rp=2), newest first
+    const per = 20;
+    const total = d.stats.n || 0;
+    const pages = Math.max(1, Math.ceil(total / per));
+    const rp = Math.min(Math.max(parseInt(req.query.rp, 10) || 1, 1), pages);
+    const reviews = db().prepare(`SELECT r.id, r.title, r.detail, r.nickname, r.created_at, (SELECT avg(v.percent) FROM review_votes v WHERE v.review_id = r.id) AS pct,
+        (SELECT group_concat(rt.code || ':' || v.value) FROM review_votes v JOIN ratings rt ON rt.id = v.rating_id WHERE v.review_id = r.id) AS votes
+      FROM reviews r WHERE r.product_id = ? AND r.status = 'approved' ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?`).all(p.id, per, (rp - 1) * per);
+    const inWish = req.user ? !!db().prepare('SELECT 1 FROM wishlist_items wi JOIN wishlists w ON w.id = wi.wishlist_id WHERE w.customer_id = ? AND wi.product_id = ?').get(req.user.id, p.id) : false;
+    return reply.render('product', { title: p.name, p, ...d, crumbs, reviews, rp, rpages: pages, inWish, bodyClass: 'catalog-product-view', pageTitle: false, reviewHref: (n) => kit.urlWith(req, { rp: n > 1 ? n : null }) + '#reviews' });
+  }
+  app.get('/catalog/product/view/id/:id', async (req, reply) => {
+    const p = loadProduct('p.id = ?', +req.params.id);
+    if (!p) throw kit.httpError(404, 'Page not found');
+    return renderProduct(req, reply, p);
+  });
+
+  // reviews of a product as their own page (Magento /review/product/list/id/N/)
+  app.get('/review/product/list/id/:id', async (req, reply) => {
+    const p = loadProduct('p.id = ?', +req.params.id);
+    if (!p) throw kit.httpError(404, 'Page not found');
+    return reply.redirect(`${p.url}#reviews`);
+  });
+
+  // ---------------------------------------------------------------- search
+  async function renderSearch(req, reply) {
+    const q = String(req.query.q || '').trim();
+    if (!q) { req.flash('error', 'Please enter a search term.'); return reply.redirect('/'); }
+    const s = C.searchRows(db(), q);
+    const list = C.listing(req, { search: s });
+    let suggestion = null;
+    if (!s.rows.length) suggestion = kit.search.didYouMean(db(), 'product_search', q);
+    if (!req.query.p && !req.query.price && !req.query.brand && !req.query.cat) C.logSearch(db(), q, s.rows.length);
+    const related = db().prepare("SELECT query_text FROM search_terms WHERE query_text LIKE ? AND query_text != ? AND num_results > 0 ORDER BY popularity DESC LIMIT 5").pluck().all(`%${q.split(/\s+/)[0]}%`, q);
+    return reply.render('search', { title: `Search results for: '${q}'`, heading: `Search results for: '${S.htmlName(q)}'`, q, searchQuery: q, list, mode: s.mode, suggestion, related, crumbs: [['Home', '/'], [`Search results for: '${S.htmlName(q)}'`]], bodyClass: 'catalogsearch-result-index' });
+  }
+  app.get('/catalogsearch/result', renderSearch);
+  app.get('/catalogsearch/result/index', renderSearch);
+
+  app.get('/search/ajax/suggest', async (req) => C.suggest(db(), req.query.q));
+
+  app.get('/search/term/popular', async (req, reply) => {
+    const terms = db().prepare('SELECT query_text, popularity FROM search_terms WHERE num_results > 0 AND coalesce(display_in_terms, 1) = 1 AND coalesce(is_active, 1) = 1 ORDER BY popularity DESC LIMIT 100').all();
+    const max = Math.max(1, ...terms.map((t) => t.popularity || 0));
+    terms.sort((a, b) => a.query_text.localeCompare(b.query_text));
+    return reply.render('terms', { title: 'Popular Search Terms', terms, max, crumbs: [['Home', '/'], ['Popular Search Terms']] });
+  });
+
+  // Advanced search: name / sku / description / short_description / price range / brand
+  app.get('/catalogsearch/advanced', async (req, reply) => reply.render('advanced', { title: 'Advanced Search', values: {}, crumbs: [['Home', '/'], ['Advanced Search']] }));
+  app.get('/catalogsearch/advanced/result', async (req, reply) => {
+    const q = req.query;
+    const v = { name: q.name || '', sku: q.sku || '', description: q.description || '', short_description: q.short_description || '', price_from: q['price[from]'] || q.price_from || '', price_to: q['price[to]'] || q.price_to || '', brand: q.manufacturer || q.brand_name || '' };
+    const where = ['p.status = 1', `p.visibility IN ${C.VIS_SEARCH}`]; const params = [];
+    const like = (col, val) => { where.push(`${col} LIKE ? ESCAPE '\\'`); params.push(`%${String(val).replace(/[\\%_]/g, (c) => '\\' + c)}%`); };
+    if (v.name) like('p.name', v.name);
+    if (v.sku) like('p.sku', v.sku);
+    if (v.description) like('p.description', v.description);
+    if (v.short_description) like('p.short_description', v.short_description);
+    if (v.brand) like('p.brand', v.brand);
+    if (v.price_from !== '') { where.push(`${C.PRICE} >= ?`); params.push(+v.price_from); }
+    if (v.price_to !== '') { where.push(`${C.PRICE} <= ?`); params.push(+v.price_to); }
+    if (params.length === 0) { req.flash('error', 'Enter a search term and try again.'); return reply.redirect('/catalogsearch/advanced/'); }
+    const rows = db().prepare(`SELECT p.id, ${C.PRICE} AS price, p.name, p.brand, p.id AS rank FROM products p WHERE ${where.join(' AND ')} LIMIT 5000`).all(...params);
+    const list = C.listing(req, { search: { rows } });
+    return reply.render('search', { title: 'Catalog Advanced Search', heading: 'Catalog Advanced Search', q: '', list, advanced: v, crumbs: [['Home', '/'], ['Advanced Search', '/catalogsearch/advanced/'], ['Results']], bodyClass: 'catalogsearch-advanced-result' });
+  });
+
+  // ---------------------------------------------------------------- compare
+  const visitor = (req) => cart.visitorId(req);
+  const compareWhere = (req) => (req.user ? ['customer_id = ?', req.user.id] : ['visitor_id = ? AND customer_id IS NULL', visitor(req)]);
+  app.post('/catalog/product_compare/add', async (req, reply) => {
+    const p = loadProduct('p.id = ?', +(req.body.product || 0));
+    if (!p) throw kit.httpError(404, 'Product not found');
+    const [w, a] = compareWhere(req);
+    if (!db().prepare(`SELECT 1 FROM compare_items WHERE ${w} AND product_id = ?`).get(a, p.id)) {
+      db().prepare('INSERT INTO compare_items (customer_id, visitor_id, product_id, added_at) VALUES (?, ?, ?, ?)').run(req.user ? req.user.id : null, req.user ? null : visitor(req), p.id, kit.nowSql());
+    }
+    req.flash('success', `You added product ${S.plainName(p.name)} to the comparison list.`);
+    return reply.redirect(safeBack(req, p.url));
+  });
+  app.post('/catalog/product_compare/remove', async (req, reply) => {
+    const [w, a] = compareWhere(req);
+    db().prepare(`DELETE FROM compare_items WHERE ${w} AND product_id = ?`).run(a, +(req.body.product || 0));
+    req.flash('success', 'You removed the product from the comparison list.');
+    return reply.redirect('/catalog/product_compare/');
+  });
+  app.post('/catalog/product_compare/clear', async (req, reply) => {
+    const [w, a] = compareWhere(req);
+    db().prepare(`DELETE FROM compare_items WHERE ${w}`).run(a);
+    req.flash('success', 'You cleared the comparison list.');
+    return reply.redirect('/catalog/product_compare/');
+  });
+  const compareIndex = async (req, reply) => {
+    const [w, a] = compareWhere(req);
+    const ids = db().prepare(`SELECT product_id FROM compare_items WHERE ${w} ORDER BY id`).pluck().all(a);
+    const items = C.cards(db(), ids);
+    const keys = new Map();
+    for (const it of items) {
+      it.attrs = {};
+      for (const r of db().prepare(`SELECT a.label, group_concat(coalesce(o.label, pa.value), ', ') AS value FROM product_attributes pa JOIN attributes a ON a.code = pa.attribute_code LEFT JOIN attribute_options o ON o.id = pa.option_id
+          WHERE pa.product_id = ? AND (a.is_comparable = 1 OR a.code LIKE 'spec\\_%' ESCAPE '\\') GROUP BY a.code ORDER BY a.position`).all(it.id)) { it.attrs[r.label] = r.value; keys.set(r.label, 1); }
+      it.attrs.SKU = it.sku; it.attrs.Brand = it.brand || '';
+    }
+    return reply.render('compare', { title: 'Compare Products', items, keys: ['SKU', 'Brand', ...[...keys.keys()].filter((k) => k !== 'Brand')], crumbs: [['Home', '/'], ['Compare Products']] });
+  };
+  app.get('/catalog/product_compare', compareIndex);
+  app.get('/catalog/product_compare/index', compareIndex);
+
+  // ---------------------------------------------------------------- URL resolution (catch-all)
+  // /<category url_path>.html, /<product url_key>.html, Magento url_rewrites, CMS pages /<identifier>
+  app.get('/*', async (req, reply) => {
+    let p = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '').replace(/\/+$/, '');
+    if (p.startsWith('admin/') || p === 'admin') throw kit.httpError(404, 'Page not found');
+    const t = C.tree(db());
+    if (p.endsWith('.html')) {
+      const key = p.slice(0, -5);
+      const c = t.byPath.get(key);
+      if (c && c.is_active) return renderCategory(req, reply, c);
+      const prod = loadProduct('p.url_key = ?', key);
+      if (prod) return renderProduct(req, reply, prod);
+    }
+    const rw = db().prepare('SELECT * FROM url_rewrites WHERE request_path = ? OR request_path = ? ORDER BY redirect_type DESC LIMIT 1').get(p, p + '/');
+    if (rw) {
+      if (rw.redirect_type) return reply.code(rw.redirect_type === 302 ? 302 : 301).redirect('/' + String(rw.target_path).replace(/^\/+/, ''));
+      if (rw.entity_type === 'category' && t.byId.get(rw.entity_id)) return renderCategory(req, reply, t.byId.get(rw.entity_id));
+      if (rw.entity_type === 'product') { const prod = loadProduct('p.id = ?', rw.entity_id); if (prod) return renderProduct(req, reply, prod); }
+    }
+    // CMS page by identifier (the storefront shows the shop's copies: <identifier>-shop first)
+    const page = db().prepare('SELECT * FROM cms_pages WHERE identifier IN (?, ?) AND is_active = 1 ORDER BY identifier = ? DESC LIMIT 1').get(p + '-shop', p, p + '-shop');
+    if (page && p && !/^(home|no-route)$/.test(p)) return reply.render('cms', { title: page.title, page, html: require('../lib/cms').render(db(), page.content), crumbs: [['Home', '/'], [page.title]] });
+    throw kit.httpError(404, 'Page not found');
+  });
+};
+
+// Redirect target from a form's "uenc"/"return_url" (same-site paths only) or the Referer.
+function safeBack(req, fallback) {
+  const b = (req.body && (req.body.return_url || req.body.back)) || '';
+  if (typeof b === 'string' && b.startsWith('/') && !b.startsWith('//')) return b;
+  const ref = req.headers.referer;
+  if (ref) { try { const u = new URL(ref); if (u.host === req.headers.host) return u.pathname + u.search; } catch {} }
+  return fallback;
+}
+module.exports.safeBack = safeBack;

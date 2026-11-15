@@ -1,0 +1,2 @@
+<% layout('layout') %>
+<ul class="search-terms"><% for (const t of it.terms) { %><li class="item"><a href="/catalogsearch/result/?q=<%= encodeURIComponent(t.query_text) %>" style="font-size:<%= Math.round(80 + 70 * (t.popularity || 0) / it.max) %>%"><%= t.query_text %></a></li><% } %></ul>

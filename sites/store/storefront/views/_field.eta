@@ -1,0 +1,10 @@
+<% const e = it.errors && it.errors[it.name]; const id = it.id || it.name.replace(/[^\w]+/g, '_'); %>
+<div class="field <%= it.name.replace(/[^\w]+/g, '-') %><%= it.required ? ' required' : '' %><%= e ? ' has-error' : '' %>">
+  <label class="label" for="<%= id %>"><span><%= it.label %></span><% if (it.required) { %><span class="req" aria-hidden="true">*</span><% } %></label>
+  <div class="control">
+  <% if (it.type === 'textarea') { %><textarea name="<%= it.name %>" id="<%= id %>" rows="<%= it.rows || 4 %>"<%= it.required ? ' required' : '' %><%~ it.title ? ` title="${it.h(it.title)}"` : '' %><%= e ? ' aria-invalid="true"' : '' %>><%= it.value ?? '' %></textarea>
+  <% } else if (it.type === 'select') { %><select name="<%= it.name %>" id="<%= id %>"<%= it.required ? ' required' : '' %>><% if (it.empty) { %><option value=""><%= it.empty %></option><% } %><% for (const [v, l] of it.options) { %><option value="<%= v %>"<%= String(v) === String(it.value ?? '') ? ' selected' : '' %>><%= l %></option><% } %></select>
+  <% } else { %><input type="<%= it.type || 'text' %>" name="<%= it.name %>" id="<%= id %>" value="<%= it.value ?? '' %>" class="input-text"<%= it.required ? ' required' : '' %><%~ it.title ? ` title="${it.h(it.title)}"` : '' %><%= it.autocomplete ? ` autocomplete="${it.autocomplete}"` : '' %><%= e ? ' aria-invalid="true"' : '' %>><% } %>
+  <% if (e) { %><div class="mage-error" role="alert"><%= e %></div><% } %>
+  </div>
+</div>

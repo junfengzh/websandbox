@@ -1,0 +1,16 @@
+<% layout('layout') %>
+<div class="columns account">
+<%~ include('_account_nav', it) %>
+<div class="column main">
+<% if (!it.rows.length) { %><div class="message info empty"><span>You have submitted no reviews.</span></div><% } else { %>
+<div class="table-wrapper reviews"><table class="data table table-reviews" id="my-reviews-table"><caption class="table-caption">Product Reviews</caption>
+  <thead><tr><th scope="col" class="col date">Created</th><th scope="col" class="col item">Product Name</th><th scope="col" class="col summary">Rating</th><th scope="col" class="col description">Review</th><th scope="col" class="col actions">&nbsp;</th></tr></thead>
+  <tbody><% for (const r of it.rows) { %><tr><td data-th="Created" class="col date"><%= it.date.short(r.created_at) %></td>
+    <td data-th="Product Name" class="col item"><strong class="product-name"><a href="/<%= r.url_key %>.html"><%~ it.htmlName(r.product_name) %></a></strong></td>
+    <td data-th="Rating" class="col summary"><%~ include('_stars', { ...it, pct: r.pct }) %></td>
+    <td data-th="Review" class="col description"><%= String(r.detail || '').slice(0, 50) %><%= String(r.detail || '').length > 50 ? '...' : '' %><% if (r.status !== 'approved') { %> <em class="muted">(<%= r.status === 'pending' ? 'Pending approval' : 'Not approved' %>)</em><% } %></td>
+    <td data-th="Actions" class="col actions"><a href="/review/customer/view/id/<%= r.id %>/" class="action more"><span>See Details</span></a></td></tr><% } %></tbody>
+</table></div>
+<% if (it.pages > 1) { %><nav class="pages"><ul class="items pages-items"><% for (let n = 1; n <= it.pages; n++) { %><li class="item<%= n === it.page ? ' current' : '' %>"><% if (n === it.page) { %><strong class="page"><%= n %></strong><% } else { %><a class="page" href="<%= it.href(n) %>"><%= n %></a><% } %></li><% } %></ul></nav><% } %>
+<% } %>
+</div></div>

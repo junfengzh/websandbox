@@ -1,0 +1,22 @@
+<% layout('layout') %>
+<% const v = it.values; %>
+<div class="columns account">
+<%~ include('_account_nav', it) %>
+<div class="column main">
+<form class="form form-edit-account" action="/customer/account/editPost/" method="post" id="form-validate" autocomplete="off">
+  <%~ it.csrfInput() %>
+  <fieldset class="fieldset info"><legend class="legend"><span>Account Information</span></legend>
+    <%~ include('_field', { ...it, name: 'firstname', label: 'First Name', value: v.firstname, required: true }) %>
+    <%~ include('_field', { ...it, name: 'lastname', label: 'Last Name', value: v.lastname, required: true }) %>
+    <div class="field choice"><input type="checkbox" name="change_email" id="change-email" value="1" title="Change Email" class="checkbox"<%= v.change_email ? ' checked' : '' %>> <label class="label" for="change-email"><span>Change Email</span></label></div>
+    <div class="field choice"><input type="checkbox" name="change_password" id="change-password" value="1" title="Change Password" class="checkbox"<%= v.change_password ? ' checked' : '' %>> <label class="label" for="change-password"><span>Change Password</span></label></div>
+  </fieldset>
+  <fieldset class="fieldset password" data-toggle="change"><legend class="legend"><span>Change Email and Password</span></legend>
+    <%~ include('_field', { ...it, name: 'email', label: 'Email', value: v.email, type: 'email' }) %>
+    <%~ include('_field', { ...it, name: 'current_password', label: 'Current Password', value: '', type: 'password', autocomplete: 'current-password' }) %>
+    <%~ include('_field', { ...it, name: 'password', label: 'New Password', value: '', type: 'password', autocomplete: 'new-password' }) %>
+    <%~ include('_field', { ...it, name: 'password_confirmation', label: 'Confirm New Password', value: '', type: 'password', autocomplete: 'new-password' }) %>
+  </fieldset>
+  <div class="actions-toolbar"><div class="primary"><button type="submit" class="action save primary" title="Save"><span>Save</span></button></div><div class="secondary"><a class="action back" href="/customer/account/"><span>Go back</span></a></div></div>
+</form>
+</div></div>

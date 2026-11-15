@@ -1,0 +1,11 @@
+<% const t = it.t; %>
+<div class="cart-summary" role="complementary" aria-labelledby="summary-title">
+  <strong class="summary title" id="summary-title">Summary</strong>
+  <table class="data table totals"><caption class="table-caption">Order Totals</caption><tbody>
+    <tr class="totals sub"><th class="mark" scope="row">Subtotal</th><td class="amount" data-th="Subtotal"><span class="price"><%= it.money(t.subtotal) %></span></td></tr>
+    <% if (t.discount) { %><tr class="totals discount"><th class="mark" scope="row"><span class="title">Discount</span><% const lab = t.applied.filter((a) => a.amount > 0).map((a) => a.label).join(', '); if (lab) { %> <span class="discount coupon">(<%= lab %>)</span><% } %></th><td class="amount" data-th="Discount"><span class="price">-<%= it.money(t.discount) %></span></td></tr><% } %>
+    <% if (t.shipping != null) { %><tr class="totals shipping excl"><th class="mark" scope="row">Shipping<% if (it.method) { %> <span class="value">(<%= it.method.title %>)</span><% } %></th><td class="amount" data-th="Shipping"><span class="price"><%= it.money(t.shipping) %></span></td></tr><% } %>
+    <tr class="grand totals"><th class="mark" scope="row"><strong>Order Total</strong></th><td class="amount" data-th="Order Total"><strong><span class="price"><%= it.money(t.grand_total) %></span></strong></td></tr>
+  </tbody></table>
+  <% if (t.freeShipping && t.shipping == null) { %><p class="free-shipping note">Your order qualifies for free shipping.</p><% } %>
+</div>

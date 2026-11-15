@@ -1,0 +1,8 @@
+<% const o = it.o; %>
+<div class="block block-order-details-view"><div class="block-title"><strong>Order Information</strong></div>
+<div class="block-content">
+  <div class="box box-order-shipping-address"><strong class="box-title"><span>Shipping Address</span></strong><div class="box-content"><address><% for (const l of it.fmtAddr(o.shipping)) { %><%= l %><br><% } %></address></div></div>
+  <div class="box box-order-shipping-method"><strong class="box-title"><span>Shipping Method</span></strong><div class="box-content"><%= o.shipping_description || 'No shipping information available' %></div></div>
+  <div class="box box-order-billing-address"><strong class="box-title"><span>Billing Address</span></strong><div class="box-content"><address><% for (const l of it.fmtAddr(o.billing)) { %><%= l %><br><% } %></address></div></div>
+  <div class="box box-order-billing-method"><strong class="box-title"><span>Payment Method</span></strong><div class="box-content"><dl class="payment-method checkmemo"><dt class="title"><%= o.payment_title %></dt></dl></div></div>
+</div></div>

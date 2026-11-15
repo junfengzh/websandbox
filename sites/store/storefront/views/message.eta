@@ -1,0 +1,2 @@
+<% layout('layout') %>
+<div class="message-page"><p><%= it.message %></p><% if (it.link) { %><p><a href="<%= it.link[0] %>"><%= it.link[1] %></a></p><% } %></div>

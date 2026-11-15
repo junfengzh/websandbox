@@ -1,0 +1,25 @@
+<% layout('layout') %>
+<div class="columns account">
+<%~ include('_account_nav', it) %>
+<div class="column main">
+<% if (!it.orders.length) { %><div class="message info empty"><span>You have placed no orders.</span></div><% } else { %>
+<div class="table-wrapper orders-history"><table class="data table table-order-items history" id="my-orders-table"><caption class="table-caption">Orders</caption>
+  <thead><tr><th scope="col" class="col id">Order #</th><th scope="col" class="col date">Date</th><th scope="col" class="col shipping">Ship To</th><th scope="col" class="col total">Order Total</th><th scope="col" class="col status">Status</th><th scope="col" class="col actions">Action</th></tr></thead>
+  <tbody><% for (const o of it.orders) { %><tr>
+    <td data-th="Order #" class="col id"><%= o.increment_id %></td><td data-th="Date" class="col date"><%= it.date.short(o.created_at) %></td><td data-th="Ship To" class="col shipping"><%= o.ship_to %></td>
+    <td data-th="Order Total" class="col total"><span class="price"><%= it.money(o.grand_total) %></span></td><td data-th="Status" class="col status"><%= o.status_label %></td>
+    <td data-th="Actions" class="col actions"><a href="/sales/order/view/order_id/<%= o.id %>/" class="action view"><span>View Order</span></a>
+      <form method="post" action="/sales/order/reorder/order_id/<%= o.id %>/" class="inline"><%~ it.csrfInput() %><button type="submit" class="action order link"><span>Reorder</span></button></form></td>
+  </tr><% } %></tbody>
+</table></div>
+<div class="order-products-toolbar toolbar bottom">
+  <p class="toolbar-amount"><% if (it.total <= it.limit) { %><span class="toolbar-number"><%= it.total %> Item<%= it.total === 1 ? '' : 's' %></span><% } else { %>Items <%= (it.page - 1) * it.limit + 1 %> to <%= Math.min(it.page * it.limit, it.total) %> of <%= it.total %> total<% } %></p>
+  <% if (it.pages > 1) { %><nav class="pages" aria-label="Pagination"><ul class="items pages-items">
+    <% if (it.page > 1) { %><li class="item pages-item-previous"><a class="action previous" href="<%= it.href(it.page - 1) %>">Previous</a></li><% } %>
+    <% for (let n = 1; n <= it.pages; n++) { %><li class="item<%= n === it.page ? ' current' : '' %>"><% if (n === it.page) { %><strong class="page" aria-current="page"><%= n %></strong><% } else { %><a class="page" href="<%= it.href(n) %>"><span class="label">Page</span> <%= n %></a><% } %></li><% } %>
+    <% if (it.page < it.pages) { %><li class="item pages-item-next"><a class="action next" href="<%= it.href(it.page + 1) %>">Next</a></li><% } %>
+  </ul></nav><% } %>
+  <div class="field limiter"><label class="label" for="limiter">Show</label> <select id="limiter" onchange="location.href=this.value"><% for (const n of it.limits) { %><option value="<%= it.limitHref(n) %>"<%= n === it.limit ? ' selected' : '' %>><%= n %></option><% } %></select> <span class="limiter-text">per page</span></div>
+</div>
+<% } %>
+</div></div>

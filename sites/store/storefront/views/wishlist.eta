@@ -1,0 +1,30 @@
+<% layout('layout') %>
+<div class="columns account">
+<%~ include('_account_nav', it) %>
+<div class="column main">
+<% if (!it.items.length) { %><div class="message info empty"><span>You have no items in your wish list.</span></div><% } else { %>
+<form class="form-wishlist-items" id="wishlist-view-form" action="/wishlist/index/update/" method="post">
+  <%~ it.csrfInput() %>
+  <div class="products-grid wishlist"><ol class="product-items">
+  <% for (const w of it.items) { const p = w.p; %>
+    <li class="product-item" id="item_<%= w.id %>"><div class="product-item-info">
+      <a class="product-item-photo" href="<%= p.url %>" title="<%= p.plain %>"><% if (p.image) { %><img src="/media/<%= p.image %>" alt="<%= p.plain %>" width="160" height="160" loading="lazy"><% } %></a>
+      <strong class="product-item-name"><a href="<%= p.url %>" title="<%= p.plain %>" class="product-item-link"><%~ it.htmlName(p.name) %></a></strong>
+      <%~ include('_price', { ...it, p }) %>
+      <div class="product-item-inner">
+        <div class="field comment-box"><label class="label" for="product-item-comment-<%= w.id %>"><span>Comment</span></label><textarea id="product-item-comment-<%= w.id %>" name="description[<%= w.id %>]" title="Comment" class="product-item-comment" placeholder="Comment"><%= w.description || '' %></textarea></div>
+        <div class="box-tocart"><div class="field qty"><label class="label" for="qty[<%= w.id %>]"><span>Qty</span></label><input type="number" name="qty[<%= w.id %>]" id="qty[<%= w.id %>]" value="<%= +w.qty || 1 %>" min="0" class="input-text qty"></div>
+          <button type="submit" form="wl-cart-<%= w.id %>" class="action tocart primary" title="Add to Cart"><span>Add to Cart</span></button></div>
+        <div class="product-item-actions"><button type="submit" form="wl-remove-<%= w.id %>" class="btn-remove action delete link" title="Remove Item">Remove item</button></div>
+        <p class="muted added">Added <%= it.date.medium(w.added_at) %></p>
+      </div>
+    </div></li>
+  <% } %>
+  </ol></div>
+  <div class="actions-toolbar"><div class="primary"><button type="submit" name="do" title="Update Wish List" class="action update"><span>Update Wish List</span></button>
+    <button type="submit" form="wl-allcart" class="action tocart">Add All to Cart</button></div></div>
+</form>
+<% for (const w of it.items) { %><form id="wl-cart-<%= w.id %>" method="post" action="/wishlist/index/cart/" hidden><%~ it.csrfInput() %><input type="hidden" name="item" value="<%= w.id %>"></form><form id="wl-remove-<%= w.id %>" method="post" action="/wishlist/index/remove/" hidden><%~ it.csrfInput() %><input type="hidden" name="item" value="<%= w.id %>"></form><% } %>
+<form id="wl-allcart" method="post" action="/wishlist/index/allcart/" hidden><%~ it.csrfInput() %></form>
+<% } %>
+</div></div>

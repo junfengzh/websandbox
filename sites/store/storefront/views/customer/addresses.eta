@@ -1,0 +1,28 @@
+<% layout('layout') %>
+<div class="columns account">
+<%~ include('_account_nav', it) %>
+<div class="column main">
+<div class="block block-addresses-default">
+  <div class="block-title"><strong>Default Addresses</strong></div>
+  <div class="block-content">
+    <div class="box box-address-billing"><strong class="box-title"><span>Default Billing Address</span></strong>
+      <div class="box-content"><address><% if (it.billing) { %><% for (const l of it.fmtAddr(it.billing)) { %><%= l %><br><% } %><% } else { %>You have no default billing address in your address book.<% } %></address></div>
+      <% if (it.billing) { %><div class="box-actions"><a class="action edit" href="/customer/address/edit/id/<%= it.billing.id %>/"><span>Change Billing Address</span></a></div><% } %></div>
+    <div class="box box-address-shipping"><strong class="box-title"><span>Default Shipping Address</span></strong>
+      <div class="box-content"><address><% if (it.shipping) { %><% for (const l of it.fmtAddr(it.shipping)) { %><%= l %><br><% } %><% } else { %>You have no default shipping address in your address book.<% } %></address></div>
+      <% if (it.shipping) { %><div class="box-actions"><a class="action edit" href="/customer/address/edit/id/<%= it.shipping.id %>/"><span>Change Shipping Address</span></a></div><% } %></div>
+  </div>
+</div>
+<div class="block block-addresses-list">
+  <div class="block-title"><strong>Additional Address Entries</strong></div>
+  <div class="block-content">
+  <% if (!it.extra.length) { %><p class="empty">You have no other address entries in your address book.</p><% } else { %>
+  <div class="table-wrapper additional-addresses"><table class="data table" id="additional-addresses-table"><caption class="table-caption">Additional addresses</caption>
+    <thead><tr><th scope="col">First Name</th><th scope="col">Last Name</th><th scope="col">Street Address</th><th scope="col">City</th><th scope="col">Country</th><th scope="col">State</th><th scope="col">Zip/Postal Code</th><th scope="col">Phone</th><th scope="col">Actions</th></tr></thead>
+    <tbody><% for (const a of it.extra) { %><tr><td><%= a.firstname %></td><td><%= a.lastname %></td><td><%= String(a.street || '').replace(/\n/g, ', ') %></td><td><%= a.city %></td><td><%= a.country_id %></td><td><%= a.region %></td><td><%= a.postcode %></td><td><%= a.telephone %></td>
+      <td><a class="action edit" href="/customer/address/edit/id/<%= a.id %>/">Edit</a> <form method="post" action="/customer/address/delete/id/<%= a.id %>/" class="inline" data-confirm="Are you sure you want to delete this address?"><%~ it.csrfInput() %><button type="submit" class="action delete link">Delete</button></form></td></tr><% } %></tbody>
+  </table></div><% } %>
+  </div>
+</div>
+<div class="actions-toolbar"><a class="action primary add button" href="/customer/address/new/"><span>Add New Address</span></a></div>
+</div></div>

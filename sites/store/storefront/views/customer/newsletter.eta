@@ -1,0 +1,12 @@
+<% layout('layout') %>
+<div class="columns account">
+<%~ include('_account_nav', it) %>
+<div class="column main">
+<form class="form form-newsletter-manage" action="/newsletter/manage/save/" method="post" id="form-validate">
+  <%~ it.csrfInput() %>
+  <fieldset class="fieldset"><legend class="legend"><span>Subscription option</span></legend>
+    <div class="field choice"><input type="checkbox" name="is_subscribed" id="subscription" value="1" title="General Subscription" class="checkbox"<%= it.subscribed ? ' checked' : '' %>> <label for="subscription" class="label"><span>General Subscription</span></label></div>
+  </fieldset>
+  <div class="actions-toolbar"><div class="primary"><button type="submit" title="Save" class="action save primary"><span>Save</span></button></div><div class="secondary"><a class="action back" href="/customer/account/"><span>Go back</span></a></div></div>
+</form>
+</div></div>

@@ -1,0 +1,1 @@
+<% const pct = it.pct == null ? null : Math.round(it.pct); %><% if (pct != null) { %><div class="rating-summary" title="<%= pct %>%"><span class="label">Rating:</span><div class="rating-result" role="img" aria-label="Rating: <%= pct %>% (<%= (pct / 20).toFixed(1) %> out of 5 stars)"><span style="width:<%= pct %>%"><span><%= pct %>%</span></span></div></div><% } %>

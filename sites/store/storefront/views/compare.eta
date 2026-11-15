@@ -1,0 +1,15 @@
+<% layout('layout') %>
+<% if (!it.items.length) { %><div class="message info empty"><div>You have no items to compare.</div></div><% } else { %>
+<form method="post" action="/catalog/product_compare/clear/" class="inline"><%~ it.csrfInput() %><button type="submit" class="action secondary">Clear All</button></form>
+<div class="table-wrapper comparison"><table class="data table table-comparison" id="product-comparison">
+  <caption class="table-caption">Compare Products</caption>
+  <thead><tr><th scope="row" class="cell label"><span>Product</span></th><% for (const p of it.items) { %><td class="cell product info">
+    <% if (p.image) { %><a href="<%= p.url %>"><img src="/media/<%= p.image %>" alt="<%= p.plain %>" width="140" height="140" loading="lazy"></a><% } %>
+    <strong class="product-item-name"><a href="<%= p.url %>"><%~ it.htmlName(p.name) %></a></strong>
+    <%~ include('_price', { ...it, p, money: it.money }) %>
+    <% if (p.review_count) { %><%~ include('_stars', { ...it, pct: p.rating }) %> <a href="<%= p.url %>#reviews"><%= p.review_count %> Reviews</a><% } %>
+    <form method="post" action="/catalog/product_compare/remove/"><%~ it.csrfInput() %><input type="hidden" name="product" value="<%= p.id %>"><button type="submit" class="action delete link" title="Remove Product">Remove Product</button></form>
+  </td><% } %></tr></thead>
+  <tbody><% for (const k of it.keys) { %><tr><th scope="row" class="cell label"><%= k %></th><% for (const p of it.items) { %><td class="cell"><%= p.attrs[k] ?? 'N/A' %></td><% } %></tr><% } %></tbody>
+</table></div>
+<% } %>

@@ -1,0 +1,27 @@
+<% const l = it.list; const pg = l.pager; %>
+<div class="toolbar toolbar-products" role="toolbar" aria-label="Product list options">
+  <div class="modes" role="tablist" aria-label="View as">
+    <strong class="modes-label">View as</strong>
+    <% for (const m of ['grid', 'list']) { %><% if (l.mode === m) { %><strong class="modes-mode active mode-<%= m %>" title="<%= m === 'grid' ? 'Grid' : 'List' %>" role="tab" aria-selected="true"><span><%= m === 'grid' ? 'Grid' : 'List' %></span></strong><% } else { %><a class="modes-mode mode-<%= m %>" title="<%= m === 'grid' ? 'Grid' : 'List' %>" href="<%= l.modeHref(m) %>" role="tab" aria-selected="false"><span><%= m === 'grid' ? 'Grid' : 'List' %></span></a><% } %><% } %>
+  </div>
+  <p class="toolbar-amount" id="toolbar-amount">
+    <% if (pg.total <= pg.limit) { %><span class="toolbar-number"><%= pg.total %></span> Item<%= pg.total === 1 ? '' : 's' %><% } else { %>Items <span class="toolbar-number"><%= pg.from %></span>-<span class="toolbar-number"><%= pg.to %></span> of <span class="toolbar-number"><%= pg.total %></span><% } %>
+  </p>
+  <% if (it.bottom) { %>
+  <% if (pg.pages > 1) { %><nav class="pages" aria-label="Pagination"><strong class="label pages-label">Page</strong><ul class="items pages-items">
+    <% if (pg.page > 1) { %><li class="item pages-item-previous"><a class="action previous" href="<%= pg.href(pg.page - 1) %>" title="Previous"><span>Previous</span></a></li><% } %>
+    <% if (pg.links[0] > 1) { %><li class="item"><a class="page" href="<%= pg.href(1) %>">1</a></li><% if (pg.links[0] > 2) { %><li class="item gap">…</li><% } %><% } %>
+    <% for (const n of pg.links) { %><li class="item<%= n === pg.page ? ' current' : '' %>"><% if (n === pg.page) { %><strong class="page" aria-current="page"><span class="label">You're currently reading page</span> <span><%= n %></span></strong><% } else { %><a class="page" href="<%= pg.href(n) %>"><span class="label">Page</span> <span><%= n %></span></a><% } %></li><% } %>
+    <% const last = pg.links[pg.links.length - 1]; if (last < pg.pages) { %><% if (last < pg.pages - 1) { %><li class="item gap">…</li><% } %><li class="item"><a class="page" href="<%= pg.href(pg.pages) %>"><%= pg.pages %></a></li><% } %>
+    <% if (pg.page < pg.pages) { %><li class="item pages-item-next"><a class="action next" href="<%= pg.href(pg.page + 1) %>" title="Next"><span>Next</span></a></li><% } %>
+  </ul></nav><% } %>
+  <div class="field limiter"><label class="label" for="limiter">Show</label>
+    <select id="limiter" class="limiter-options" onchange="location.href=this.value"><% for (const n of l.limits) { %><option value="<%= l.limitHref(n) %>"<%= n === l.limit ? ' selected' : '' %>><%= n %></option><% } %></select>
+    <span class="limiter-text">per page</span></div>
+  <% } else { %>
+  <div class="toolbar-sorter sorter"><label class="sorter-label" for="sorter">Sort By</label>
+    <select id="sorter" class="sorter-options" onchange="location.href=this.value"><% for (const [k, label] of l.sorts) { %><option value="<%= l.sortHref(k) %>"<%= k === l.order ? ' selected' : '' %>><%= label %></option><% } %></select>
+    <a title="<%= l.dir === 'asc' ? 'Set Descending Direction' : 'Set Ascending Direction' %>" href="<%= l.dirHref %>" class="action sorter-action sort-<%= l.dir %>"><span><%= l.dir === 'asc' ? 'Set Descending Direction' : 'Set Ascending Direction' %></span></a>
+  </div>
+  <% } %>
+</div>

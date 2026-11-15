@@ -1,0 +1,2 @@
+<% layout('layout') %>
+<div class="columns account"><%~ include('_account_nav', it) %><div class="column main"><div class="message info empty"><span><%= it.message %></span></div></div></div>

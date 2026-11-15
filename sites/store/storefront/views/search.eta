@@ -1,0 +1,17 @@
+<% layout('layout') %>
+<% const l = it.list; %>
+<div class="columns">
+<aside class="sidebar sidebar-main"><%~ include('_layered', { ...it, list: l }) %></aside>
+<div class="column main">
+  <% if (it.related && it.related.length) { %><dl class="block"><dt class="title">Related search terms</dt><dd class="item"><% for (const r of it.related) { %><a href="/catalogsearch/result/?q=<%= encodeURIComponent(r) %>"><%= r %></a> <% } %></dd></dl><% } %>
+  <% if (!l.products.length) { %>
+    <div class="message notice"><div>Your search returned no results.</div></div>
+    <% if (it.suggestion) { %><p class="did-you-mean">Did you mean <a href="/catalogsearch/result/?q=<%= encodeURIComponent(it.suggestion) %>"><%= it.suggestion %></a>?</p><% } %>
+  <% } else { %>
+    <% if (it.mode === 'or') { %><div class="message info"><div>No products contain all of your search words; showing products that match some of them.</div></div><% } %>
+    <%~ include('_toolbar', { ...it, list: l }) %>
+    <%~ include('_products', { ...it, products: l.products, mode: l.mode }) %>
+    <%~ include('_toolbar', { ...it, list: l, bottom: true }) %>
+  <% } %>
+</div>
+</div>

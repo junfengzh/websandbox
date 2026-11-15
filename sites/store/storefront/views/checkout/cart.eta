@@ -1,0 +1,52 @@
+<% layout('layout') %>
+<% const t = it.t; %>
+<% if (!t || !t.lines.length) { %>
+<div class="cart-empty"><p>You have no items in your shopping cart.</p><p>Click <a href="/">here</a> to continue shopping.</p></div>
+<% } else { %>
+<div class="cart-container">
+<form action="/checkout/cart/updatePost/" method="post" id="form-validate" class="form form-cart">
+  <%~ it.csrfInput() %>
+  <div class="cart table-wrapper"><table id="shopping-cart-table" class="cart items data table"><caption class="table-caption">Shopping Cart Items</caption>
+    <thead><tr><th class="col item" scope="col"><span>Item</span></th><th class="col price" scope="col"><span>Price</span></th><th class="col qty" scope="col"><span>Qty</span></th><th class="col subtotal" scope="col"><span>Subtotal</span></th><th class="col actions" scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+    <% for (const l of t.lines) { const o = l.opts || {}; %>
+    <tbody class="cart item"><tr class="item-info">
+      <td data-th="Item" class="col item">
+        <a href="<%= l.url %>" class="product-item-photo" tabindex="-1"><% if (l.image) { %><img src="/media/<%= l.image %>" alt="<%= l.plain %>" width="110" height="110" loading="lazy"><% } %></a>
+        <div class="product-item-details"><strong class="product-item-name"><a href="<%= l.url %>"><%~ it.htmlName(l.name) %></a></strong>
+          <% const opts = [...(o.attributes_info || []), ...(o.options || [])]; if (opts.length) { %><dl class="item-options"><% for (const x of opts) { %><dt><%= x.label %></dt><dd><%= x.print_value || x.value %></dd><% } %></dl><% } %>
+          <div class="sku muted">SKU: <%= o.child_sku || l.sku %></div>
+          <% if (!l.is_in_stock || l.status !== 1) { %><div class="message error">This product is out of stock.</div><% } %>
+        </div>
+      </td>
+      <td class="col price" data-th="Price"><span class="price"><%= it.money(l.price) %></span></td>
+      <td class="col qty" data-th="Qty"><div class="field qty"><label class="label" for="cart-<%= l.id %>-qty"><span>Qty</span></label><input id="cart-<%= l.id %>-qty" name="cart[<%= l.id %>][qty]" value="<%= l.qty %>" type="number" min="0" step="1" size="4" title="Qty" class="input-text qty"></div></td>
+      <td class="col subtotal" data-th="Subtotal"><span class="price"><%= it.money(l.row_total) %></span></td>
+      <td class="col actions"><button type="submit" form="delete-<%= l.id %>" class="action action-delete link" title="Remove item" aria-label="Remove <%= l.plain %>">Remove item</button></td>
+    </tr></tbody>
+    <% } %>
+  </table></div>
+  <div class="cart main actions">
+    <a class="action continue" href="/" title="Continue Shopping"><span>Continue Shopping</span></a>
+    <button type="submit" name="update_cart_action" value="empty_cart" title="Clear Shopping Cart" class="action clear secondary" data-confirm="Remove all items from the cart?"><span>Clear Shopping Cart</span></button>
+    <button type="submit" name="update_cart_action" value="update_qty" title="Update Shopping Cart" class="action update"><span>Update Shopping Cart</span></button>
+  </div>
+</form>
+<% for (const l of t.lines) { %><form id="delete-<%= l.id %>" method="post" action="/checkout/cart/delete/" hidden><%~ it.csrfInput() %><input type="hidden" name="id" value="<%= l.id %>"></form><% } %>
+<div class="cart-discount block discount" id="block-discount">
+  <div class="title"><strong id="block-discount-heading" role="heading" aria-level="2">Apply Discount Code</strong></div>
+  <form id="discount-coupon-form" action="/checkout/cart/couponPost/" method="post">
+    <%~ it.csrfInput() %>
+    <div class="fieldset coupon">
+      <% if (it.c.coupon_code) { %><input type="hidden" name="remove" value="1"><% } %>
+      <div class="field"><label for="coupon_code" class="label"><span>Enter discount code</span></label><input type="text" class="input-text" id="coupon_code" name="coupon_code" value="<%= it.c.coupon_code || '' %>" placeholder="Enter discount code"<%= it.c.coupon_code ? ' readonly' : '' %>></div>
+      <div class="actions-toolbar"><button class="action apply primary" type="submit"><span><%= it.c.coupon_code ? 'Cancel Coupon' : 'Apply Discount' %></span></button></div>
+    </div>
+  </form>
+</div>
+<div class="cart-sidebar">
+  <%~ include('checkout/_summary', it) %>
+  <ul class="checkout methods items checkout-methods-items"><li class="item"><a href="/checkout/" class="action primary checkout button" title="Proceed to Checkout"><span>Proceed to Checkout</span></a></li></ul>
+</div>
+<% if (it.cross.length) { %><section class="block crosssell"><h2 class="block-title">More Choices:</h2><%~ include('_products', { ...it, products: it.cross, mode: 'grid' }) %></section><% } %>
+</div>
+<% } %>

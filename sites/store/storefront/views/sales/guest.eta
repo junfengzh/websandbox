@@ -1,0 +1,12 @@
+<% layout('layout') %>
+<% const v = it.values || {}; %>
+<form class="form form-orders-search" action="/sales/guest/view/" method="post" id="oar-widget-orders-and-returns-form">
+  <%~ it.csrfInput() %>
+  <% if (it.error) { %><div class="message error" role="alert"><%= it.error %></div><% } %>
+  <fieldset class="fieldset"><legend class="legend"><span>Order Information</span></legend>
+    <div class="field id required"><label class="label" for="oar-order-id"><span>Order ID</span></label><div class="control"><input type="text" class="input-text" id="oar-order-id" name="oar_order_id" value="<%= v.oar_order_id || '' %>" required></div></div>
+    <div class="field lastname required"><label class="label" for="oar-billing-lastname"><span>Billing Last Name</span></label><div class="control"><input type="text" class="input-text" id="oar-billing-lastname" name="oar_billing_lastname" value="<%= v.oar_billing_lastname || '' %>" required></div></div>
+    <div class="field email required"><label class="label" for="oar_email"><span>Email</span></label><div class="control"><input type="email" class="input-text" id="oar_email" name="oar_email" value="<%= v.oar_email || '' %>" required></div></div>
+  </fieldset>
+  <div class="actions-toolbar"><div class="primary"><button type="submit" title="Continue" class="action submit primary"><span>Continue</span></button></div></div>
+</form>

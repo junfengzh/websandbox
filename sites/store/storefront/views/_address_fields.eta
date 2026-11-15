@@ -1,0 +1,21 @@
+<% const a = it.a || {}; const st = String(a.street || '').split('\n'); const E = it.errors || {}; %>
+<%~ include('_field', { ...it, name: 'firstname', label: 'First Name', value: a.firstname, required: true, errors: E }) %>
+<%~ include('_field', { ...it, name: 'lastname', label: 'Last Name', value: a.lastname, required: true, errors: E }) %>
+<%~ include('_field', { ...it, name: 'company', label: 'Company', value: a.company, errors: E }) %>
+<%~ include('_field', { ...it, name: 'telephone', label: 'Phone Number', value: a.telephone, required: true, type: 'tel', errors: E }) %>
+<fieldset class="field street required<%= E.street ? ' has-error' : '' %>"><legend class="label"><span>Street Address</span><span class="req" aria-hidden="true">*</span></legend>
+  <div class="control">
+  <% for (let i = 0; i < 3; i++) { %><input type="text" name="street[<%= i %>]" id="street_<%= i + 1 %>" value="<%= st[i] || '' %>" class="input-text" aria-label="Street Address: Line <%= i + 1 %>"<%= i === 0 ? ' required' : '' %>><% } %>
+  <% if (E.street) { %><div class="mage-error" role="alert"><%= E.street %></div><% } %></div></fieldset>
+<%~ include('_field', { ...it, name: 'city', label: 'City', value: a.city, required: true, errors: E }) %>
+<div class="field region required<%= E.region_id ? ' has-error' : '' %>"><label class="label" for="region_id"><span>State/Province</span><span class="req" aria-hidden="true">*</span></label>
+  <div class="control">
+    <select id="region_id" name="region_id" title="State/Province" data-regions='<%= JSON.stringify(it.regions.map((r) => [r.id, r.country_id, r.name])) %>'>
+      <option value="">Please select a region, state or province.</option>
+      <% for (const r of it.regions.filter((x) => x.country_id === (a.country_id || 'US'))) { %><option value="<%= r.id %>"<%= r.id === a.region_id ? ' selected' : '' %>><%= r.name %></option><% } %>
+    </select>
+    <input type="text" id="region" name="region" value="<%= a.region_id ? '' : (a.region || '') %>" title="State/Province" class="input-text" aria-label="State/Province (text)" placeholder="State/Province (if not listed)">
+    <% if (E.region_id) { %><div class="mage-error" role="alert"><%= E.region_id %></div><% } %>
+  </div></div>
+<%~ include('_field', { ...it, name: 'postcode', label: 'Zip/Postal Code', value: a.postcode, required: true, errors: E }) %>
+<%~ include('_field', { ...it, name: 'country_id', label: 'Country', value: a.country_id || 'US', required: true, type: 'select', options: it.countries.map((c) => [c.id, c.name]), errors: E }) %>

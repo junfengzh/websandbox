@@ -1,0 +1,14 @@
+<% layout('layout') %>
+<form class="form search advanced" action="/catalogsearch/advanced/result/" method="get" id="form-validate">
+  <fieldset class="fieldset"><legend class="legend"><span>Search Settings</span></legend>
+    <div class="field name"><label class="label" for="name">Product Name</label><input type="text" name="name" id="name" class="input-text"></div>
+    <div class="field sku"><label class="label" for="sku">SKU</label><input type="text" name="sku" id="sku" class="input-text"></div>
+    <div class="field description"><label class="label" for="description">Description</label><input type="text" name="description" id="description" class="input-text"></div>
+    <div class="field short_description"><label class="label" for="short_description">Short Description</label><input type="text" name="short_description" id="short_description" class="input-text"></div>
+    <div class="field brand"><label class="label" for="manufacturer">Brand / Manufacturer</label><input type="text" name="manufacturer" id="manufacturer" class="input-text"></div>
+    <div class="field price"><span class="label">Price</span><div class="range price fields group">
+      <label for="price_from" class="sr-only">Price from</label><input type="number" step="0.01" min="0" name="price[from]" id="price_from" class="input-text" aria-label="Price from"> <span>-</span>
+      <label for="price_to" class="sr-only">Price to</label><input type="number" step="0.01" min="0" name="price[to]" id="price_to" class="input-text" aria-label="Price to"> <span class="currency">USD</span></div></div>
+  </fieldset>
+  <div class="actions-toolbar"><button type="submit" class="action search primary" title="Search"><span>Search</span></button></div>
+</form>

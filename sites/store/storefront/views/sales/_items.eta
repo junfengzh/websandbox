@@ -1,0 +1,26 @@
+<% const o = it.o; %>
+<div class="table-wrapper order-items"><table class="data table table-order-items" id="my-orders-table" summary="Items Ordered"><caption class="table-caption">Items Ordered</caption>
+  <thead><tr><th class="col name" scope="col">Product Name</th><th class="col sku" scope="col">SKU</th><th class="col price" scope="col">Price</th><th class="col qty" scope="col">Qty</th><th class="col subtotal" scope="col">Subtotal</th></tr></thead>
+  <tbody><% for (const i of o.items) { %><tr id="order-item-row-<%= i.id %>">
+    <td class="col name" data-th="Product Name"><strong class="product name product-item-name"><% if (i.url) { %><a href="<%= i.url %>"><%~ it.htmlName(i.name) %></a><% } else { %><%~ it.htmlName(i.name) %><% } %></strong>
+      <% if (i.opts.length) { %><dl class="item-options"><% for (const x of i.opts) { %><dt><%= x.label %></dt><dd><%= x.value %></dd><% } %></dl><% } %></td>
+    <td class="col sku" data-th="SKU"><%= i.sku %></td>
+    <td class="col price" data-th="Price"><span class="price-excluding-tax"><span class="cart-price"><span class="price"><%= it.money(i.price) %></span></span></span></td>
+    <td class="col qty" data-th="Qty"><ul class="items-qty">
+      <li class="item"><span class="title">Ordered</span> <span class="content"><%= +i.qty_ordered %></span></li>
+      <% if (i.qty_invoiced) { %><li class="item"><span class="title">Invoiced</span> <span class="content"><%= +i.qty_invoiced %></span></li><% } %>
+      <% if (i.qty_shipped) { %><li class="item"><span class="title">Shipped</span> <span class="content"><%= +i.qty_shipped %></span></li><% } %>
+      <% if (i.qty_canceled) { %><li class="item"><span class="title">Canceled</span> <span class="content"><%= +i.qty_canceled %></span></li><% } %>
+      <% if (i.qty_refunded) { %><li class="item"><span class="title">Refunded</span> <span class="content"><%= +i.qty_refunded %></span></li><% } %>
+    </ul></td>
+    <td class="col subtotal" data-th="Subtotal"><span class="price"><%= it.money(i.row_total) %></span></td>
+  </tr><% } %></tbody>
+  <tfoot>
+    <tr class="subtotal"><th colspan="4" class="mark" scope="row">Subtotal</th><td class="amount" data-th="Subtotal"><span class="price"><%= it.money(o.subtotal) %></span></td></tr>
+    <% if (o.discount_amount) { %><tr class="discount"><th colspan="4" class="mark" scope="row">Discount<%= o.discount_description ? ` (${o.discount_description})` : '' %></th><td class="amount" data-th="Discount"><span class="price"><%= it.money(o.discount_amount) %></span></td></tr><% } %>
+    <tr class="shipping"><th colspan="4" class="mark" scope="row">Shipping &amp; Handling</th><td class="amount" data-th="Shipping &amp; Handling"><span class="price"><%= it.money(o.shipping_amount) %></span></td></tr>
+    <% if (o.tax_amount) { %><tr class="totals-tax"><th colspan="4" class="mark" scope="row">Tax</th><td class="amount" data-th="Tax"><span class="price"><%= it.money(o.tax_amount) %></span></td></tr><% } %>
+    <tr class="grand_total"><th colspan="4" class="mark" scope="row"><strong>Grand Total</strong></th><td class="amount" data-th="Grand Total"><strong><span class="price"><%= it.money(o.grand_total) %></span></strong></td></tr>
+    <% if (o.total_refunded) { %><tr class="refunded"><th colspan="4" class="mark" scope="row">Total Refunded</th><td class="amount"><span class="price"><%= it.money(o.total_refunded) %></span></td></tr><% } %>
+  </tfoot>
+</table></div>

@@ -1,0 +1,21 @@
+<% layout('layout') %>
+<div class="home-content">
+  <section class="blocks-promo" aria-label="Promotions">
+    <a href="/luma-apparel.html" class="block-promo home-main"><img src="/media/wysiwyg/admin/home/home-main.webp" alt="New Luma Yoga Collection" loading="lazy"><span class="content bg-white"><span class="info">New Luma Yoga Collection</span><strong class="title">Get fit and look fab in new seasonal styles</strong><span class="action more button">Shop New Yoga</span></span></a>
+    <div class="promo-side">
+      <a href="/promotions/pants-all.html" class="block-promo home-pants"><img src="/media/wysiwyg/admin/home/home-pants.webp" alt="" loading="lazy"><span class="content"><strong class="title">20% OFF</strong><span class="info">Luma pants when you shop today*</span><span class="more icon">Shop Pants</span></span></a>
+      <a href="/checkout/cart/" class="block-promo home-t-shirts"><span class="content"><strong class="title">Even more ways to mix and match</strong><span class="info">Buy 3 Luma tees get a 4th free</span><span class="more icon">Shop Tees</span></span></a>
+      <a href="/checkout/cart/" class="block-promo home-erin"><span class="content"><strong class="title">Spend $50 or more — shipping is free!</strong><span class="info">On every order, every day</span></span></a>
+    </div>
+  </section>
+  <section class="departments" aria-labelledby="dept-title">
+    <h2 id="dept-title" class="title">Shop by Department</h2>
+    <ul class="dept-grid"><% for (const d of it.departments) { %><li><a href="<%= d.url %>"><% if (d.img) { %><img src="/media/<%= d.img %>" alt="" loading="lazy" width="120" height="120"><% } %><span><%~ it.htmlName(d.c.name) %></span></a></li><% } %></ul>
+  </section>
+  <section class="block widget block-products-list grid" aria-labelledby="showcase-title">
+    <h2 id="showcase-title" class="block-title"><strong>Product Showcases</strong></h2>
+    <%~ include('_products', { ...it, products: it.showcase, mode: 'grid' }) %>
+    <nav class="pages" aria-label="Showcase pages"><ul class="items pages-items"><% for (const n of [1, 2]) { %><li class="item<%= n === it.showPage ? ' current' : '' %>"><% if (n === it.showPage) { %><strong class="page"><%= n %></strong><% } else { %><a class="page" href="/?pbaocw=<%= n %>"><%= n %></a><% } %></li><% } %></ul></nav>
+  </section>
+  <% if (it.deals.length) { %><section class="block widget" aria-labelledby="deals-title"><h2 id="deals-title" class="block-title"><strong>Deals</strong></h2><%~ include('_products', { ...it, products: it.deals, mode: 'grid' }) %></section><% } %>
+</div>

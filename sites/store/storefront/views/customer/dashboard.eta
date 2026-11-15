@@ -1,0 +1,41 @@
+<% layout('layout') %>
+<div class="columns account">
+<%~ include('_account_nav', it) %>
+<div class="column main">
+  <div class="block block-dashboard-info">
+    <div class="block-title"><strong>Account Information</strong></div>
+    <div class="block-content">
+      <div class="box box-information"><strong class="box-title"><span>Contact Information</span></strong>
+        <div class="box-content"><p><%= it.u.firstname %> <%= it.u.lastname %><br><%= it.u.email %></p></div>
+        <div class="box-actions"><a class="action edit" href="/customer/account/edit/"><span>Edit</span></a> <a href="/customer/account/edit/?changepass=1" class="action change-password">Change Password</a></div></div>
+      <div class="box box-newsletter"><strong class="box-title"><span>Newsletters</span></strong>
+        <div class="box-content"><p><%= it.news === 1 ? 'You are subscribed to "General Subscription".' : "You aren't subscribed to our newsletter." %></p></div>
+        <div class="box-actions"><a class="action edit" href="/newsletter/manage/"><span>Edit</span></a></div></div>
+    </div>
+  </div>
+  <div class="block block-dashboard-addresses">
+    <div class="block-title"><strong>Address Book</strong> <a class="action edit" href="/customer/address/"><span>Manage Addresses</span></a></div>
+    <div class="block-content">
+      <div class="box box-billing-address"><strong class="box-title"><span>Default Billing Address</span></strong>
+        <div class="box-content"><address><% if (it.billing) { %><% for (const l of it.fmtAddr(it.billing)) { %><%= l %><br><% } %><% } else { %>You have not set a default billing address.<% } %></address></div>
+        <div class="box-actions"><a class="action edit" href="/customer/address/edit/id/<%= it.billing ? it.billing.id : '' %>/"><span>Edit Address</span></a></div></div>
+      <div class="box box-shipping-address"><strong class="box-title"><span>Default Shipping Address</span></strong>
+        <div class="box-content"><address><% if (it.shipping) { %><% for (const l of it.fmtAddr(it.shipping)) { %><%= l %><br><% } %><% } else { %>You have not set a default shipping address.<% } %></address></div>
+        <div class="box-actions"><a class="action edit" href="/customer/address/edit/id/<%= it.shipping ? it.shipping.id : '' %>/"><span>Edit Address</span></a></div></div>
+    </div>
+  </div>
+  <div class="block block-dashboard-orders">
+    <div class="block-title order"><strong>Recent Orders</strong> <a class="action view" href="/sales/order/history/"><span>View All</span></a></div>
+    <div class="block-content">
+    <% if (!it.recent.length) { %><div class="message info empty"><span>You have placed no orders.</span></div><% } else { %>
+    <div class="table-wrapper orders-recent"><table class="data table table-order-items recent" id="my-orders-table"><caption class="table-caption">Recent Orders</caption>
+      <thead><tr><th scope="col" class="col id">Order #</th><th scope="col" class="col date">Date</th><th scope="col" class="col shipping">Ship To</th><th scope="col" class="col total">Order Total</th><th scope="col" class="col status">Status</th><th scope="col" class="col actions">Action</th></tr></thead>
+      <tbody><% for (const o of it.recent) { %><tr><td data-th="Order #" class="col id"><%= o.increment_id %></td><td data-th="Date" class="col date"><%= it.date.short(o.created_at) %></td><td data-th="Ship To" class="col shipping"><%= o.ship_to %></td><td data-th="Order Total" class="col total"><span class="price"><%= it.money(o.grand_total) %></span></td><td data-th="Status" class="col status"><%= o.status_label %></td>
+        <td data-th="Actions" class="col actions"><a href="/sales/order/view/order_id/<%= o.id %>/" class="action view"><span>View Order</span></a> <form method="post" action="/sales/order/reorder/order_id/<%= o.id %>/" class="inline"><%~ it.csrfInput() %><button type="submit" class="action order link">Reorder</button></form></td></tr><% } %></tbody>
+    </table></div><% } %>
+    </div>
+  </div>
+  <% if (it.reviews.length) { %><div class="block block-reviews-dashboard"><div class="block-title"><strong>My Recent Reviews</strong> <a class="action view" href="/review/customer/"><span>View All</span></a></div>
+    <div class="block-content"><ol class="items"><% for (const r of it.reviews) { %><li class="item"><strong class="product-name"><a href="/review/customer/view/id/<%= r.id %>/"><%~ it.htmlName(r.product_name) %></a></strong> — <%= r.title %></li><% } %></ol></div></div><% } %>
+</div>
+</div>

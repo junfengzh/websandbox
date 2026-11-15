@@ -1,0 +1,8 @@
+<% layout('layout') %>
+<form class="form password forget" action="/customer/account/forgotpasswordpost/" method="post" id="form-validate">
+  <%~ it.csrfInput() %>
+  <fieldset class="fieldset"><div class="field note">Please enter your email address below to receive a password reset link.</div>
+    <div class="field email required"><label for="email_address" class="label"><span>Email</span></label><div class="control"><input type="email" name="email" alt="email" id="email_address" class="input-text" required></div></div>
+  </fieldset>
+  <div class="actions-toolbar"><div class="primary"><button type="submit" class="action submit primary"><span>Reset My Password</span></button></div><div class="secondary"><a class="action back" href="/customer/account/login/"><span>Go back</span></a></div></div>
+</form>

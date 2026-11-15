@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="<%= it.csrf() %>">
+<title><%= it.title ? it.plainName(it.title) : it.site.title %></title>
+<link rel="stylesheet" href="/static/store.css">
+<% if (it.skin.css) { %><style><%~ it.skin.css %></style><% } %>
+</head>
+<body class="skin-<%= it.skin.name %> theme-<%= it.skin.theme || 'light' %> <%= it.bodyClass || '' %>">
+<a class="skip" href="#maincontent">Skip to Content</a>
+<header class="page-header">
+  <div class="panel header">
+    <ul class="header links">
+      <% if (it.customer) { %>
+      <li class="greet welcome"><span class="logged-in">Welcome, <%= it.customer.firstname %> <%= it.customer.lastname %>!</span></li>
+      <li><a href="/customer/account/">My Account</a></li>
+      <li><a href="/wishlist/">My Wish List<% if (it.wishCount) { %> <span class="counter qty">(<%= it.wishCount %> item<%= it.wishCount === 1 ? '' : 's' %>)</span><% } %></a></li>
+      <li class="authorization-link"><a href="/customer/account/logout/">Sign Out</a></li>
+      <% } else { %>
+      <li class="greet welcome"><span class="not-logged-in">Default welcome msg!</span></li>
+      <li class="authorization-link"><a href="/customer/account/login/">Sign In</a></li>
+      <li><a href="/customer/account/create/">Create an Account</a></li>
+      <% } %>
+    </ul>
+  </div>
+  <div class="header content">
+    <a class="logo" href="/" title="one_stop_market_logo" aria-label="store logo"><img src="/media/logo/shop/websites/1/image_15_.webp" alt="one_stop_market_logo" width="150" height="40"></a>
+    <div class="block block-search">
+      <form class="form minisearch" id="search_mini_form" action="/catalogsearch/result/" method="get" role="search">
+        <label class="label" for="search">Search</label>
+        <input id="search" type="text" name="q" value="<%= it.searchQuery || '' %>" placeholder="<%= it.L('search.placeholder', 'Search entire store here...') %>" class="input-text" maxlength="128" role="combobox" aria-haspopup="false" aria-autocomplete="both" aria-expanded="false" aria-controls="search_autocomplete" autocomplete="off">
+        <div id="search_autocomplete" class="search-autocomplete" role="listbox" hidden></div>
+        <button type="submit" title="Search" class="action search" aria-label="Search">Search</button>
+      </form>
+      <a class="advanced-search" href="/catalogsearch/advanced/">Advanced Search</a>
+    </div>
+    <div class="minicart-wrapper">
+      <a class="action showcart" href="/checkout/cart/" data-qty="<%= it.cartQty %>">
+        <span class="text"><%= it.L('nav.cart', 'My Cart') %></span>
+        <span class="counter qty<%= it.cartQty ? '' : ' empty' %>"><span class="counter-number"><%= it.cartQty %></span><span class="counter-label"> <%= it.cartQty === 1 ? 'item' : 'items' %></span></span>
+      </a>
+      <% if (it.compareCount) { %><a class="compare" href="/catalog/product_compare/">Compare Products (<%= it.compareCount %>)</a><% } %>
+    </div>
+  </div>
+</header>
+<nav class="navigation" aria-label="Categories">
+  <ul class="level0-list" role="menubar">
+  <% for (const c of it.catMenu || []) { const kids = c.children.filter((k) => k.is_active && k.include_in_menu); %>
+    <li class="level0<%= kids.length ? ' parent' : '' %>" role="none">
+      <a href="<%= it.catUrl(c) %>" class="level-top" role="menuitem"<% if (kids.length) { %> aria-haspopup="true"<% } %>><span><%~ it.htmlName(c.name) %></span></a>
+      <% if (kids.length) { %><ul class="level0 submenu" role="menu" aria-label="<%= it.plainName(c.name) %>">
+        <% for (const k of kids) { const gk = k.children.filter((x) => x.is_active && x.include_in_menu); %><li class="level1<%= gk.length ? ' parent' : '' %>" role="none"><a href="<%= it.catUrl(k) %>" role="menuitem"><span><%~ it.htmlName(k.name) %></span></a>
+          <% if (gk.length) { %><ul class="level1 submenu" role="menu"><% for (const g of gk) { %><li class="level2" role="none"><a href="<%= it.catUrl(g) %>" role="menuitem"><span><%~ it.htmlName(g.name) %></span></a></li><% } %></ul><% } %>
+        </li><% } %>
+      </ul><% } %>
+    </li>
+  <% } %>
+  </ul>
+</nav>
+<main id="maincontent" class="page-main">
+<% if (it.crumbs && it.crumbs.length) { %>
+<nav class="breadcrumbs" aria-label="Breadcrumb"><ol class="items">
+  <% it.crumbs.forEach((c, i) => { %><li class="item"><% if (c[1] && i < it.crumbs.length - 1) { %><a href="<%= c[1] %>"><%~ it.htmlName(c[0]) %></a><% } else { %><strong><%~ it.htmlName(c[0]) %></strong><% } %></li><% }) %>
+</ol></nav>
+<% } %>
+<% const fl = it.flashes; if (fl.length) { %><div class="page messages" role="status">
+  <% for (const f of fl) { %><div class="message message-<%= f.type %> <%= f.type %>" role="<%= f.type === 'error' ? 'alert' : 'status' %>"><div><%= f.msg %></div></div><% } %>
+</div><% } %>
+<% if (it.pageTitle !== false && it.title) { %><div class="page-title-wrapper"><h1 class="page-title"><span class="base" data-ui-id="page-title-wrapper"><%~ it.htmlName(it.heading || it.title) %></span></h1></div><% } %>
+<%~ it.body %>
+</main>
+<footer class="page-footer">
+  <div class="footer content">
+    <div class="block newsletter">
+      <div class="title"><strong>Newsletter</strong></div>
+      <form class="form subscribe" action="/newsletter/subscriber/new/" method="post">
+        <%~ it.csrfInput() %>
+        <label for="newsletter">Sign Up for Our Newsletter:</label>
+        <input name="email" type="email" id="newsletter" placeholder="Enter your email address" required>
+        <button class="action subscribe primary" title="Subscribe" type="submit">Subscribe</button>
+      </form>
+    </div>
+    <ul class="footer links">
+      <li><a href="/privacy-policy-cookie-restriction-mode/">Privacy and Cookie Policy</a></li>
+      <li><a href="/search/term/popular/">Search Terms</a></li>
+      <li><a href="/catalogsearch/advanced/">Advanced Search</a></li>
+      <li><a href="/sales/guest/form/">Orders and Returns</a></li>
+      <li><a href="/contact/">Contact Us</a></li>
+      <li><a href="/about-us/">About us</a></li>
+      <li><a href="/customer-service/">Customer Service</a></li>
+    </ul>
+  </div>
+  <small class="copyright"><span>Copyright © 2013-present Magento, Inc. All rights reserved.</span></small>
+</footer>
+<script src="/_kit/kit.js" defer></script>
+<script src="/static/store.js" defer></script>
+</body>
+</html>
