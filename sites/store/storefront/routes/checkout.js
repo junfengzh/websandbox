@@ -156,7 +156,7 @@ module.exports = async function checkoutRoutes(app, kit) {
     const addr = selected && req.user ? saved.find((a) => a.id === selected) : st.address;
     const t = cart.totals(c, { customerGroupId: group(req), address: addr });
     const methods = cart.shippingOptions(t, addr);
-    const countries = db().prepare('SELECT id, name FROM countries ORDER BY name').all();
+    const countries = db().prepare("SELECT id, name FROM countries WHERE coalesce(name, '') <> '' ORDER BY name").all();
     const regions = db().prepare('SELECT id, country_id, code, name FROM regions ORDER BY country_id, name').all();
     return reply.render('checkout/shipping', { title: 'Checkout', pageTitle: false, t, saved, selected, methods, method: st.method || 'flatrate_flatrate', a: st.address || { country_id: 'US' }, email: st.email || '', countries, regions, errors: {}, fmtAddr: (x) => H.formatAddress(db(), x), bodyClass: 'checkout-index-index', ...extra }, status);
   };

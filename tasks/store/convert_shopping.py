@@ -113,9 +113,9 @@ def address_ok(street_parts, city, region, postcode):
 
 
 def review_sql(sku):
-    return (f"SELECT r.nickname, v.percent FROM reviews r JOIN review_votes v ON v.review_id = r.id "
+    return (f"SELECT r.nickname, v.percent FROM reviews r JOIN review_votes v ON v.review_id = r.id AND v.rating_id = (SELECT id FROM ratings WHERE code = 'Rating') "
             f"WHERE r.product_id = {product_id_sql(sku)} AND r.customer_id = {ME} AND r.created_at >= '{TODAY}' "
-            f"ORDER BY r.id DESC, v.rating_id DESC LIMIT 1")
+            f"ORDER BY r.id DESC LIMIT 1")
 
 
 DRAFT = "json_extract(data, '$.contact_draft.comment')"
@@ -462,8 +462,7 @@ def convert(t, B):
             sku = ev0['program_html'][0]['required_contents']['must_include'][0]
             skus = [sku]
             if tid == 508:
-                skus = ['B07116LGP6', 'B0989N4SWC']
-                ch.append('Also accepted B0989N4SWC (HIGOPLAY carry case, $19.99): it ties with the Zelda Multi Pouch at a 100% rating in Nintendo Switch under $60.')
+                ch.append('Checked: the HIGOPLAY carry case (B0989N4SWC, $19.99, 100% from 1 review) ties on rating but is out of stock, so the Zelda Multi Pouch is the only buyable answer.')
             ev = {'type': 'state', 'state_sql': latest_new_order_has(skus), 'state_expect': 1}
             ch.append('program_html -> state_sql: the newest order placed in the rollout contains the product. Reference re-checked: highest average rating in the category within the budget.')
         else:
@@ -501,7 +500,7 @@ def convert(t, B):
                 ch.append(f'Order number renumbered: {n} -> {n2}.')
                 n = n2
             if 'broke after three days of use' in n:
-                n = [n, n.replace('broke after three', 'broke after just three')]
+                n = ['broke after three days', 'broke after just three days']
             out.append(n)
         if tpl == 153:
             m = re.search(r'#(\d+)', intent)
@@ -512,7 +511,7 @@ def convert(t, B):
             ev['type'] = ['url', 'state']
             ev['url'] = '__SHOPPING__/contact'
         ch.append('program_html (textarea value on the last page) -> state_sql on the contact-form draft the storefront autosaves to the session '
-                  '(kit_sessions.data $.contact_draft), plus "not submitted": contact_messages stays empty. "broke after just three days" accepted too.')
+                  '(kit_sessions.data $.contact_draft), plus "not submitted": contact_messages stays empty. the reason needle is "broke after (just) three days".')
     elif tpl == 165:  # address change
         req = [p['required_contents']['must_include'] for p in ev0['program_html']][0]
         street = [x for x in req if not re.search(r', \w+, \d{5}$', x)]

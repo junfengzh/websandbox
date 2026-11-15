@@ -102,7 +102,7 @@ module.exports = async function miscRoutes(app, kit) {
     if (!p) throw kit.httpError(404, 'Product not found');
     const b = req.body || {};
     const nickname = String(b.nickname || '').trim(); const title = String(b.title || '').trim(); const detail = String(b.detail || '').trim();
-    const ratings = db().prepare('SELECT id, code FROM ratings WHERE coalesce(is_active, 1) = 1').all();
+    const ratings = db().prepare("SELECT id, code FROM ratings WHERE coalesce(is_active, 1) = 1 AND code = 'Rating'").all(); // storefront ratings (catalog.js)
     const votes = [];
     for (const r of ratings) {
       const v = +(b[`ratings[${r.id}]`] ?? (b.ratings && b.ratings[r.id]) ?? 0);

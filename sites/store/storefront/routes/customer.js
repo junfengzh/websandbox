@@ -140,7 +140,7 @@ module.exports = async function customerRoutes(app, kit) {
   });
   app.get('/customer/address/index', { config: LOGIN }, async (req, reply) => reply.redirect('/customer/address/'));
   const addrForm = (req, reply, a, errors = {}, status) => {
-    const countries = db().prepare('SELECT id, name FROM countries ORDER BY name').all();
+    const countries = db().prepare("SELECT id, name FROM countries WHERE coalesce(name, '') <> '' ORDER BY name").all();
     const regions = db().prepare('SELECT id, country_id, code, name FROM regions ORDER BY country_id, name').all();
     return reply.render('customer/address_form', { title: a && a.id ? 'Edit Address' : 'Add New Address', a: a || { country_id: 'US', firstname: req.user.firstname, lastname: req.user.lastname }, countries, regions, errors, nav: 'address',
       isDefaultBilling: a && a.id && a.id === req.user.default_billing_id, isDefaultShipping: a && a.id && a.id === req.user.default_shipping_id }, status);
