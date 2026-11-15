@@ -11,7 +11,7 @@ same kinds of features and the same underlying data, without the original
 stacks (Magento, Postmill, GitLab, Kiwix, OpenStreetMap). All 812 WebArena
 tasks are converted to them and verified, and a task generator adds many more.
 
-Status: early -- see [docs/PLAN.md](docs/PLAN.md). Nothing is built yet.
+Status: all five sites built; 807 of the 812 WebArena tasks verified (5 dropped) plus 12,283 generated tasks, re-graded and split template-disjoint into train / held-out -- see [docs/STATUS.md](docs/STATUS.md) and [docs/PLAN.md](docs/PLAN.md).
 
 ## Layout (planned)
 

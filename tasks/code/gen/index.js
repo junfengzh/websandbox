@@ -42,6 +42,7 @@ for (const m of MODULES) {
       n++;
       task.task_id = `${t.id}-${String(n).padStart(3, '0')}`;
       task.status = VERIFIED.has(t.id) ? 'verified' : 'unverified';
+      if (t.regradeNote) task.changes = [t.regradeNote];
       lines.push(task);
     }
     stats.push({ template: t.id, kind: t.kind, candidates: insts.length, tasks: n, ms: Date.now() - t0 });

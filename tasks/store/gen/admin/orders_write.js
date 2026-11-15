@@ -55,6 +55,7 @@ const invoice = {
 const CARRIERS = { ups: 'United Parcel Service (UPS)', usps: 'United States Postal Service (USPS)', fedex: 'Federal Express', dhl: 'DHL' };
 const shipItem = {
   id: 'gen-admin-order-ship-one-item', site: 'shopping_admin', kind: 'write', skills: ['search', 'form-edit', 'create', 'multi-step'], difficulty: 3, cap: 40,
+  regradeNote: 'regrade 2026-11-15: orders that already have a shipment in the base data (no Ship button; their items are shipped) are no longer sampled; the template was re-sampled.',
   phrasings: [
     'Ship only "{{item}}" from order #{{order}} for now (the other items stay unshipped), with {{carrier}} tracking number {{track}}.',
     'Create a partial shipment for order {{order}} containing just "{{item}}" and add the {{carrier}} tracking number {{track}}.',
@@ -68,6 +69,8 @@ const shipItem = {
         const c = r.pick(Object.keys(CARRIERS));
         const track = `${c === 'ups' ? '1Z' : ''}${String(100000000 + r.int(899999999))}${r.int(10)}`;
         const SH = `(SELECT id FROM shipments WHERE order_id = ${o.id} ORDER BY id DESC LIMIT 1)`;
+        // orders that already have a shipment (base data) cannot be shipped item by item (regrade 2026-11-15)
+        if (L.all('SELECT 1 FROM shipments WHERE order_id = ?', o.id).length) continue;
         out.push({ slots: { item: L.plain(it.name), order: o.increment_id, carrier: CARRIERS[c], track }, login_user: ADMIN,
           eval: { type: 'state', state_sql: [
             `SELECT count(*) FROM shipments WHERE order_id = ${o.id}`,

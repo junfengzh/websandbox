@@ -17,8 +17,9 @@ module.exports = [
     *generate(r) {
       for (const p of r.sample(L.posts(), 400)) {
         yield { slots: { title: p.title }, login_user: L.loginFor(r, [p.username]),
-          eval: answer([p.username, p.forum], `SELECT u.username, f.name FROM submissions s JOIN users u ON u.id = s.user_id JOIN forums f ON f.id = s.forum_id WHERE s.id = ${p.id}`),
-          changes: [`reference: submission ${p.id}`] };
+          // two rows (the grader reads the first column of each row)
+          eval: answer([p.username, p.forum], `SELECT u.username FROM submissions s JOIN users u ON u.id = s.user_id WHERE s.id = ${p.id} UNION ALL SELECT f.name FROM submissions s JOIN forums f ON f.id = s.forum_id WHERE s.id = ${p.id}`),
+          changes: [`reference: submission ${p.id}`, 'regrade 2026-11-15: answer_sql returns the username and the forum as two rows (it returned one row with two columns, so the drift check saw only the username)'] };
       }
     },
   },

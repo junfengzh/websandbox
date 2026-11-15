@@ -1,0 +1,1625 @@
+{
+"seed": 20261115,
+"templates": {
+"gen-admin-bestseller-units": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-admin-cancel-customer-pending": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-cart-rule-coupon": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-catalog-rule": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-category-assign": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-admin-category-create": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-admin-category-product-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-cms-page-create": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-customer-address-default": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-admin-customer-biggest-order": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-customer-dob-gender": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-customer-field": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-customer-group": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-customer-lookup": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-customer-order-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-invoice-then-refund-item": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-admin-mass-disable-brand": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-mass-price-adjust": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-order-hold-comment": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-order-invoice": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-order-ship-one-item": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-order-view-field": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-orders-report-month": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-orders-status-daterange": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-product-attribute": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-admin-product-grid-count": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-admin-product-links": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-product-seo": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-product-visibility": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-product-weight-country": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-review-status": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-reviews-by-nickname": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-search-term-redirect": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-search-term-stats": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-special-price": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-top-customer-period": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-admin-variant-disable": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-assign-most-commented": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-author-commit": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-branch-edit-mr": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-code-branch-from-tag": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-branch-latest-commit": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-close-issue-comment": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-commit-stats": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-contributor-lines": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-create-file": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-create-issue-full": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-create-label": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-code-create-tag": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-default-branch-head": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-code-delete-merged-branch": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-edit-file-replace": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-explore-stars-filter": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-file-line": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-issue-detail": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-code-issue-filter-count": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-code-issue-milestone-due": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-issue-most-comments": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-code-issue-relabel": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-member-manage": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-milestone-edit": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-milestone-progress": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-mr-branches": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-mr-changes": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-mr-request-review": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-code-mr-reviewer-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-package-json": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-path-history": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-code-profile-edit": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-project-settings": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-readme-heading": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-ref-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-reopen-latest-closed": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-star-user-projects": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-tag-commit": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-user-profile-field": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-code-user-projects-extreme": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-bio-top-forum": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-forum-category-largest-forum": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-compare-karma": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-forum-create-forum-with-post": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-create-link-post": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-create-text-post": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-crosspost-top-link": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-delete-own-comment": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-downvote-user-comments": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-edit-own-comment": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-edit-own-post-title": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-message-post-author": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-mod-add-moderator": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-mod-ban-author": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-mod-forum-category": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-mod-lock-post": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-mod-pin-post": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-mod-remove-lowest-comment": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-forum-most-active-title": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-most-commented-title": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-newest-post-comments": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-nth-newest-title": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-forum-nth-top-score": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-parent-comment-author": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-preferences": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-reply-quoting-title": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-reply-user-latest-comment": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-forum-search-comment-phrase": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-forum-search-post-forum-author": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-search-top-in-forum": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-forum-subscribe-category": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-thread-user-comment-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-top-comment-author": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-top-level-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-top-link-domain": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-top-post-author": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-upvote-top-comment": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-forum-user-forum-post-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-user-latest-comment-post": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-forum-user-top-forum": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-bike-time": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-closest-of-n": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-compare-destinations": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-compare-modes": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-count-within-radius": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-directions-from-coords": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-directions-show": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-map-directions-to-nearest": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-map-drive-distance": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-drive-time": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-mode-difference": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-map-multi-leg-trip": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-nearest-category": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-nearest-category-distance": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-nearest-walk-time": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-map-open-nearest-place": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-open-place": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-open-place-by-address": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-peak-elevation": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-map-place-address": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-place-area": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-place-category": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-place-coords": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-place-cuisine": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-place-hours": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-map-place-phone": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-place-postcode": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-place-website": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-reverse-place": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-reverse-postcode": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-reverse-street": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-map-route-first-street": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-search-category-near": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-walk-distance": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-map-walk-time": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-account-name-newsletter": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-address-field": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-address-new-default": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-brand-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-brand-price-extreme": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-buy-cheapest-rated": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-cart-add-options": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-cart-add-variant": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-cart-coupon": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-cart-edit": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-checkout-new-address": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-shopping-compare-pair": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-guest-order-lookup": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-shopping-largest-order-in-month": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-luma-color-size-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-order-field": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-shopping-orders-by-status": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-shopping-price-band-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-priciest-under-budget": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-product-spec": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-rating-summary": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-reorder-biggest": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-review-histogram": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-review-ordered-item": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-search-add-cheapest": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-search-sorted-nth": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-units-bought": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-variant-options": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-shopping-wishlist-from-order": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-shopping-wishlist-most-reviewed": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-wiki-chain-almamater-founded": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-chain-county-seat": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-chain-director-birthplace": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-wiki-chain-team-venue-capacity": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-commune-department": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-compare-birth": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-wiki-compare-capacity": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-wiki-compare-population": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-country-capital": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-elevation": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-film-director": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-film-runtime": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-geo-length": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-nav-infobox-link": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-wiki-nav-section": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-org-founded-year": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-org-headquarters": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-wiki-person-alma-mater": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-wiki-person-birth-date": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-person-birthplace": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-person-death-age": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-redirect-nav": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-redirect-target": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-section-count-subs": {
+"split": "heldout",
+"why": "gen-draw"
+},
+"gen-wiki-section-first-sub": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-settlement-area": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-settlement-mayor": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-settlement-population": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-table-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-table-extreme": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-table-lookup": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-team-coach": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-venue-capacity": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-whatlinkshere-count": {
+"split": "train",
+"why": "gen-draw"
+},
+"gen-wiki-whatlinkshere-which": {
+"split": "train",
+"why": "gen-draw"
+},
+"wa-t1002": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t101": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t11": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t116": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t117": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t12": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t120": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t13": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t134": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t135": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t1355": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t1356": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t136": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t137": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t138": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t139": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t145": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t147": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t15": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t151": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t1510": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t153": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t154": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t155": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t156": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t159": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t16": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t160": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t161": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t162": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t163": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t165": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t169": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t17": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t171": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t172": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t180": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t182": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t186": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t189": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t19": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t191": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t193": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t194": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t196": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t197": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t199": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t204": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t206": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t207": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t208": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t210": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t2100": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t211": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t212": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t213": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t214": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t216": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t22": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t222": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t23": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t234": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t237": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t24": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t240": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t241": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t242": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t243": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t244": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t245": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t246": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t247": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t248": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t249": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t25": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t250": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t251": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t252": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t253": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t255": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t256": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t257": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t258": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t266": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t268": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t27": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t270": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t271": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t274": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t275": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t276": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t277": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t279": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t280": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t284": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t285": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t287": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t288": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t289": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t290": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t291": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t292": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t293": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t294": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t298": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t299": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t300": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t303": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t308": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t310": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t312": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t316": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t320": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t321": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t322": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t323": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t324": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t325": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t327": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t328": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t329": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t33": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t330": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t331": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t332": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t335": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t337": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t339": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t348": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t349": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t35": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t351": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t352": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t354": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t355": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t36": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t360": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t361": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t364": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t366": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t367": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t368": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t370": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t371": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t3765": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t39": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t4": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t41": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t42": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t46": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t47": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t49": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t5": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t500": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t501": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t51": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t52": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t54": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t58": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t59": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t6": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t600": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t6100": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t64": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t65": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t66": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t666": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t67": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t68": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t69": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t7": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t70": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t72": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t73": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t742": {
+"split": "heldout",
+"why": "old-heldout"
+},
+"wa-t75": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t77": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t78": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t781": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t782": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t79": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t84": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t85": {
+"split": "heldout",
+"why": "new-draw"
+},
+"wa-t87": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t88": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t9": {
+"split": "train",
+"why": "old-train"
+},
+"wa-t94": {
+"split": "train",
+"why": "new-draw"
+},
+"wa-t999": {
+"split": "train",
+"why": "old-train"
+}
+}
+}

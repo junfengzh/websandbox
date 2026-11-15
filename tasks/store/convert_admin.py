@@ -296,9 +296,10 @@ for tid, pid in [(453, 78), (454, 478), (455, 676), (456, 1840), (457, 1819)]:
 
 # ---- 247 price of this product
 for tid, pid, price in [(458, 1481, 27.00), (459, 237, 62.10), (460, 418, 38.25), (461, 721, 29.50), (462, 710, 19.80), (463, 996, 36.80)]:
-    task(tid, start=f'/admin/catalog/product/edit/id/{pid}/',
+    task(tid, start=f'/catalog/product/edit/id/{pid}/',
          eval={'type': 'state', 'state_sql': f'SELECT round(price, 2) FROM products WHERE id = {pid}', 'state_expect': price},
-         changes=[f'program_html (product[price]) -> products.price = {price:.2f}.'])
+         changes=[f'program_html (product[price]) -> products.price = {price:.2f}.',
+                  'regrade 2026-11-15: start_url fixed (it was /admin/admin/catalog/..., a 404 page; now the product\'s edit page /admin/catalog/product/edit/id/' + str(pid) + '/).'])
 
 # ---- 251 product description quoting positive reviews (storefront product page shows the description)
 
@@ -313,7 +314,9 @@ task(464, eval={'type': 'state', 'state_sql': desc_has(1796, ['This is in regula
 task(543, eval={'type': 'state', 'state_sql': desc_has(1684, ["Good choice for working out and stylin' enough to wear when I'm hanging with friends on hot days", 'Also washes really well', 'Always a sweet n sporty look for the gym', "Keeps me cool and the seams don't rub up against me like some of my other tanks"]), 'state_expect': 1},
      changes=['program_html -> products.description of Bella Tank (1684) contains every quote.'])
 task(544, eval={'type': 'state', 'state_sql': desc_has(1108, ['I was super cold and it did the job.', 'The sleeves are definitely thicker than you realize, which is a good thing', 'really quite substantial', 'planning on buying another one of these in another color', 'the best hoodie ive ever owned']), 'state_expect': 1},
-     changes=['program_html -> products.description of Selene Yoga Hoodie (1108) contains every quote.'])
+     intent='Update the description of Selene Yoga Hoodie to highlight the real user positive reviews by quoting the comments',
+     changes=['program_html -> products.description of Selene Yoga Hoodie (1108) contains every quote.',
+              'regrade 2026-11-15: intent typo "Selena" -> "Selene" (the product is Selene Yoga Hoodie; a search for "Selena" finds nothing).'])
 task(545, eval={'type': 'state', 'state_sql': desc_has(1556, ['What I rally love here is that it does the job of keeping me cool and dry', "I'm a big guy and sweat A LOT", "Even after a day of gulf, I'm still dry and comfortable", 'What a versatile shirt', 'Not only does it feel very soft compared to my old worn out polos, but it also does the job promised', 'I like going out after my game', "drinks so I look good then too and don't need to change into something fresh"]), 'state_expect': 1},
      changes=['program_html -> products.description of Radiant Tee (1556) contains every quote. The last WebArena quote was split around "game for": review 282 reads "after my gamefor drinks", so a verbatim quote failed the original check.'])
 task(546, eval={'type': 'state', 'state_sql': desc_has(1668, ['Comfy though', 'I did like it in the end']), 'state_expect': 1},
@@ -424,7 +427,7 @@ def new_product_state(name, price, qty, set_name, size_id, color_id, cats):
     if size_id:
         sqls.append(f"SELECT size_option_id FROM products WHERE id = {p}"); exps.append(size_id)
     sqls.append(f"SELECT color_option_id FROM products WHERE id = {p}"); exps.append(color_id)
-    sqls.append(f"SELECT count(*) FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = {p} AND c.id IN ({', '.join(str(c) for c in cats)})")
+    sqls.append(f"SELECT count(*) FROM product_categories pc JOIN categories c ON c.id = pc.category_id WHERE pc.product_id = {p} AND (c.id IN ({', '.join(str(c) for c in cats)}) OR c.parent_id IN ({', '.join(str(c) for c in cats)}))")
     exps.append({'min': 1})
     return sqls, exps
 
@@ -433,12 +436,15 @@ for tid, name, price, qty, set_name, size_id, color_id, cats, catname in [
     (694, 'Energy-Bulk Women Shirt', 60.00, 50, 'Top', 167, 50, [21, 12], 'Tops (Women or Men)'),
     (695, 'Energy-Bulk Man Yoga Pant', 69.99, 50, 'Bottom', 179, 60, [13, 22], 'Bottoms (Men or Women)'),
     (696, 'FancyBoy Man Causal Jeans', 169.99, 42, 'Bottom', 177, 50, [13, 22], 'Bottoms (Men or Women)'),
-    (697, 'Swaatch Smart Watch', 769.99, 42, 'Gear', None, 50, [6], 'Gear > Watches'),
-    (698, 'Lelelumon Yoga Mat', 769.99, 42, 'Gear', None, 49, [5], 'Gear > Fitness Equipment')]:
+    (697, 'Swaatch Smart Watch', 769.99, 42, 'Gear', None, 50, [3, 6], 'Gear or Gear > Watches'),
+    (698, 'Lelelumon Yoga Mat', 769.99, 42, 'Gear', None, 49, [3, 5], 'Gear or Gear > Fitness Equipment')]:
     s, e = new_product_state(name, price, qty, set_name, size_id, color_id, cats)
     task(tid, eval={'type': 'state', 'state_sql': s, 'state_expect': e},
          changes=[f'url_match (/catalog/product) + program_html (fields of the saved product) -> state of the new product named "{name}": simple, price {price:.2f}, qty {qty}, in stock, attribute set {set_name}'
-                  + (f', size option {size_id}' if size_id else '') + f', color option {color_id}, category {catname}. The URL check was dropped (the state check covers it).'])
+                  + (f', size option {size_id}' if size_id else '') + f', color option {color_id}, category {catname}. The URL check was dropped (the state check covers it).',
+                  'regrade 2026-11-15: the category check also accepts the subcategories of the accepted categories (e.g. Men > Bottoms > Pants'
+                  + (', and Gear itself' if set_name == 'Gear' else '') + '): WebArena checked only that the chosen category\'s label contains "'
+                  + set_name.lower() + '", and a subcategory is a natural pick.'])
 
 # ---- 258 cart price rule
 ALL_GROUPS = "(','||replace(customer_group_ids,' ','')||',') LIKE '%,0,%' AND (','||replace(customer_group_ids,' ','')||',') LIKE '%,1,%' AND (','||replace(customer_group_ids,' ','')||',') LIKE '%,2,%' AND (','||replace(customer_group_ids,' ','')||',') LIKE '%,3,%'"
@@ -532,7 +538,8 @@ for tid, pids, price, note in [
     if tid == 782:
         T[tid]['intent'] = 'Increase the price of all blue running tshirts of the Luma Apparel department in extra small and small sizes by 23%'
         T[tid]['changes'].append('Scoped to the Luma Apparel department: the merged store has many shop running t-shirts (sizes/colors as custom options, not variants).')
-T[780]['start'] = '/admin/catalog/product/edit/id/1481/'
+T[780]['start'] = '/catalog/product/edit/id/1481/'
+T[780].setdefault('changes', []).append('regrade 2026-11-15: start_url fixed (it was /admin/admin/catalog/..., a 404 page).')
 
 
 def lite_start(url):

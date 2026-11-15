@@ -90,7 +90,7 @@ async function selfCheck(task) {
           start_url: c.start_url || (site === 'shopping' ? '__SHOPPING__/' : '__SHOPPING_ADMIN__/admin'),
           require_login: c.login_user != null, login_user: c.login_user ?? null,
           eval: c.eval, source: 'generated', template: t.id, kind: t.kind, skills: t.skills,
-          difficulty: c.difficulty || t.difficulty, changes: [], status: VERIFIED.has(t.id) ? 'verified' : 'unverified', drop_reason: null,
+          difficulty: c.difficulty || t.difficulty, changes: t.regradeNote ? [t.regradeNote] : [], status: VERIFIED.has(t.id) ? 'verified' : 'unverified', drop_reason: null,
         };
         if (!a['no-check']) {
           const probs = await selfCheck({ ...task, wrong_answer: c.wrong_answer });

@@ -308,15 +308,18 @@ def convert(t):
     elif tpl == 327:  # create issue with assignee + due date
         proj, who, due = ISSUE327[tid]
         title = ev0['program_html'][0]['required_contents']['exact_match']
-        ev = {'type': 'state', 'state_sql': (
+        ev = {'type': ['url', 'state'], 'url': f'__GITLAB__/{proj}/-/issues', 'url_match': 'prefix', 'state_sql': (
             f"SELECT (lower(trim(i.title)) = lower({lit(title)}) AND i.due_date = {lit(due)} AND EXISTS (SELECT 1 FROM issue_assignees a "
             f"WHERE a.issue_id = i.id AND a.user_id = {uid(who)})) AS ok, i.iid, i.title, i.due_date FROM issues i WHERE i.project_id = "
             f"{pid(proj)} AND i.author_id = {uid(ME)} AND i.created_at >= {lit(NEW)} ORDER BY i.id DESC LIMIT 1"), 'state_expect': 1}
         changes.append(f'Issue page title/due date/assignee checks -> SQL: byteblaze\'s newest new issue in {proj} has the title '
-                       f'(trimmed, case-insensitive), due_date {due} and @{who} among its assignees. The url_match on the issue '
-                       'list ("GOLD in PRED") is dropped: the SQL check covers it.')
+                       f'(trimmed, case-insensitive), due_date {due} and @{who} among its assignees.')
+        changes.append('regrade 2026-11-15: WebArena\'s url_match ("GOLD in PRED") restored as url_match \'prefix\' (the final URL '
+                       f'is the issue list /{proj}/-/issues or below it, e.g. the new issue\'s page); it had been dropped while the '
+                       'kit grader had no prefix mode.')
         if tid == 660:
-            changes.append('WebArena\'s reference_url was the repository tree (/byteblaze/dotfiles/-/tree/main), not an issue page.')
+            changes.append('WebArena\'s reference_url was the repository tree (/byteblaze/dotfiles/-/tree/main), not an issue page; '
+                           'the restored url check uses the issue list /byteblaze/dotfiles/-/issues.')
     elif tpl == 328:  # open an issue mentioning X
         if tid == 789:
             ev = {'type': 'answer', 'answer': {'fuzzy': 'N/A'}}
@@ -325,12 +328,13 @@ def convert(t):
             proj = ISSUE328[tid]
             needle = ev0['program_html'][0]['required_contents']['must_include'][0]
             text = "i.title || ' ' || coalesce(i.description, '')"
-            ev = {'type': 'state', 'state_sql': (
+            ev = {'type': ['url', 'state'], 'url': f'__GITLAB__/{proj}/-/issues', 'url_match': 'prefix', 'state_sql': (
                 f"SELECT ({ci_has(text, needle)}) AS ok, i.iid, i.title FROM issues i WHERE i.project_id = {pid(proj)} AND i.author_id = "
                 f"{uid(ME)} AND i.created_at >= {lit(NEW)} ORDER BY i.id DESC LIMIT 1"), 'state_expect': 1}
             changes.append(f'.detail-page-description (title + description in GitLab 15.7) must_include "{needle}" -> SQL: '
-                           f'byteblaze\'s newest new issue in {proj} contains it in title or description (case-insensitive). '
-                           'url_match on the issue list dropped (covered by the SQL check).')
+                           f'byteblaze\'s newest new issue in {proj} contains it in title or description (case-insensitive).')
+            changes.append('regrade 2026-11-15: WebArena\'s url_match ("GOLD in PRED") restored as url_match \'prefix\' '
+                           f'(final URL at or below /{proj}/-/issues); it had been dropped while the kit grader had no prefix mode.')
     elif tpl == 329:
         proj = CLONE[tid]
         sql = f"SELECT 'git clone ' || (SELECT value FROM site_settings WHERE key = 'ssh_clone_prefix') || full_path || '.git' FROM projects WHERE id = {pid(proj)}"

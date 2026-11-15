@@ -197,8 +197,16 @@ const assignToAuthor = {
   },
 };
 
+// Open MRs whose page the site cannot render (regrade 2026-11-15): gcc-mirror/gcc MRs whose merge base is cut
+// off by the truncated history return HTTP 500 (mergeability() -> getCommit(base) is null), and
+// processwire/processwire!247 takes > 2 min (rev-list). Skipped until the site handles them.
+const BROKEN_MR_PAGES = new Set(['gcc-mirror/gcc!13', 'gcc-mirror/gcc!15', 'gcc-mirror/gcc!17', 'gcc-mirror/gcc!21', 'gcc-mirror/gcc!22',
+  'gcc-mirror/gcc!29', 'gcc-mirror/gcc!33', 'gcc-mirror/gcc!48', 'gcc-mirror/gcc!49', 'gcc-mirror/gcc!51', 'gcc-mirror/gcc!65',
+  'gcc-mirror/gcc!67', 'gcc-mirror/gcc!75', 'processwire/processwire!247']);
+
 const requestReview = {
   id: 'gen-code-mr-request-review', kind: 'write', skills: ['search', 'form-edit'], difficulty: 2, cap: 60,
+  regradeNote: 'regrade 2026-11-15: open MRs whose page the site cannot render (13 gcc-mirror/gcc MRs -> HTTP 500, processwire/processwire!247 > 2 min) are no longer sampled; the template was re-sampled.',
   phrasings: [
     'Request a review from {user} on the merge request "{title}" in {repo}.',
     'In {repo}, add {user} as a reviewer of merge request !{iid}.',
@@ -217,6 +225,7 @@ const requestReview = {
       const pool = people.length ? people : db.prepare(`SELECT username, name FROM users WHERE username IN ('abisubramanya27', 'yjlou', 'Roshanjossey', 'lahwaacz', 'koush') ORDER BY username`).all();
       for (const m of rand.sample(mrs, 2)) {
         const u = rand.pick(pool);
+        if (BROKEN_MR_PAGES.has(`${p.full_path}!${m.iid}`)) continue;
         if (db.prepare('SELECT 1 FROM mr_reviewers WHERE merge_request_id = ? AND user_id = (SELECT id FROM users WHERE username = ?)').get(m.id, u.username)) continue;
         out.push({ vars: { repo: p.full_path, iid: String(m.iid), title: m.title, user: userLabel(u) }, login, start: '/' + p.full_path,
           eval: { type: 'state', state_sql: `SELECT count(*) FROM mr_reviewers WHERE merge_request_id = (SELECT id FROM merge_requests WHERE project_id = ${pid(p.full_path)} AND iid = ${m.iid}) AND user_id = ${uid(u.username)}`, state_expect: 1 } });

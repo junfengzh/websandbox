@@ -368,26 +368,25 @@ def convert(t):
                        'became a member (byteblaze is not a member of kkroening/ffmpeg-python; the site refuses with 403).')
     elif tpl == 339:  # milestones
         proj, kw, start, due = MILESTONE[tid]
-        ev = {'type': 'state',
+        ev = {'type': ['url', 'state'], 'url': f'__GITLAB__/{proj}/-/milestones', 'url_match': 'prefix',
               'state_sql': f"SELECT count(*) FROM milestones WHERE project_id = {pid(proj)} AND created_at >= '{BASE_END}' AND "
                            f"{has_all(TD, [kw])} "
                            f"AND start_date = '{start}' AND due_date = '{due}'",
               'state_expect': {'min': 1}}
         changes.append(f'program_html on the new milestone page -> SQL: a new milestone of {proj} whose title/description '
-                       f'contains "{kw}" with start {start} and due {due}. WebArena\'s url_match ("GOLD in PRED": the final '
-                       'URL is under /-/milestones) is dropped -- the kit grader has no prefix mode and the state check '
-                       'already pins the project.')
+                       f'contains "{kw}" with start {start} and due {due}.')
+        changes.append(f"regrade 2026-11-15: WebArena's url_match (\"GOLD in PRED\") restored as url_match 'prefix' (final URL at or below /{proj}/-/milestones); it had been dropped while the kit grader had no prefix mode.")
     elif tpl == 335:  # new MR with reviewers
         proj, src, dst, revs = NEW_MR[tid]
-        ev = {'type': 'state',
+        ev = {'type': ['url', 'state'], 'url': f'__GITLAB__/{proj}/-/merge_requests', 'url_match': 'prefix',
               'state_sql': f"SELECT count(*) FROM merge_requests m WHERE m.project_id = {pid(proj)} AND m.source_project_id = m.project_id "
                            f"AND m.state = 'opened' AND m.source_branch = "
                            f"{lit(src)} AND m.target_branch = {lit(dst)} AND (SELECT count(*) FROM mr_reviewers r WHERE "
                            f"r.merge_request_id = m.id AND r.user_id IN {ulist(revs)}) = {len(revs)}",
               'state_expect': {'min': 1}}
         changes.append(f'program_html on the MR page (source/target branch, reviewer block) -> SQL: an open MR in '
-                       f'{proj} from {src} into {dst} with reviewer(s) {", ".join(revs)}. url_match ("GOLD in PRED", under '
-                       '/-/merge_requests) dropped as for the milestone tasks.')
+                       f'{proj} from {src} into {dst} with reviewer(s) {", ".join(revs)}.')
+        changes.append(f"regrade 2026-11-15: WebArena's url_match (\"GOLD in PRED\") restored as url_match 'prefix' (final URL at or below /{proj}/-/merge_requests); it had been dropped while the kit grader had no prefix mode.")
         if tid in (805, 807):
             changes.append({805: 'a11yproject.com!1141 (esjay) is already open from feature/replace-gulp into main', 807: 'primer/design!390 '
                             '(colebemis) is already open from debug-build-time into main'}[tid] + '; GitLab refuses a second open MR for the '
@@ -402,13 +401,13 @@ def convert(t):
                            '"upgrade node version to allow use of template strings"); Roshan = Roshanjossey.')
     elif tpl == 337:  # new issue
         proj, needles = NEW_ISSUE[tid]
-        ev = {'type': 'state',
+        ev = {'type': ['url', 'state'], 'url': f'__GITLAB__/{proj}/-/issues', 'url_match': 'prefix',
               'state_sql': f"SELECT count(*) FROM issues WHERE project_id = {pid(proj)} AND author_id = {ME_ID} AND created_at >= "
                            f"'{BASE_END}' AND {has_all(TD, needles)}",
               'state_expect': {'min': 1}}
         changes.append(f'program_html (.detail-page-description = title + description) -> SQL: a new issue by byteblaze in '
-                       f'{proj} whose title/description contains {", ".join(needles)} (case-insensitive). url_match dropped '
-                       '("GOLD in PRED", under /-/issues).')
+                       f'{proj} whose title/description contains {", ".join(needles)} (case-insensitive).')
+        changes.append(f"regrade 2026-11-15: WebArena's url_match (\"GOLD in PRED\") restored as url_match 'prefix' (final URL at or below /{proj}/-/issues); it had been dropped while the kit grader had no prefix mode.")
     elif tpl in (332, 2100):  # new project
         path, vis, kind, members = NEW_PROJECT[tid]
         fp = f'byteblaze/{path}'

@@ -38,9 +38,18 @@ ME_ID = uid(ME)
 BASE_END = '2023-06-13'
 
 
+NUMERIC_NEEDLES = []  # numeric needles used by the task being converted (regrade note)
+
+
 def has_all(expr, needles):
-    """SQL: expr contains every needle (case-insensitive, like WebArena's must_include)."""
-    return ' AND '.join(f'instr(lower({expr}), lower({lit(n)})) > 0' for n in needles) or '1'
+    """SQL: expr contains every needle (case-insensitive, like WebArena's must_include). A plain
+    number needle is matched with thousands separators removed ("$1,000" contains 1000)."""
+    def one(n):
+        if re.fullmatch(r'\d+', str(n)):
+            NUMERIC_NEEDLES.append(n)
+            return f"instr(replace(lower({expr}), ',', ''), {lit(n)}) > 0"
+        return f'instr(lower({expr}), lower({lit(n)})) > 0'
+    return ' AND '.join(one(n) for n in needles) or '1'
 
 
 def latest_new_post(forums, needles):
@@ -98,6 +107,7 @@ def convert(t):
     tpl = t['intent_template_id']
     intent = t['intent']
     changes = []
+    NUMERIC_NEEDLES.clear()
     out = {
         'task_id': tid, 'site': 'forum', 'intent': intent, 'intent_template': t['intent_template'],
         'intent_template_id': tpl, 'instantiation_dict': t.get('instantiation_dict'),
@@ -221,6 +231,9 @@ def convert(t):
 
     if tid in FIXES and not any(FIXES[tid] == c for c in changes):
         changes.append(FIXES[tid])
+    if NUMERIC_NEEDLES:
+        changes.append('regrade 2026-11-15: number needles (' + ', '.join(sorted(set(map(str, NUMERIC_NEEDLES)))) + ') are matched '
+                       'with thousands separators removed, so "$1,000" counts as 1000.')
     out['eval'] = ev
     out['changes'] = changes
     out['status'] = 'verified'

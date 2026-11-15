@@ -22,6 +22,9 @@ const PREFS = [
   { key: 'timezone', val: 'UTC', say: ['set my time zone to UTC'] },
 ];
 const LEADS = ['Most of my posts are in', 'I mostly post in', 'You can usually find me in', 'My favorite forum is'];
+// whole-word, case-insensitive contains: punctuation and slashes count as spaces
+const word = (col, w) => `instr(' ' || ${["'.'", "','", "'!'", "'?'", "';'", "':'", "'\"'", "'('", "')'", "'/'"].reduce((e, ch) => `replace(${e}, ${ch}, ' ')`, `lower(${col})`)} || ' ', ${L.lit(' ' + w.toLowerCase() + ' ')}) > 0`;
+
 const COLS = ['front_page', 'front_page_sort_mode', 'night_mode', 'show_thumbnails', 'open_external_links_in_new_tab', 'notify_on_reply', 'notify_on_mentions', 'allow_private_messages', 'timezone'];
 
 module.exports = [
@@ -41,8 +44,9 @@ module.exports = [
         if (others.some((o) => o.includes(top) || top.includes(o))) continue; // substring-safe check
         const lead = r.pick(LEADS);
         yield { slots: { lead }, login_user: u.username,
-          eval: state(`SELECT (${L.ci("coalesce(biography, '')", lead)} AND ${L.ci("coalesce(biography, '')", top)}${others.map((o) => ` AND NOT ${L.ci("coalesce(biography, '')", o)}`).join('')}) AS ok, biography FROM users WHERE id = ${uid(u.username)}`, 1),
-          changes: [`answer forum: ${bf[0].name}; per forum ${bf.map((x) => `${x.name} ${x.n}`).join(', ')}; the bio must not name the user's other forums`] };
+          eval: state(`SELECT (${L.ci("coalesce(biography, '')", lead)} AND ${L.ci("coalesce(biography, '')", top)}${others.map((o) => ` AND NOT ${word("coalesce(biography, '')", o)}`).join('')}) AS ok, biography FROM users WHERE id = ${uid(u.username)}`, 1),
+          changes: [`answer forum: ${bf[0].name}; per forum ${bf.map((x) => `${x.name} ${x.n}`).join(', ')}; the bio must not name the user's other forums`,
+            'regrade 2026-11-15: the other forums are matched as whole words (a bio with "start" no longer counts as naming /f/art)'] };
       }
     },
   },
