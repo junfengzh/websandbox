@@ -1,0 +1,22 @@
+# websandbox demo container (deploy/README.md). Also works with plain `docker compose up -d`.
+services:
+  websandbox:
+    image: websandbox:latest
+    pull_policy: always
+    restart: unless-stopped
+    init: true
+    environment:
+      WSB_REF: main                       # git branch / tag / commit of github.com/junfengzh/websandbox
+      WSB_HF_REV: main                    # revision of the HF dataset junfengzhou/websandbox
+      WSB_DOMAIN: websandbox.pystem.com   # landing host; sites on shop./forum./code./wiki./map.<domain>
+      WSB_RESET_MINUTES: "60"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./srv:/srv    # repo/ (+ node_modules), data/ (~29 GB), state/ (control token, site logs)
+    shm_size: 512m                        # per-tenant upload dirs (/dev/shm/wsb-*), emptied by every reset
+    mem_limit: 7g
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: "5" }

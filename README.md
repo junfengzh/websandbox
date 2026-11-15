@@ -39,6 +39,8 @@ zstd -dc data/map/static.tar.zst | tar -x -C data/map
 tasks/tools/sites.sh up --data-root data     # all five sites; `sites.sh urls` prints them
 ```
 
+Public demo (one copy of each site, reset hourly): https://websandbox.pystem.com -- deployment in [deploy/](deploy/README.md).
+
 ## Licence
 
 Code: Apache-2.0 (see [LICENSE](LICENSE)). Data: see the dataset card; it

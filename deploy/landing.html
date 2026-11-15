@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>websandbox</title>
+<style>
+  :root { --bg: #fafaf8; --fg: #1d1d1f; --muted: #5f6368; --line: #e3e3df; --card: #fff; --accent: #2457c5; --ok: #1e8e3e; --bad: #c5221f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #141416; --fg: #ececee; --muted: #a0a4aa; --line: #2c2d31; --card: #1c1d20; --accent: #8ab4f8; --ok: #81c995; --bad: #f28b82; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 40px 16px 56px; }
+  h1 { font-size: 2rem; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.15rem; margin: 36px 0 12px; }
+  p { margin: 0 0 12px; }
+  .lede { color: var(--muted); font-size: 1.05rem; max-width: 46em; }
+  a { color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .card h3 { margin: 0 0 4px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+  .card h3 a { text-decoration: none; }
+  .card p { color: var(--muted); font-size: .93rem; margin: 0 0 10px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .dot.ok { background: var(--ok); } .dot.down { background: var(--bad); }
+  .login { font-size: .88rem; border-top: 1px solid var(--line); padding-top: 8px; }
+  .login div { display: flex; gap: 6px; flex-wrap: wrap; }
+  .login span { color: var(--muted); min-width: 4.6em; }
+  code { font: .88em ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(127,127,127,.13); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  .note { border-left: 3px solid var(--accent); padding: 8px 14px; background: var(--card); border-radius: 0 8px 8px 0; }
+  footer { margin-top: 40px; color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>websandbox</h1>
+  <p class="lede">Lightweight, self-hostable websites for training and evaluating web agents: a store with its
+  back office, a forum, a code-hosting site, a Wikipedia and a map. They are rebuilt from the
+  <a href="https://webarena.dev">WebArena</a> environments with the same kinds of features and the same
+  underlying data. Each site is one SQLite database plus one small Node server that resets in milliseconds.
+  This is a public demo instance (one copy of each site).</p>
+
+  <div class="note">Everything you change here is shared with other visitors and is <strong>undone every
+  {{RESET_MIN}} minutes</strong>: all sites reset to their initial state (last reset {{LAST_RESET}}, next
+  {{NEXT_RESET}}). Please don't enter real personal data.</div>
+
+  <h2>Sites</h2>
+  <div class="grid">
+    <div class="card">
+      <h3><span class="dot {{ST_STORE}}" title="{{ST_STORE}}"></span><a href="{{URL_STORE}}/">Store</a></h3>
+      <p>Online shop (Magento-like storefront): 106k products, reviews, cart and checkout, customer accounts.</p>
+      <div class="login"><div><span>Customer</span><code>emma.lopez@gmail.com</code><code>Password.123</code></div></div>
+    </div>
+    <div class="card">
+      <h3><span class="dot {{ST_STORE}}" title="{{ST_STORE}}"></span><a href="{{URL_STORE}}/admin">Store back office</a></h3>
+      <p>The shop's admin: catalog, orders, customers, reports, CMS pages, price rules.</p>
+      <div class="login"><div><span>Admin</span><code>admin</code><code>admin1234</code></div></div>
+    </div>
+    <div class="card">
+      <h3><span class="dot {{ST_FORUM}}" title="{{ST_FORUM}}"></span><a href="{{URL_FORUM}}/">Forum</a></h3>
+      <p>Reddit-like forum (Postmill in WebArena): 95 forums, 127k submissions, 2.5M comments.</p>
+      <div class="login"><div><span>User</span><code>MarvelsGrantMan136</code><code>test1234</code></div></div>
+    </div>
+    <div class="card">
+      <h3><span class="dot {{ST_CODE}}" title="{{ST_CODE}}"></span><a href="{{URL_CODE}}/">Code</a></h3>
+      <p>GitLab-like code hosting: repositories, files and commits, issues, merge requests, groups.</p>
+      <div class="login"><div><span>User</span><code>byteblaze</code><code>hello1234</code></div></div>
+    </div>
+    <div class="card">
+      <h3><span class="dot {{ST_WIKI}}" title="{{ST_WIKI}}"></span><a href="{{URL_WIKI}}/">Wiki</a></h3>
+      <p>Wikipedia reader (Kiwix-like) over the 2022-05 English Wikipedia subset used by WebArena.</p>
+      <div class="login"><div><span>Login</span>none needed</div></div>
+    </div>
+    <div class="card">
+      <h3><span class="dot {{ST_MAP}}" title="{{ST_MAP}}"></span><a href="{{URL_MAP}}/">Map</a></h3>
+      <p>OpenStreetMap-like map of the WebArena region: vector tiles, place search, car/bike/foot directions.</p>
+      <div class="login"><div><span>Login</span>none needed</div></div>
+    </div>
+  </div>
+  <p style="margin-top:14px;color:var(--muted);font-size:.9rem">The logins are WebArena's public test accounts.</p>
+
+  <h2>Code and data</h2>
+  <p>Code (Apache-2.0): <a href="https://github.com/junfengzh/websandbox">github.com/junfengzh/websandbox</a> &mdash;
+  sites, server kit, the 812 converted WebArena tasks, generated tasks and graders. Run it yourself with
+  <code>tasks/tools/sites.sh up</code>; this deployment is <code>deploy/</code> in the repo.</p>
+  <p>Data: <a href="https://huggingface.co/datasets/junfengzhou/websandbox">huggingface.co/datasets/junfengzhou/websandbox</a>
+  (SQLite databases, map tiles and routing graph, images; ~21 GB).</p>
+
+  <footer>
+    Data derived from <a href="https://webarena.dev">WebArena</a> (Zhou et al., 2023); Wikipedia content
+    <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>; map data &copy;
+    <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>, ODbL; other sources and licences
+    on the <a href="https://huggingface.co/datasets/junfengzhou/websandbox#licences-and-attribution">dataset card</a>.
+    Not affiliated with the original sites or products. Build {{COMMIT}}.
+  </footer>
+</main>
+</body>
+</html>
