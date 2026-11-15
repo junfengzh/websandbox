@@ -203,3 +203,26 @@ should); on a fresh tenant with no answer all 93 fail or stay pending (fuzzy). N
 - Site fixes: top-bar counters were shadowed by page `counts` locals ("undefined" on dashboard/tree/profile
   pages); member invites accept a user's full name (unique exact match), like GitLab's invite picker.
 - Headless Chrome: a date input takes typed `MM/DD/YYYY` (typing `YYYY-MM-DD` garbles it).
+
+## Task conversion, part b (2026-11-15)
+
+87 gitlab-only tasks outside part a's templates: [../tasks/code/webarena-b.jsonl](../tasks/code/webarena-b.jsonl)
+(`python3 -I tasks/code/convert-b.py`), evidence in [../tasks/code/verify-b.jsonl](../tasks/code/verify-b.jsonl).
+All 87 verified by a UI run (browse.js) + grade.js, none dropped; one or more negative checks per template
+(17/17, 31 in all) fail as they should; on a fresh tenant all 86 non-fuzzy tasks fail.
+
+- program_html -> SQL on: last non-system MR note (348/360), forks by `forked_from_id` (352), `temp.repo_files`
+  with whitespace-insensitive needles (355; the MIT needle spans a line break; no row = file unchanged),
+  `user_statuses` (361; "Busy" also = busy flag), `issue_assignees` (999), `users.website_url` without scheme
+  (331), `stars` on fixed top-N ids (354), `members` roles (351), new `milestones` (339), open MR + `mr_reviewers`
+  for the branch pair (335), new issues (337), projects (visibility, `template_name`, "Initial commit",
+  members; 332/2100), group namespace + members (600). WebArena's "GOLD in PRED" url checks on 335/337/339 are
+  dropped (no prefix mode in the kit grader; the state check pins the project).
+- Reference fixes: 102 URL pointed at the wrong repo; 178 / 179 references were not the latest issue with the
+  keyword in the title (179's answer Yes -> No); 181 intent ("my" issue -> issue in my repositories);
+  590-592 intent year 2023 -> 2030 (reference dates); 668/805 "master" -> "main" (no master branch).
+- 805/807: an open MR already exists for the branch pair (!1141, !390); GitLab refuses a duplicate, so the task
+  is solved by setting reviewers on that MR -- the check accepts any open MR for the pair.
+- Site fix: MRs with no changes can be created (668 redesign -> main), as in GitLab.
+- Cosmetic gaps (not needed by graders): profile shows the website with its scheme (GitLab strips it);
+  project slugs from the name are lower-cased (byteblaze/autoagi; URLs are case-insensitive anyway).
