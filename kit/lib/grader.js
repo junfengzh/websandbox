@@ -19,9 +19,18 @@ const SQL_REF = (v) => v == null || v === '$sql';
 
 function exactMatch(pred, ref) { return clean(pred) === clean(ref); }
 // must_include entries may contain " |OR| " alternatives (WebArena).
+// A reference that ends/starts with a digit must not match inside a longer number
+// ("1" is not in "10" or "2.15"), unlike WebArena's plain substring test.
+function includesRef(p, ref) {
+  if (!/\d/.test(ref)) return p.includes(ref);
+  const esc = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pre = /^\d/.test(ref) ? '(?<![\\d.]|\\d,)' : '';
+  const post = /\d$/.test(ref) ? '(?![\\d]|[.,]\\d)' : '';
+  return new RegExp(pre + esc + post).test(p);
+}
 function mustInclude(pred, refs) {
   const p = clean(pred);
-  return [].concat(refs).every((r) => String(r).split(' |OR| ').some((alt) => p.includes(clean(alt))));
+  return [].concat(refs).every((r) => String(r).split(' |OR| ').some((alt) => includesRef(p, clean(alt))));
 }
 
 // ---- URLs: host ignored (placeholders / tenant addresses vary), path normalised,
