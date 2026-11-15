@@ -226,3 +226,32 @@ All 87 verified by a UI run (browse.js) + grade.js, none dropped; one or more ne
 - Site fix: MRs with no changes can be created (668 redesign -> main), as in GitLab.
 - Cosmetic gaps (not needed by graders): profile shows the website with its scheme (GitLab strips it);
   project slugs from the name are lower-cased (byteblaze/autoagi; URLs are case-insensitive anyway).
+
+## Generated tasks (2026-11-15)
+
+Generator `tasks/code/gen/` (`node tasks/code/gen/index.js --seed 1` -> `tasks/code/generated.jsonl`, deterministic per
+seed + base.db; `node tasks/code/gen/check.js --site <fresh tenant>` bulk-checks every task: read references pass with no
+SQL drift and an empty answer fails; write tasks fail on the untouched state). 40 templates (`gen-code-*`), 2,491 tasks
+(read 1,326 / write 1,165), 117 login users (byteblaze on his repos + a11yproject (Maintainer) + primer/design
+(Developer); elsewhere the personal-namespace owner, who is Owner). Evidence: `tasks/code/verify-generated.jsonl`
+(every template: >= 2 UI runs with browse.js + grade.js, >= 1 negative).
+
+- Read templates: explore filter + star ranking, a user's projects by activity/created/stars/commits, profile fields,
+  default branch + head author, branch head commit, file line N, README section headings, package.json fields, branch /
+  tag / stale / active counts, tag -> commit title, contributors (most additions/deletions, count), path history (count,
+  last author, oldest commit), author's first/latest commit, commit added/deleted lines, issue counts with 2 filters
+  (label+label, label+milestone, label+assignee), issue detail by title, most-commented labeled issue, milestone
+  open/closed counts, MR reviewer counts, MR files / line totals, MR source branch / commit count.
+- Write templates: full issue create (labels, milestone, assignee), comment + close, reopen latest-updated closed
+  labeled issue, relabel, milestone + due date, assign the most-commented issue to its author, MR review request,
+  branch from tag, annotated tag, web-editor replace (LICENSE year or a unique phrase; exact normalised content via
+  `temp.repo_files`), new file (content + commit title), branch + edit + MR, delete a merged MR's source branch,
+  members (add with role + expiry, change role, remove), labels, milestones (close/reopen, due date), star a user's
+  projects, project settings (description, topics, visibility, feature toggles), profile fields.
+- Data facts the samplers rely on: imported issues/MRs are authored by root ("Created by: X" in the body), so
+  author questions use non-root authors only; `closed_at` / `merged_at` are NULL for imported rows (use updated_at /
+  iid order instead); no confidential issues; file-content references come from the blobs (zlib) and their
+  answer_sql returns the reference only while the branch head is unchanged; order-sensitive pairs (added vs deleted,
+  source vs target) are asked one value per task because must_include is order-free.
+- Site fixes: the profile header labels Job title / Organization / Location (they were unlabeled text); the MR
+  Changes tab "View file @ sha" link pointed at `undefined/-/blob/...`.
