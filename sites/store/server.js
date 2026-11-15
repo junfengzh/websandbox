@@ -112,9 +112,12 @@ const site = kit.site({
       if (!inAdminArea(req)) return;
       if (!req.cookies) return;
       const a = req.cookies[store.ADMIN_COOKIE];
-      if (a) req.cookies[kit_COOKIE] = a;
-      // a wsb_sid cookie counts under /admin only if it is an admin session (e.g. from /__rl/login)
-      else if (req.cookies[kit_COOKIE] && !store.isAdminSession(req.tenant, req.cookies[kit_COOKIE])) delete req.cookies[kit_COOKIE];
+      const sid = req.cookies[kit_COOKIE];
+      // a wsb_sid cookie counts under /admin only if it is an admin session (e.g. from /__rl/login); it also
+      // wins over a stale wsb_admin_sid (one whose session a tenant reset rolled back)
+      const sidIsAdmin = !!sid && store.isAdminSession(req.tenant, sid);
+      if (a && !(sidIsAdmin && !store.isAdminSession(req.tenant, a))) req.cookies[kit_COOKIE] = a;
+      else if (sid && !sidIsAdmin) delete req.cookies[kit_COOKIE];
     });
     app.addHook('onSend', async (req, reply, payload) => {
       if (!inAdminArea(req)) return payload;
