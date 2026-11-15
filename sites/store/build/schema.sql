@@ -55,6 +55,7 @@ CREATE TABLE products (
   description TEXT, short_description TEXT,
   meta_title TEXT, meta_keywords TEXT, meta_description TEXT,
   brand TEXT,                          -- denormalised display label (manufacturer/brand attribute)
+  category_names TEXT,                 -- names of the product's categories (search only; maintained by triggers)
   color TEXT, size TEXT,               -- option labels (variant axes)
   color_option_id INTEGER, size_option_id INTEGER,
   news_from TEXT, news_to TEXT, country_of_manufacture TEXT, gift_message_available INTEGER,
@@ -151,7 +152,9 @@ CREATE TABLE customers (
   id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE,
   prefix TEXT, firstname TEXT, middlename TEXT, lastname TEXT, suffix TEXT,
   dob TEXT, gender INTEGER,            -- 1 male, 2 female, 3 not specified
-  taxvat TEXT, group_id INTEGER, is_active INTEGER, password_hash TEXT,
+  taxvat TEXT, group_id INTEGER, is_active INTEGER,
+  password_hash TEXT,                  -- kit format: scrypt$ (known WebArena password) or $argon2id$ PHC
+  magento_password_hash TEXT,          -- original Magento 'hash:salt:3_32_2_67108864'
   default_billing_id INTEGER, default_shipping_id INTEGER,
   created_at TEXT, updated_at TEXT, created_in TEXT, confirmation TEXT, failures_num INTEGER,
   lock_expires TEXT, source TEXT);
@@ -323,7 +326,7 @@ CREATE TABLE themes (id INTEGER PRIMARY KEY, parent_id INTEGER, code TEXT, title
 -- ---------------------------------------------------------------- admin
 CREATE TABLE admin_users (
   id INTEGER PRIMARY KEY, username TEXT UNIQUE, firstname TEXT, lastname TEXT, email TEXT,
-  password_hash TEXT, is_active INTEGER, role_id INTEGER, created_at TEXT, updated_at TEXT,
+  password_hash TEXT, magento_password_hash TEXT, is_active INTEGER, role_id INTEGER, created_at TEXT, updated_at TEXT,
   logdate TEXT, lognum INTEGER, interface_locale TEXT);
 CREATE TABLE admin_roles (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER, role_type TEXT); -- G group(role), U user
 CREATE TABLE admin_role_rules (role_id INTEGER, resource_id TEXT, permission TEXT);

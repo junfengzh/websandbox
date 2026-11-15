@@ -14,13 +14,15 @@ VENV=$WORK/venv
 PY="$VENV/bin/python -I"
 MARIADB_IMAGE=mariadb:10.6.12      # both images run MariaDB 10.6.12 (mysql_upgrade_info)
 JOBS=${JOBS:-6}
+# WebArena's public demo accounts (customer + admin passwords are read from here, not stored in this repo)
+ACCOUNTS=${ACCOUNTS:-$(cd "$HERE/../../../.." && pwd)/3rd-party/webarena/browser_env/env_config.py}
 
 mkdir -p "$WORK" "$OUT"
 
 venv() {
   if [ ! -x "$VENV/bin/python" ]; then
     python3 -m venv "$VENV"
-    "$VENV/bin/pip" install -q pymysql==1.1.1 Pillow==12.3.0
+    "$VENV/bin/pip" install -q pymysql==1.1.1 Pillow==12.3.0 argon2-cffi==25.1.0
   fi
 }
 
@@ -58,7 +60,8 @@ step() {
     transform)
       cp "$WSB_MNT/store_admin/usr/share/zoneinfo/iso3166.tab" "$WORK/iso3166.tab"
       $PY "$HERE/transform.py" --admin "$WORK/raw_admin.db" --shop "$WORK/raw_shop.db" \
-        --out "$OUT/base.db.new" --iso3166 "$WORK/iso3166.tab"
+        --out "$OUT/base.db.new" --iso3166 "$WORK/iso3166.tab" \
+        --accounts "$ACCOUNTS"
       mv "$OUT/base.db.new" "$OUT/base.db" ;;
     images)
       $PY "$HERE/images.py" --db "$OUT/base.db" --media "$OUT/media" --jobs "$JOBS" \
@@ -68,7 +71,9 @@ step() {
       $PY "$HERE/verify.py" --db "$OUT/base.db" --admin "$WORK/raw_admin.db" --shop "$WORK/raw_shop.db" \
         --media "$OUT/media" ;;
     finalize)
-      sqlite3 "$OUT/base.db" 'pragma journal_mode=wal; vacuum;' >/dev/null ;;
+      # kit.build.finalize conventions: rollback journal (copyable single file), ANALYZE, VACUUM, integrity_check
+      sqlite3 "$OUT/base.db" 'pragma journal_mode=delete; analyze; vacuum;' >/dev/null
+      [ "$(sqlite3 "$OUT/base.db" 'pragma integrity_check')" = ok ] ;;
     cleanup)
       for n in admin shop; do
         docker rm -f "wsb-store-$n-db" >/dev/null 2>&1 || true

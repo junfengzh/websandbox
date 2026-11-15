@@ -115,10 +115,19 @@ def main():
         n = db.execute('select count(*) from (select %s from %s where %s is not null group by 1 having count(*)>1)'
                        % (c, t, c)).fetchone()[0]
         check('unique %s.%s' % (t, c), n == 0, '%d duplicates' % n)
-    n1 = db.execute('select count(*) from products').fetchone()[0]
-    n2 = db.execute('select count(*) from product_search').fetchone()[0]
-    n3 = db.execute('select count(*) from product_search_tri').fetchone()[0]
-    check('fts rows', n1 == n2 == n3, '%d products, %d fts, %d trigram' % (n1, n2, n3))
+    rw = sqlite3.connect(a.db)
+    for t in ('product_search', 'product_search_tri'):
+        try:
+            rw.execute("insert into %s(%s, rank) values('integrity-check', 1)" % (t, t))
+            check('fts integrity %s' % t, True)
+        except sqlite3.DatabaseError as e:
+            check('fts integrity %s' % t, False, str(e))
+    rw.close()
+    n = db.execute("select count(*) from product_search where product_search match 'name:antonia'").fetchone()[0]
+    check('fts query works', n > 0, '%d hits for name:antonia' % n)
+    n = db.execute("select count(*) from customers where password_hash not like 'scrypt$%' and password_hash not like '$argon2id$%'").fetchone()[0]
+    check('customer password hashes kit-verifiable', n == 0, '%d other' % n)
+    print(db.execute("select group_concat(key||'='||value, ', ') from build_info where key like 'passwords.%'").fetchone()[0])
     if a.media:
         rows = db.execute('select file from product_images where file is not null').fetchall()
         missing = sum(1 for (f,) in rows if not os.path.exists(os.path.join(a.media, f)))

@@ -167,7 +167,8 @@ def eav_values(src, prefix, attrs, link='entity_id'):
 
 # ------------------------------------------------------------------ main build
 class Builder:
-    def __init__(self, out, sources, iso3166):
+    def __init__(self, out, sources, iso3166, accounts=None):
+        self.accounts = accounts
         self.o = out
         self.S = sources  # list of Src, admin first
         self.idmap_rows = []
@@ -1273,15 +1274,61 @@ class Builder:
     # -------------------------------------------------------------- search
     def search_index(self):
         db = self.o.db
+        db.execute("""update products set category_names = (
+            select group_concat(c.name, ' ') from product_categories pc join categories c on c.id = pc.category_id
+            where pc.product_id = products.id and c.level > 1)""")
         db.executescript(open(os.path.join(HERE, 'search.sql')).read())
-        db.create_function('strip_html', 1, strip_html, deterministic=True)
-        db.execute('insert into product_search(rowid, name, brand, categories, sku, description) '
-                   'select p.id, p.name, p.brand, n.names, p.sku, strip_html(p.description) '
-                   'from products p left join product_category_names n on n.product_id = p.id')
-        db.execute('insert into product_search_tri(rowid, name, sku) select id, name, sku from products')
+        db.execute("insert into product_search(product_search) values('rebuild')")
+        db.execute("insert into product_search_tri(product_search_tri) values('rebuild')")
         db.execute("insert into product_search(product_search) values('optimize')")
         db.execute("insert into product_search_tri(product_search_tri) values('optimize')")
         db.commit()
+
+    # -------------------------------------------------------------- passwords
+    def passwords(self):
+        """Make credentials verifiable by kit.auth: accounts whose Magento hash matches
+        the public WebArena password get a kit scrypt hash (fast logins, deterministic
+        salt); every other Magento argon2id hash is re-encoded as a PHC string.
+        The original Magento hash stays in magento_password_hash."""
+        import base64
+        import hashlib
+        import hmac
+        from argon2.low_level import hash_secret_raw, Type
+        cand = load_webarena_passwords(self.accounts)
+        db = self.o.db
+
+        def b64(b):
+            return base64.b64encode(b).decode().rstrip('=')
+
+        def convert(table, key, h, pw):
+            if not h or h.count(':') != 2:
+                return h, 'other'
+            hx, salt, ver = h.split(':')
+            v = ver.split('_')
+            if v[0] != '3' and not (len(v) == 3 and v[0] == '2'):
+                return h, 'other'
+            ops, mem = int(v[-2]), int(v[-1])
+            s16 = salt.encode()[:16]
+            if pw and hmac.compare_digest(hash_secret_raw(pw.encode(), s16, time_cost=ops, memory_cost=mem // 1024,
+                                                          parallelism=1, hash_len=32, type=Type.ID).hex(), hx):
+                ksalt = base64.urlsafe_b64encode(hashlib.sha256(('%s:%s' % (table, key)).encode()).digest()[:9]).decode()
+                kh = base64.urlsafe_b64encode(hashlib.scrypt(pw.encode(), salt=ksalt.encode(), n=1024, r=8, p=1,
+                                                             dklen=32)).decode().rstrip('=')
+                return 'scrypt$1024$%s$%s' % (ksalt, kh), 'scrypt'
+            return '$argon2id$v=19$m=%d,t=%d,p=1$%s$%s' % (mem // 1024, ops, b64(s16), b64(bytes.fromhex(hx))), 'argon2'
+
+        stats = defaultdict(int)
+        for table, keycol, pw in (('customers', 'email', cand.get('shopping')),
+                                  ('admin_users', 'username', cand.get('shopping_admin'))):
+            rows = db.execute('select id, %s, password_hash from %s' % (keycol, table)).fetchall()
+            for i, key, h in rows:
+                new, kind = convert(table, key, h, pw)
+                stats[table + '.' + kind] += 1
+                db.execute('update %s set magento_password_hash=?, password_hash=? where id=?' % table, (h, new, i))
+        db.commit()
+        for k, v in stats.items():
+            self.info['passwords.' + k] = v
+        log('passwords: %s' % dict(stats))
 
     def finish(self):
         o = self.o
@@ -1311,21 +1358,11 @@ class Builder:
         self.admin()
         self.reports()
         self.search_index()
+        self.passwords()
         self.finish()
 
 
 ADDR_KEY = ('firstname', 'lastname', 'company', 'street', 'city', 'region_id', 'postcode', 'country_id', 'telephone')
-_TAG = re.compile(r'<[^>]*>')
-_WS = re.compile(r'\s+')
-
-
-def strip_html(s):
-    if not s:
-        return s
-    import html
-    return _WS.sub(' ', html.unescape(_TAG.sub(' ', s))).strip()
-
-
 SCRUB_KEYS = ('login', 'form_key')
 
 
@@ -1357,6 +1394,19 @@ def scrub_options(js):
     return json.dumps(walk(d))
 
 
+def load_webarena_passwords(path):
+    """{'shopping': pw, 'shopping_admin': pw} from WebArena's env_config.py ACCOUNTS (parsed, not executed)."""
+    import ast
+    if not path or not os.path.exists(path):
+        return {}
+    tree = ast.parse(open(path).read())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and any(getattr(t, 'id', None) == 'ACCOUNTS' for t in node.targets):
+            acc = ast.literal_eval(node.value)
+            return {k: v.get('password') for k, v in acc.items() if isinstance(v, dict)}
+    return {}
+
+
 def renumber_increment(inc, offset):
     """'000000170' + 1000 -> '000001170' (same width, digits only)."""
     m = re.match(r'^(\D*)(\d+)$', inc or '')
@@ -1372,12 +1422,13 @@ def main():
     ap.add_argument('--shop')
     ap.add_argument('--out', required=True)
     ap.add_argument('--iso3166')
+    ap.add_argument('--accounts', help='WebArena browser_env/env_config.py (public demo passwords)')
     a = ap.parse_args()
     srcs = [Src('admin', a.admin)]
     if a.shop:
         srcs.append(Src('shop', a.shop))
     out = Out(a.out)
-    b = Builder(out, srcs, a.iso3166)
+    b = Builder(out, srcs, a.iso3166, a.accounts)
     b.run()
     out.db.execute('analyze')
     out.db.commit()

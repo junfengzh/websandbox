@@ -114,12 +114,27 @@ row is merged with an admin row by natural key. Every changed ID is in
   remapped; use it to resolve legacy paths and 301s.
 
 ### Search (`build/search.sql`)
-- `product_search` FTS5 (`name, brand, categories, sku, description`; porter,
-  prefix 2/3), rowid = `products.id`; rank
-  `bm25(product_search, 10, 5, 3, 2, 1)`.
-- `product_search_tri` FTS5 trigram (`name, sku`) for substring fallbacks.
-- Triggers keep both in sync with `products` and `product_categories`.
-  Filter results with `status = 1 AND visibility IN (3,4)`.
+- `product_search`: FTS5 **external-content** table over `products`
+  (`name, brand, category_names, sku, description`; porter, prefix 2/3),
+  rowid = `products.id`; rank `bm25(product_search, 10, 5, 3, 2, 1)`.
+  `products.category_names` is a search-only column kept current by triggers
+  on `product_categories` / `categories.name`.
+- `product_search_tri`: FTS5 trigram (`name, sku`, external content) for
+  substring fallbacks.
+- Triggers keep both in sync with `products`; filter results with
+  `status = 1 AND visibility IN (3,4)`.
+- Example: `SELECT p.* FROM product_search s JOIN products p ON p.id = s.rowid
+  WHERE product_search MATCH ? AND p.status = 1 AND p.visibility IN (3,4)
+  ORDER BY bm25(product_search, 10, 5, 3, 2, 1) LIMIT 24`.
+
+### Passwords
+`customers.password_hash` and `admin_users.password_hash` are in a format
+`kit.auth.verifyPassword` accepts: accounts whose Magento hash matches the
+public WebArena demo password (70 of 72 customers incl. emma.lopez, and
+`admin`) get a cheap `scrypt$1024$...` hash (deterministic salt); the others
+keep their Magento argon2id hash re-encoded as `$argon2id$v=19$m=65536,t=2,p=1$...`
+(same password, ~100 ms to verify). The original Magento value is in
+`magento_password_hash`.
 
 ### Reviews
 - `reviews(id, product_id, customer_id, status, title, detail, nickname, created_at)`.
@@ -128,8 +143,7 @@ row is merged with an admin row by natural key. Every changed ID is in
   carry one vote ("Rating"); the product rating = avg(percent).
 
 ### Customers
-- `customers` (`email` unique, `password_hash` Magento format
-  `<hash>:<salt>:<version>`), `customer_groups`, `customer_addresses`
+- `customers` (`email` unique), `customer_groups`, `customer_addresses`
   (`street` may contain newlines for multiple lines), `customer_log`
   (last login).
 - `newsletter_subscribers`, `wishlists` / `wishlist_items`, `carts` /
@@ -152,7 +166,7 @@ row is merged with an admin row by natural key. Every changed ID is in
 - `search_terms` (`query_text`, `num_results`, `popularity`, ...), `search_synonyms`.
 - `cms_pages` (id 1 `no-route` 404, 2 `home`, ...), `cms_blocks`, `themes`
   (1 Magento Blank, 2 backend, 3 Luma).
-- `admin_users` (`password_hash` Magento format), `admin_roles`,
+- `admin_users`, `admin_roles`,
   `admin_role_rules`; `tax_classes`, `tax_rates`, `shipping_table_rates`.
 
 ### Reports

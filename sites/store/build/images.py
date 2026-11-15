@@ -23,6 +23,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = 80_000_000
 MAX = 600
 Q = 80
+METHOD = 2   # libwebp effort 0-6; 2 is ~2x faster than 4 at ~same size/quality
 
 
 def convert(job):
@@ -40,7 +41,7 @@ def convert(job):
             im.thumbnail((MAX, MAX), Image.LANCZOS)
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             tmp = dst + '.tmp'
-            im.save(tmp, 'WEBP', quality=Q, method=4)
+            im.save(tmp, 'WEBP', quality=Q, method=METHOD)
             os.replace(tmp, dst)
             return dst, im.width, im.height, os.path.getsize(dst), None
     except Exception as e:  # missing / corrupt original
@@ -53,7 +54,7 @@ def out_name(orig):
 
 
 def main():
-    global MAX, Q
+    global MAX, Q, METHOD
     ap = argparse.ArgumentParser()
     ap.add_argument('--db', required=True)
     ap.add_argument('--media', required=True)
@@ -61,8 +62,9 @@ def main():
     ap.add_argument('--jobs', type=int, default=6)
     ap.add_argument('--max', type=int, default=MAX)
     ap.add_argument('--q', type=int, default=Q)
+    ap.add_argument('--method', type=int, default=METHOD)
     a = ap.parse_args()
-    MAX, Q = a.max, a.q
+    MAX, Q, METHOD = a.max, a.q, a.method
     db = sqlite3.connect(a.db)
     srcs = dict(s.split('=', 1) for s in a.src)
     for name, root in srcs.items():
