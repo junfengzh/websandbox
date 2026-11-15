@@ -3,4 +3,4 @@
   <% if (l.image) { %><img src="<%= it.mediaUrl(l.image) %>" alt="" width="60" height="60"><% } %>
   <div class="product-item-details"><strong class="product-item-name"><%~ it.htmlName(l.name) %></strong><div class="details-qty"><span class="label">Qty</span> <span class="value"><%= l.qty %></span></div>
   <div class="subtotal"><span class="price"><%= it.money(l.row_total) %></span></div>
-  <% if (opts.length) { %><dl class="item-options"><% for (const x of opts) { %><dt><%= x.label %></dt><dd><%= x.print_value || x.value %></dd><% } %></dl><% } %></div></li><% } %></ol></div>
+  <% if (opts.length) { %><dl class="item-options"><% for (const x of opts) { %><dt><%~ it.htmlName(x.label) %></dt><dd><%~ it.htmlName(x.print_value || x.value) %></dd><% } %></dl><% } %></div></li><% } %></ol></div>

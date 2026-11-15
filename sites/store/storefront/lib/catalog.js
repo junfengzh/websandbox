@@ -257,7 +257,7 @@ function listing(req, { category = null, search = null, base }) {
   return {
     products, pager, facets: facetsOut, active, mode, limit, limits, order, dir, sorts,
     clearAll: kit.urlWith(req, Object.fromEntries(['cat', 'brand', 'price', 'p', ...defs.map((d) => d.code)].map((k) => [k, null]))),
-    sortHref: (o) => kit.urlWith(req, { product_list_order: o, product_list_dir: null, p: null }),
+    sortHref: (o) => kit.urlWith(req, { product_list_order: o, product_list_dir: o === 'relevance' ? 'desc' : 'asc', p: null }),
     dirHref: kit.urlWith(req, { product_list_dir: dir === 'asc' ? 'desc' : 'asc', product_list_order: order, p: null }),
     modeHref: (m) => kit.urlWith(req, { product_list_mode: m === 'grid' ? null : m, product_list_limit: null, p: null }),
     limitHref: (n) => kit.urlWith(req, { product_list_limit: n, p: null }),

@@ -13,7 +13,7 @@
       <td data-th="Item" class="col item">
         <a href="<%= l.url %>" class="product-item-photo" tabindex="-1"><% if (l.image) { %><img src="<%= it.mediaUrl(l.image) %>" alt="<%= l.plain %>" width="110" height="110"><% } %></a>
         <div class="product-item-details"><strong class="product-item-name"><a href="<%= l.url %>"><%~ it.htmlName(l.name) %></a></strong>
-          <% const opts = [...(o.attributes_info || []), ...(o.options || [])]; if (opts.length) { %><dl class="item-options"><% for (const x of opts) { %><dt><%= x.label %></dt><dd><%= x.print_value || x.value %></dd><% } %></dl><% } %>
+          <% const opts = [...(o.attributes_info || []), ...(o.options || [])]; if (opts.length) { %><dl class="item-options"><% for (const x of opts) { %><dt><%~ it.htmlName(x.label) %></dt><dd><%~ it.htmlName(x.print_value || x.value) %></dd><% } %></dl><% } %>
           <div class="sku muted">SKU: <%= o.child_sku || l.sku %></div>
           <% if (!l.is_in_stock || l.status !== 1) { %><div class="message error">This product is out of stock.</div><% } %>
         </div>

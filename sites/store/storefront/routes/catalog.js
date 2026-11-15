@@ -58,6 +58,12 @@ module.exports = async function catalogRoutes(app, kit) {
   // (Magento URL; from <= price < to, either end optional).
   function priceFormRedirect(req, reply) {
     const q = req.query || {};
+    // A sort without a direction gets its default direction spelled out (price/name: asc,
+    // relevance: desc), so a sorted listing always has one canonical URL (graders compare URLs).
+    if (q.product_list_order && !q.product_list_dir && !('price_from' in q) && !('price_to' in q)) {
+      const o = String(q.product_list_order);
+      if (['price', 'name', 'relevance', 'position'].includes(o)) return reply.redirect(kit.urlWith(req, { product_list_dir: o === 'relevance' ? 'desc' : 'asc' }));
+    }
     if (!('price_from' in q) && !('price_to' in q)) return null;
     const num = (v) => { const x = String(v ?? '').trim().replace(/^\$/, ''); return /^\d+(\.\d+)?$/.test(x) ? x : ''; };
     const from = num(q.price_from); const to = num(q.price_to);

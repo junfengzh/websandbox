@@ -47,7 +47,7 @@ Trailing slashes are optional everywhere. POST forms need the CSRF token (`_csrf
 | Param | Values | Meaning |
 |---|---|---|
 | `product_list_order` | `position` (category default), `relevance` (search default), `name`, `price` | sort key |
-| `product_list_dir` | `asc` (default; relevance: `desc`), `desc` | direction |
+| `product_list_dir` | `asc` (default; relevance: `desc`), `desc` | direction; a request with `product_list_order` but no `product_list_dir` redirects to the same URL with the default direction spelled out (one canonical URL per sorted listing), and the sort menu links carry it |
 | `product_list_mode` | `grid` (default), `list` | view |
 | `product_list_limit` | grid `12` (default) / `24` / `36`; list `10` (default) / `20` / `30` | page size |
 | `p` | 2, 3, ... | page (`page` also accepted) |

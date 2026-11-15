@@ -3,7 +3,7 @@
   <thead><tr><th class="col name" scope="col">Product Name</th><th class="col sku" scope="col">SKU</th><th class="col price" scope="col">Price</th><th class="col qty" scope="col">Qty</th><th class="col subtotal" scope="col">Subtotal</th></tr></thead>
   <tbody><% for (const i of o.items) { %><tr id="order-item-row-<%= i.id %>">
     <td class="col name" data-th="Product Name"><strong class="product name product-item-name"><% if (i.url) { %><a href="<%= i.url %>"><%~ it.htmlName(i.name) %></a><% } else { %><%~ it.htmlName(i.name) %><% } %></strong>
-      <% if (i.opts.length) { %><dl class="item-options"><% for (const x of i.opts) { %><dt><%= x.label %></dt><dd><%= x.value %></dd><% } %></dl><% } %></td>
+      <% if (i.opts.length) { %><dl class="item-options"><% for (const x of i.opts) { %><dt><%~ it.htmlName(x.label) %></dt><dd><%~ it.htmlName(x.value) %></dd><% } %></dl><% } %></td>
     <td class="col sku" data-th="SKU"><%= i.sku %></td>
     <td class="col price" data-th="Price"><span class="price-excluding-tax"><span class="cart-price"><span class="price"><%= it.money(i.price) %></span></span></span></td>
     <td class="col qty" data-th="Qty"><ul class="items-qty">
