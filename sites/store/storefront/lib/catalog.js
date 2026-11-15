@@ -56,7 +56,7 @@ function cards(db, ids) {
   if (!ids.length) return [];
   const list = JSON.stringify(ids);
   const rows = db.prepare(`SELECT p.id, p.sku, p.type, p.name, p.url_key, p.price, p.special_price, p.special_from, p.special_to, p.brand,
-      p.is_in_stock, p.short_description, p.has_options, p.required_options, ${PRICE} AS final_price,
+      p.is_in_stock, p.short_description, p.has_options, p.required_options, p.visibility, ${PRICE} AS final_price,
       (SELECT file FROM product_images i WHERE i.product_id = p.id AND i.file IS NOT NULL AND coalesce(i.disabled, 0) = 0 ORDER BY i.is_small DESC, i.is_base DESC, i.position LIMIT 1) AS image,
       (SELECT count(*) FROM reviews r WHERE r.product_id = p.id AND r.status = 'approved') AS review_count,
       (SELECT avg(v.percent) FROM reviews r JOIN review_votes v ON v.review_id = r.id WHERE r.product_id = p.id AND r.status = 'approved') AS rating

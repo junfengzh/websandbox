@@ -25,7 +25,7 @@
 </section>
 </div>
 <aside class="opc-sidebar">
-  <div class="opc-block-summary"><span class="title">Order Summary</span><%~ include('checkout/_summary', it) %><%~ include('checkout/_items', it) %></div>
+  <div class="opc-block-summary"><span class="title">Order Summary</span><%~ include('checkout/_summary', { ...it, inCheckout: true }) %><%~ include('checkout/_items', it) %></div>
   <div class="opc-block-shipping-information">
     <div class="ship-to"><div class="shipping-information-title"><span>Ship To:</span> <a href="/checkout/" class="action action-edit">Edit</a></div><div class="shipping-information-content"><% for (const l of it.fmtAddr(it.addr)) { %><%= l %><br><% } %></div></div>
     <div class="ship-via"><div class="shipping-information-title"><span>Shipping Method:</span> <a href="/checkout/" class="action action-edit">Edit</a></div><div class="shipping-information-content"><span class="value"><%= it.method.title %></span></div></div>

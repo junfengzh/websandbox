@@ -34,5 +34,5 @@
   </section>
   </div>
 </form>
-<aside class="opc-sidebar"><div class="opc-block-summary"><span class="title">Order Summary</span><%~ include('checkout/_summary', it) %><%~ include('checkout/_items', it) %></div></aside>
+<aside class="opc-sidebar"><div class="opc-block-summary"><span class="title">Order Summary</span><%~ include('checkout/_summary', { ...it, inCheckout: true }) %><%~ include('checkout/_items', it) %></div></aside>
 </div>

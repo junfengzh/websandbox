@@ -108,7 +108,10 @@ module.exports = async function catalogRoutes(app, kit) {
     }
     const related = C.cards(d, d.prepare(`SELECT l.linked_product_id FROM product_links l JOIN products x ON x.id = l.linked_product_id WHERE l.product_id = ? AND l.link_type IN ('related', 'upsell') AND x.status = 1 AND x.visibility IN (2,4) ORDER BY l.link_type, l.position LIMIT 8`).pluck().all(p.id));
     const ratings = d.prepare('SELECT id, code FROM ratings WHERE coalesce(is_active, 1) = 1 ORDER BY position, id').all();
-    return { images, config, options, info, stats, hist, related, ratings };
+    // grouped / bundle: the items of the set
+    const setItems = p.type === 'grouped' ? C.cards(d, d.prepare("SELECT linked_product_id FROM product_links WHERE product_id = ? AND link_type = 'grouped' ORDER BY position").pluck().all(p.id))
+      : p.type === 'bundle' ? C.cards(d, d.prepare('SELECT DISTINCT s.selection_product_id FROM bundle_selections s WHERE s.product_id = ? ORDER BY s.option_id, s.position').pluck().all(p.id)) : [];
+    return { images, config, options, info, stats, hist, related, ratings, setItems };
   }
   function renderProduct(req, reply, p) {
     const d = productData(p);

@@ -75,6 +75,7 @@ module.exports = async function checkoutRoutes(app, kit) {
     const url = C.productUrl(p);
     const qty = Math.max(1, Math.min(10000, parseFloat(b.qty) || 1));
     if (!p.is_in_stock) { req.flash('error', 'Product that you are trying to add is not available.'); return reply.redirect(url); }
+    if (p.type === 'grouped' || p.type === 'bundle') { req.flash('error', 'Please specify product option(s): add the items of this set from their own pages.'); return reply.redirect(url); }
     const { opts, errors } = parseOptions(db(), p, b);
     if (errors.length) { for (const e of errors) req.flash('error', e); return reply.redirect(url); }
     if (p.type === 'configurable' && !opts.child_id) { req.flash('error', 'You need to choose options for your item.'); return reply.redirect(url); }
