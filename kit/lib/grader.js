@@ -48,7 +48,8 @@ function mustInclude(pred, refs) {
 // durations are summed ("1h 22min" is 82 min, not also 22 min). Bare numbers count in the
 // spec unit only when the answer has no number with a unit of that kind. A quantity passes
 // if |x - value| <= max(value * tol_pct / 100, tol_abs) (tol_abs in the spec unit;
-// default tol_pct 10 when neither is given).
+// default tol_pct 10 when neither is given). unit 'deg': decimal-degree coordinates
+// ("40.4424, -79.9397", "79.9397° W" = -79.9397), give tol_abs (e.g. 0.0015).
 const UNITS = {
   duration: { s: 1, sec: 1, secs: 1, second: 1, seconds: 1, m: 60, min: 60, mins: 60, minute: 60, minutes: 60,
     h: 3600, hr: 3600, hrs: 3600, hour: 3600, hours: 3600, d: 86400, day: 86400, days: 86400 },
@@ -59,12 +60,24 @@ const UNITS = {
 function unitOf(u) {
   const k = String(u || '').toLowerCase();
   if (k === 'm') return { kind: 'distance', mult: 1 }; // spec unit 'm' = metres (minutes: 'min')
+  if (k === 'deg') return { kind: 'coordinate', mult: 1 };
   for (const [kind, t] of Object.entries(UNITS)) if (t[k]) return { kind, mult: t[k] };
   throw new Error(`grader: unknown numeric unit '${u}'`);
 }
 /** quantities of one kind in a text, in the kind's base unit (seconds / metres) */
 function quantities(text, kind) {
   const t = String(text ?? '');
+  if (kind === 'coordinate') {
+    // decimal degrees: "40.4424, -79.9397", "40.4424° N, 79.9397° W", "N 40.44 W 79.94"
+    const out = [];
+    for (const m of t.matchAll(/(?<![\w.])([NSEW]\s*)?(-?\d{1,3}(?:\.\d+)?)\s*°?\s*([NSEW](?![a-z]))?/gi)) {
+      let v = +m[2];
+      const h = (m[1] || m[3] || '').trim().toUpperCase();
+      if (h === 'S' || h === 'W') v = -Math.abs(v);
+      out.push(v);
+    }
+    return { withUnit: out, bare: [] };
+  }
   const table = UNITS[kind];
   const hits = [];
   if (kind === 'duration') {

@@ -163,6 +163,13 @@ test('grader: numeric answers with units and tolerance', async () => {
   assert.ok(n('15', { value: 15, unit: 'min' }));
   assert.ok(!n('zip 15213, 20 min', { value: 15, unit: 'min' }));
   assert.throws(() => n('3 min', { value: 3, unit: 'parsecs' }), /unknown numeric unit/);
+  // coordinates in decimal degrees, signs from N/S/E/W
+  const ll = [{ value: 40.4424, unit: 'deg', tol_abs: 0.0015 }, { value: -79.9397, unit: 'deg', tol_abs: 0.0015 }];
+  assert.ok(n('40.4424191, -79.9397388', ll));
+  assert.ok(n('Latitude 40.442, longitude -79.939', ll));
+  assert.ok(n('40.4424° N, 79.9397° W', ll));
+  assert.ok(!n('40.4424, 79.9397', ll)); // east, not west
+  assert.ok(!n('40.4524, -79.9397', ll));
   // in grade(): answer as a list of specs, one check each
   let r = await grader.grade({ eval: { type: 'answer', answer: [{ must_include: ['Hyatt Regency'] }, { numeric: { value: 15, unit: 'min', tol_abs: 1 } }] } },
     { answer: 'Hyatt Regency Pittsburgh International Airport; 16 min by car' });

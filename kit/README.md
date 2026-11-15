@@ -367,7 +367,9 @@ curl -s -XPOST -H 'content-type: application/json' -d '{"sql":"SELECT count(*) n
   compound forms summed) and distances (`m`, `km`, `mi`, `ft`; `0.78 km`, `780 m`, `1,200 meters`).
   Pass if `|x - value| <= max(value * tol_pct / 100, tol_abs)` (tol_abs in the spec unit; default
   tol_pct 10). Bare numbers count in the spec unit only if no number carries a unit of that kind;
-  spec unit `m` is metres (minutes: `min`). For map times/distances re-derived on the lite engines.
+  spec unit `m` is metres (minutes: `min`); unit `deg` compares decimal-degree coordinates
+  (`40.4424, -79.9397`, `79.9397° W` = -79.9397; give `tol_abs`). For map times/distances/
+  coordinates re-derived on the lite engines.
   `answer` may also be a **list of specs**, each graded as its own check (all must pass), e.g.
   `[{must_include: ['Hyatt Regency']}, {numeric: {value: 15, unit: 'min', tol_abs: 1}}]`.
   A value of `"$sql"` (or null) takes the reference from `answer_sql` (first column: one
