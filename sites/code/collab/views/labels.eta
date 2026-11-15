@@ -1,0 +1,30 @@
+<% layout('layout') %>
+<% const X = it, U = it.U, P = it.project, G = it.group, base = it.base, r = it.r, ib = P ? P.url + '/-/issues' : G.base + '/-/issues', mb = P ? P.url + '/-/merge_requests' : G.base + '/-/merge_requests';
+   const row = (l, prio) => { %>
+  <li class="label-row" id="label_<%= l.id %>" data-label-id="<%= l.id %>">
+    <% if (P && it.canAdmin) { %><form class="inline-form" method="post" action="<%= base %>/<%= l.id %>/toggle_priority"><%~ X.csrfInput() %><button class="prio-star<%= l.priority != null ? ' on' : '' %>" type="submit" title="<%= l.priority != null ? 'Remove priority' : 'Prioritize' %>" aria-label="<%= l.priority != null ? 'Remove priority of ' : 'Prioritize ' %><%= l.title %>"><%~ U.icon(l.priority != null ? 'star' : 'staroff', 16) %></button></form><% } %>
+    <span class="label-name"><%~ include('collab/_label', { l, U }) %><% if (l.group_id && P) { %> <span class="muted" title="Group label">group label</span><% } %></span>
+    <span class="label-desc"><%= l.description || '' %></span>
+    <span class="label-links"><a href="<%= ib %>?label_name[]=<%= encodeURIComponent(l.title) %>"><%= X.plural(l.open_issues, 'open issue') %></a><a href="<%= mb %>?label_name[]=<%= encodeURIComponent(l.title) %>"><%= X.plural(l.open_mrs, 'open merge request') %></a></span>
+    <% const own = P ? l.project_id === P.id : l.group_id === G.id; if (it.canAdmin && own) { %><span class="label-actions">
+      <% if (prio) { %><form class="inline-form" method="post" action="<%= base %>/<%= l.id %>/move"><%~ X.csrfInput() %><input type="hidden" name="direction" value="up"><button class="btn btn-sm" type="submit" aria-label="Move <%= l.title %> up">↑</button></form><form class="inline-form" method="post" action="<%= base %>/<%= l.id %>/move"><%~ X.csrfInput() %><input type="hidden" name="direction" value="down"><button class="btn btn-sm" type="submit" aria-label="Move <%= l.title %> down">↓</button></form><% } %>
+      <a class="btn btn-sm" href="<%= base %>/<%= l.id %>/edit">Edit</a>
+      <form class="inline-form" method="post" action="<%= base %>/<%= l.id %>/delete" data-confirm="Delete label <%= l.title %>? It will be removed from all issues and merge requests."><%~ X.csrfInput() %><button class="btn btn-sm btn-danger-secondary" type="submit">Delete</button></form>
+    </span><% } %>
+  </li>
+<% }; %>
+<div class="page-title-row"><h1>Labels</h1>
+  <div class="gap8">
+    <form method="get" action="<%= base %>" class="gap8" role="search"><label class="sr-only" for="label-search">Filter labels</label><input type="search" id="label-search" name="search" value="<%= r.q %>" placeholder="Filter">
+      <label class="sr-only" for="label-sort">Sort</label><select id="label-sort" name="sort" data-autosubmit><% for (const [v, l] of it.sortOptions) { %><option value="<%= v %>"<%~ r.sort === v ? ' selected' : '' %>><%= l %></option><% } %></select><button class="btn" type="submit">Search</button></form>
+    <% if (it.canAdmin) { %><a class="btn btn-confirm" href="<%= base %>/new">New label</a><% } %>
+  </div>
+</div>
+<% if (P) { %>
+<h2 class="h5">Prioritized labels</h2>
+<% if (it.prioritized.length) { %><ul class="labels-list prioritized-labels"><% for (const l of it.prioritized) row(l, true); %></ul><% } else { %><p class="muted">No prioritized labels yet. Star a label to make it a priority label. Priority labels sort issues and merge requests by "Label priority".</p><% } %>
+<h2 class="h5">Other labels</h2>
+<% if (it.other.length) { %><ul class="labels-list other-labels"><% for (const l of it.other) row(l, false); %></ul><% } else { %><div class="empty-state"><%= r.q ? 'No labels with such name or description' : 'There are no labels yet' %></div><% } %>
+<% } else { %>
+<% if (r.rows.length) { %><ul class="labels-list"><% for (const l of r.rows) row(l, false); %></ul><% } else { %><div class="empty-state">There are no labels yet</div><% } %>
+<% } %>

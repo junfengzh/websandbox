@@ -1,0 +1,37 @@
+<% layout('layout') %>
+<% const X = it, U = it.U, base = it.base, q = it.req.query || {};
+   const href = (ch) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries({ ...q, ...ch })) if (v != null && v !== '') p.append(k, v); const s = p.toString(); return base + (s ? '?' + s : ''); }; %>
+<div class="top-area">
+  <ul class="nav-tabs" aria-label="Filter milestones by state">
+    <% for (const [s, l] of [['opened', 'Open'], ['closed', 'Closed'], ['all', 'All']]) { %><li><a href="<%= href({ state: s, page: null }) %>"<%~ it.state === s ? ' aria-current="page"' : '' %>><%= l %> <span class="issuable-count"><%= it.counts[s] %></span></a></li><% } %>
+  </ul>
+  <div class="nav-controls">
+    <form method="get" action="<%= base %>" class="gap8" role="search"><input type="hidden" name="state" value="<%= it.state %>">
+      <label class="sr-only" for="ms-search">Filter by milestone name</label><input type="search" id="ms-search" name="search_title" value="<%= it.q %>" placeholder="Filter by milestone name">
+      <label class="sr-only" for="ms-sort">Sort</label><select id="ms-sort" name="sort" data-autosubmit><% for (const [v, l] of it.sortOptions) { %><option value="<%= v %>"<%~ it.sort === v ? ' selected' : '' %>><%= l %></option><% } %></select>
+      <button class="btn" type="submit">Search</button></form>
+    <% if (it.canAdmin) { %><a class="btn btn-confirm" href="<%= base %>/new">New milestone</a><% } %>
+  </div>
+</div>
+<h1 class="sr-only">Milestones</h1>
+<% if (!it.rows.length) { %><div class="empty-state"><h3><%= it.q ? 'No milestones match your filter' : 'Use milestones to track issues and merge requests over a fixed period of time' %></h3><% if (it.canAdmin && !it.q) { %><a class="btn btn-confirm" href="<%= base %>/new">New milestone</a><% } %></div>
+<% } else { %>
+<ul class="milestone-list">
+<% for (const m of it.rows) { const s = m.stats, expired = m.due_date && m.due_date < it.today && m.state === 'active'; %>
+  <li class="milestone milestone-<%= m.state %>" id="milestone_<%= m.id %>">
+    <div>
+      <div class="milestone-title"><% if (m.url) { %><a href="<%= m.url %>"><%= m.title %></a><% } else { %><%= m.title %><% } %> <% if (m.group_id) { %><span class="badge badge-muted">Group milestone</span><% } %> <% if (m.state === 'closed') { %><span class="badge badge-closed">Closed</span><% } else if (expired) { %><span class="badge badge-warning">Expired</span><% } else if (m.start_date && m.start_date > it.today) { %><span class="badge badge-muted">Upcoming</span><% } %></div>
+      <div class="milestone-stats"><% if (m.start_date || m.due_date) { %><span><%= m.start_date ? U.dateFmt(m.start_date) : 'No start date' %> – <%= m.due_date ? U.dateFmt(m.due_date) : 'No due date' %></span><% } else { %><span>No dates</span><% } %></div>
+    </div>
+    <div>
+      <div class="progress" role="progressbar" aria-valuenow="<%= s.pct %>" aria-valuemin="0" aria-valuemax="100" aria-label="<%= s.pct %>% complete"><span style="width:<%= s.pct %>%"></span></div>
+      <div class="milestone-stats"><span><%= X.plural(s.issues, 'issue') %></span><span><%= X.plural(s.mrs, 'merge request') %></span><span><strong><%= s.pct %>%</strong> complete</span></div>
+    </div>
+    <div class="gap8">
+      <% if (it.canAdmin && m.url && ((it.project && m.project_id) || (it.group && m.group_id))) { %><form class="inline-form" method="post" action="<%= m.url %>/<%= m.state === 'active' ? 'close' : 'reopen' %>"><%~ X.csrfInput() %><input type="hidden" name="back" value="<%= it.req.url %>"><button class="btn btn-sm" type="submit"><%= m.state === 'active' ? 'Close milestone' : 'Reopen milestone' %></button></form><% } %>
+    </div>
+  </li>
+<% } %>
+</ul>
+<%~ include('_pager', { pager: it.pager }) %>
+<% } %>

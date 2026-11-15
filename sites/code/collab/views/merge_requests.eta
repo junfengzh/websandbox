@@ -1,0 +1,3 @@
+<% layout('layout') %>
+<h1 class="sr-only">Merge requests</h1>
+<%~ include('collab/_issuables', { ...it, newHref: it.canCreate ? it.base + '/new' : null }) %>

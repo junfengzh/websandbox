@@ -1,0 +1,12 @@
+<%/* include('collab/_user_picker', {field, current, members, projectId, single, label}) : checkbox list + live search + free-text usernames */%>
+<% const cur = it.current || [], seen = new Set(cur.map((u) => u.id)); const type = it.single ? 'radio' : 'checkbox'; %>
+<div class="user-picker" data-user-picker data-field="<%= it.field %>[]" data-project-id="<%= it.projectId || '' %>"<% if (it.single) { %> data-single="1"<% } %>>
+  <label class="sr-only" for="ps-<%= it.field %>">Search users</label>
+  <input type="search" id="ps-<%= it.field %>" class="picker-search" placeholder="Search users" autocomplete="off">
+  <ul class="pick-list">
+    <% for (const u of cur) { %><li><label><input type="<%= type %>" name="<%= it.field %>[]" value="<%= u.id %>" checked> <%= u.name %> <span class="muted">@<%= u.username %></span></label></li><% } %>
+    <% for (const u of (it.members || [])) { if (seen.has(u.id)) continue; %><li><label><input type="<%= type %>" name="<%= it.field %>[]" value="<%= u.id %>"> <%= u.name %> <span class="muted">@<%= u.username %></span></label></li><% } %>
+  </ul>
+  <label class="muted" for="pu-<%= it.field %>">Or add by username (comma-separated)</label>
+  <input type="text" id="pu-<%= it.field %>" name="<%= it.field %>_usernames" placeholder="e.g. root, alice" autocomplete="off">
+</div>

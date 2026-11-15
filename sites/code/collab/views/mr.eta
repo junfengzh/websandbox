@@ -1,0 +1,111 @@
+<% layout('layout') %>
+<% const X = it, U = it.U, M = it.mr, P = it.project, base = P.url + '/-/merge_requests/' + M.iid, can = it.can, st = it.status;
+   const sp = it.sp || P, spPath = sp.full_path, cross = sp.id !== P.id;
+   const stLabel = { opened: 'Open', closed: 'Closed', merged: 'Merged', locked: 'Locked' }[M.state] || M.state; %>
+<div class="detail-page-header">
+  <span class="state-badge state-<%= M.state %>" data-testid="mr-state"><%= stLabel %></span>
+  <% if (M.draft) { %><span class="badge badge-draft">Draft</span><% } %>
+  <span class="header-meta">Created <%~ X.time(M.created_at) %> by <a href="/<%= it.author ? it.author.username : '' %>" class="author-link"><%= it.author ? it.author.name : 'Ghost User' %></a></span>
+  <div class="header-actions">
+    <% if (X.user) { %><form class="inline-form" method="post" action="<%= base %>/todo"><%~ X.csrfInput() %><button class="btn btn-sm" type="submit"><%= it.todo ? 'Mark as done' : 'Add a to do' %></button></form><% } %>
+    <% if (can.edit) { %><a class="btn btn-sm" href="<%= base %>/edit">Edit</a>
+      <% if (M.state === 'opened') { %><form class="inline-form" method="post" action="<%= base %>/toggle_draft"><%~ X.csrfInput() %><button class="btn btn-sm" type="submit"><%= M.draft ? 'Mark as ready' : 'Mark as draft' %></button></form>
+      <form class="inline-form" method="post" action="<%= base %>/close"><%~ X.csrfInput() %><button class="btn btn-sm" type="submit">Close merge request</button></form><% } else if (M.state === 'closed') { %>
+      <form class="inline-form" method="post" action="<%= base %>/reopen"><%~ X.csrfInput() %><button class="btn btn-sm" type="submit">Reopen merge request</button></form><% } %><% } %>
+  </div>
+</div>
+<div class="issuable-layout">
+<div class="issuable-main-col">
+  <h1 class="issuable-title-h1 title" data-qa-selector="title_content"><%= M.title %></h1>
+  <div class="detail-page-description description">
+    <span class="muted"><a href="/<%= it.author ? it.author.username : '' %>"><%= it.author ? it.author.name : 'Ghost User' %></a> requested to merge</span>
+    <a class="gl-font-monospace mr-source-branch" href="/<%= spPath %>/-/tree/<%= X.enc(M.source_branch) %>" data-testid="source-branch"><%= cross ? spPath + ':' : '' %><%= M.source_branch %></a>
+    <span class="muted">into</span>
+    <a class="gl-font-monospace mr-source-branch" href="<%= P.url %>/-/tree/<%= X.enc(M.target_branch) %>" data-testid="target-branch"><%= M.target_branch %></a>
+    <div style="margin-top:12px">
+    <% if (M.description) { %><div class="md md-plain"><%~ X.md(M.description, { project: P, breaks: true }) %></div><% } else { %><p class="description-empty">No description provided.</p><% } %>
+    <% if (M.last_edited_at) { %><div class="edited-text">Edited <%~ X.time(M.last_edited_at) %></div><% } %>
+    </div>
+  </div>
+  <nav class="mr-tabs" aria-label="Merge request tabs"><ul class="nav-tabs">
+    <li><a href="<%= base %>"<%~ it.tab === 'overview' ? ' aria-current="page"' : '' %>>Overview <span class="issuable-count"><%= M.user_notes_count %></span></a></li>
+    <li><a href="<%= base %>/commits"<%~ it.tab === 'commits' ? ' aria-current="page"' : '' %>>Commits <span class="issuable-count"><%= M.commits_count %></span></a></li>
+    <li><a href="<%= base %>/diffs"<%~ it.tab === 'diffs' ? ' aria-current="page"' : '' %>>Changes <span class="issuable-count"><%= M.files_count %></span></a></li>
+  </ul></nav>
+  <% if (it.tab === 'overview') { %>
+  <section class="mr-widget" aria-label="Merge status">
+    <div class="mr-widget-section approvals">
+      <span class="mw-icon <%= it.approvals.length ? 'mw-ok' : 'mw-info' %>" aria-hidden="true">✓</span>
+      <div class="mw-body"><% if (it.approvals.length) { %>Approved by <% it.approvals.forEach((a, i) => { %><%= i ? ', ' : '' %><a href="/<%= a.username %>"><%= a.name %></a><% }) %><% } else { %>Approval is optional<% } %></div>
+      <% if (can.approve) { %><form class="inline-form" method="post" action="<%= base %>/<%= it.approvedByMe ? 'unapprove' : 'approve' %>"><%~ X.csrfInput() %><button class="btn btn-sm <%= it.approvedByMe ? 'btn-default' : 'btn-confirm' %>" type="submit" data-testid="approve-button"><%= it.approvedByMe ? 'Revoke approval' : 'Approve' %></button></form><% } %>
+    </div>
+    <% if (M.state === 'merged') { %>
+    <div class="mr-widget-section"><span class="mw-icon mw-merged" aria-hidden="true">⇄</span><div class="mw-body">Merged by <% if (it.mergedBy) { %><a href="/<%= it.mergedBy.username %>"><%= it.mergedBy.name %></a><% } %> <%~ X.time(M.merged_at) %><br><span class="muted">The changes were merged into <code><%= M.target_branch %></code><% if (M.merge_commit_sha) { %> with <a href="<%= P.url %>/-/commit/<%= M.merge_commit_sha %>"><code><%= M.merge_commit_sha.slice(0, 8) %></code></a><% } %>.</span></div></div>
+    <% } else if (M.state === 'closed') { %>
+    <div class="mr-widget-section"><span class="mw-icon mw-bad" aria-hidden="true">×</span><div class="mw-body">Closed by <% if (it.closedBy) { %><a href="/<%= it.closedBy.username %>"><%= it.closedBy.name %></a><% } %> <%~ X.time(M.closed_at) %><br><span class="muted">The changes were not merged into <code><%= M.target_branch %></code>.</span></div></div>
+    <% } else if (st.canMerge) { %>
+    <div class="mr-widget-section"><span class="mw-icon mw-ok" aria-hidden="true">✓</span>
+      <div class="mw-body"><strong>Ready to merge!</strong>
+      <% if (can.merge) { %>
+        <form method="post" action="<%= base %>/merge" id="merge-form"><%~ X.csrfInput() %>
+          <div class="merge-options">
+            <label><input type="checkbox" name="should_remove_source_branch" value="1"<%~ it.removeSourceDefault ? ' checked' : '' %>> Delete source branch</label>
+            <label><input type="checkbox" name="squash" value="1"<%~ M.squash ? ' checked' : '' %>> Squash commits</label>
+          </div>
+          <details><summary>Edit commit message</summary>
+            <label class="sr-only" for="merge-msg">Merge commit message</label><textarea id="merge-msg" class="merge-message" name="commit_message"><%= it.mergeMessage %></textarea></details>
+          <p><button class="btn btn-confirm" type="submit" data-testid="merge-button">Merge</button> <span class="muted"><%= M.commits_count %> commit<%= M.commits_count === 1 ? '' : 's' %> and 1 merge commit will be added to <code><%= M.target_branch %></code>.</span></p>
+        </form>
+      <% } else { %><p class="muted">Ready to be merged automatically. Ask someone with write access to this repository to merge this request.</p><% } %></div>
+    </div>
+    <% } else { %>
+    <div class="mr-widget-section"><span class="mw-icon mw-warn" aria-hidden="true">!</span><div class="mw-body"><% for (const r of st.reasons) { %><p class="mt0"><%= r %></p><% } %></div></div>
+    <% } %>
+  </section>
+  <div class="awards" aria-label="Reactions">
+    <% const aw = new Map(it.awards.map((a) => [a.name, a])); for (const [name, em] of [['thumbsup', U.icon('thumbsup')], ['thumbsdown', U.icon('thumbsdown')]]) { const a = aw.get(name); %>
+    <form class="inline-form" method="post" action="<%= base %>/award"><%~ X.csrfInput() %><input type="hidden" name="name" value="<%= name %>"><button class="btn btn-sm<%= a && a.mine ? ' on' : '' %>" type="submit" <%~ X.user ? '' : 'disabled' %> aria-label="<%= name %> <%= a ? a.n : 0 %>"><%~ em %> <%= a ? a.n : 0 %></button></form><% } %>
+  </div>
+  <h2 id="notes" class="h5">Activity</h2>
+  <%~ include('collab/_timeline', { X, kind: 'merge_request', target: M, timeline: it.timeline, noteBase: base + '/notes', canComment: can.comment, project: P }) %>
+  <% if (M.discussion_locked) { %><div class="locked-banner">The discussion in this merge request is locked. Only project members can comment.</div><% } %>
+  <% if (can.comment) { %>
+  <form class="note-form" method="post" action="<%= base %>/notes" id="new-note-form"><%~ X.csrfInput() %>
+    <label class="label-bold" for="note-body">Add a comment</label>
+    <textarea id="note-body" name="note" placeholder="Write a comment or drag your files here…" data-testid="comment-field"></textarea>
+    <div class="md-hint">Supports Markdown. Use @username to mention, #123 for issues, !123 for merge requests.</div>
+    <div class="note-form-actions">
+      <button class="btn btn-confirm" type="submit" data-testid="comment-button">Comment</button>
+      <label class="gap8 muted"><input type="checkbox" name="start_thread" value="1"> Start a thread</label>
+      <% if (can.edit && M.state !== 'merged') { %><button class="btn btn-default" type="submit" name="<%= M.state === 'opened' ? 'close' : 'reopen' %>" value="1"><%= M.state === 'opened' ? 'Comment & close merge request' : 'Comment & reopen merge request' %></button><% } %>
+    </div>
+  </form>
+  <% } else if (!X.user) { %><p class="note-form"><a href="/users/sign_in?next=<%= encodeURIComponent(base) %>">Sign in</a> or <a href="/users/sign_up">register</a> to comment.</p><% } %>
+  <% } else if (it.tab === 'commits') { %>
+  <% if (!it.commits.length) { %><div class="empty-state">No commits.</div><% } else { %>
+  <% if (M.commits_count > it.commits.length) { %><p class="muted">Showing the newest <%= it.commits.length %> of <%= M.commits_count %> commits.</p><% } %>
+  <ul class="commit-list">
+    <% for (const c of it.commits) { %><li class="commit-row"><div class="commit-detail"><a class="commit-row-message" href="<%= P.url %>/-/commit/<%= c.sha %>"><%= c.title %></a>
+      <div class="committer"><%= c.author_name %> authored <%~ X.time(c.authored_at) %></div></div>
+      <div class="commit-actions"><a class="btn btn-sm commit-sha" href="<%= P.url %>/-/commit/<%= c.sha %>"><%= c.sha.slice(0, 8) %></a></div></li><% } %>
+  </ul><% } %>
+  <% } else { %>
+  <div class="diff-summary"><strong><%= X.plural(M.files_count, 'file') %> changed</strong> <span class="add-count">+<%= M.additions %></span> <span class="del-count">−<%= M.deletions %></span><% if (M.files_count > it.files.length) { %> <span class="muted">(showing the first <%= it.files.length %> files)</span><% } %></div>
+  <ul class="diff-file-list" aria-label="Changed files"><% for (const f of it.files) { %><li><a href="#diff-<%= f.ord %>"><%= f.new_path %></a><span class="st"><span class="add-count">+<%= f.additions %></span> <span class="del-count">−<%= f.deletions %></span></span></li><% } %></ul>
+  <% for (const f of it.files) { %><%~ include('collab/_diff_file', { f, X, P: it.sp || P, sha: M.head_sha }) %><% } %>
+  <% } %>
+</div>
+<aside class="issuable-sidebar right-sidebar" aria-label="Merge request details">
+  <% const reviewersBlock = include('collab/_sb_reviewers', { X, M, base, can }); %>
+  <%~ include('collab/_sb_common', { X, kind: 'merge_request', T: M, action: base, labels: it.labels, allLabels: it.allLabels, milestone: it.milestone, milestones: it.milestones, assignees: it.assignees, members: it.members, can, reviewersBlock }) %>
+  <div class="sb-block lock">
+    <div class="sb-title"><span>Lock discussion</span>
+    <% if (can.admin) { %><form class="inline-form" method="post" action="<%= base %>/lock"><%~ X.csrfInput() %><input type="hidden" name="locked" value="<%= M.discussion_locked ? 0 : 1 %>"><button class="btn-link" type="submit"><%= M.discussion_locked ? 'Unlock' : 'Lock' %></button></form><% } %></div>
+    <span class="sb-value"><%= M.discussion_locked ? 'Locked' : 'Unlocked' %></span>
+  </div>
+  <div class="sb-block"><div class="sb-title"><span><%= X.plural(it.participants.length, 'Participant') %></span></div>
+    <div class="participants"><% for (const u of it.participants) { %><a href="/<%= u.username %>" title="<%= u.name %>" aria-label="<%= u.name %>"><%~ X.avatar(u, 24) %></a><% } %></div></div>
+  <div class="sb-block"><div class="sb-title"><span>Reference</span></div><code><%= P.full_path %>!<%= M.iid %></code><br><span class="muted">Source branch: <code><%= M.source_branch %></code></span></div>
+  <% if (can.delete) { %><div class="sb-block"><form method="post" action="<%= base %>/delete" data-confirm="Delete this merge request? This cannot be undone."><%~ X.csrfInput() %><button class="btn btn-sm btn-danger-secondary" type="submit">Delete merge request</button></form></div><% } %>
+</aside>
+</div>

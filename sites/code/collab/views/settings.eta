@@ -1,0 +1,47 @@
+<% layout('layout') %>
+<% const X = it, P = it.project, v = it.values || {}, e = it.errors || {}; %>
+<h1>General settings</h1>
+<% if (Object.keys(e).length) { %><div class="flash flash-alert" role="alert"><ul><% for (const k in e) { %><li><%= e[k] %></li><% } %></ul></div><% } %>
+<% if (P.archived) { %><div class="flash flash-warning">This project is archived and read-only.</div><% } %>
+<section class="settings-section" id="js-general-settings">
+  <h2>Naming, topics, avatar</h2><p class="lead">Update your project name, topics, description, and avatar.</p>
+  <form method="post" action="<%= P.url %>/edit" style="max-width:760px" id="project-settings-form"><%~ X.csrfInput() %>
+    <div class="row">
+      <div class="col form-group<%= e.name ? ' has-error' : '' %>"><label for="project_name_edit">Project name</label><input class="form-control" type="text" id="project_name_edit" name="name" value="<%= v.name %>" required></div>
+      <div class="col form-group"><label for="project_id">Project ID</label><input class="form-control" type="text" id="project_id" value="<%= P.id %>" readonly></div>
+    </div>
+    <div class="form-group<%= e.topics ? ' has-error' : '' %>"><label for="project_topics">Topics</label><input class="form-control topics-input" type="text" id="project_topics" name="topics" value="<%= it.topics %>" placeholder="Separate topics with commas"><p class="form-text">Separate topics with commas.</p></div>
+    <div class="form-group<%= e.description ? ' has-error' : '' %>"><label for="project_description">Project description (optional)</label><textarea class="form-control" id="project_description" name="description" rows="3" maxlength="2000"><%= v.description || '' %></textarea></div>
+    <fieldset class="settings-section" style="border:0;padding:8px 0"><legend>Visibility, project features, permissions</legend>
+      <ul class="radio-list">
+        <% for (const [k, l, d] of [['private', 'Private', 'Project access must be granted explicitly to each user. If this project is part of a group, access is granted to members of the group.'], ['internal', 'Internal', 'The project can be accessed by any logged in user except external users.'], ['public', 'Public', 'The project can be accessed without any authentication.']]) { %>
+        <li><label><input type="radio" name="visibility" value="<%= k %>"<%~ v.visibility === k ? ' checked' : '' %>> <%= l %></label><div class="help"><%= d %></div></li><% } %>
+      </ul>
+      <% for (const [k, l] of [['issues_enabled', 'Issues'], ['merge_requests_enabled', 'Merge requests'], ['wiki_enabled', 'Wiki'], ['forking_enabled', 'Forks']]) { %>
+      <input type="hidden" name="<%= k %>" value="0"><label class="gap8" style="font-weight:400"><input type="checkbox" name="<%= k %>" value="1"<%~ v[k] ? ' checked' : '' %>> <%= l %></label><% } %>
+    </fieldset>
+    <div class="form-actions"><button class="btn btn-confirm" type="submit" data-qa-selector="save_naming_topics_avatar_button">Save changes</button></div>
+  </form>
+</section>
+<% if (it.isOwner) { %>
+<section class="settings-section" id="advanced">
+  <h2>Advanced</h2><p class="lead">Housekeeping, export, archive, change path, transfer, and delete.</p>
+  <div class="card"><div class="card-header"><%= P.archived ? 'Unarchive project' : 'Archive project' %></div><div class="card-body">
+    <p><%= P.archived ? 'Unarchiving the project restores its members\' ability to make commits, and create issues, comments, and other entities.' : 'Make your project read-only. You can still access its data, work items, and merge requests.' %></p>
+    <form method="post" action="<%= P.url %>/<%= P.archived ? 'unarchive' : 'archive' %>" data-confirm="<%= P.archived ? 'Unarchive' : 'Archive' %> this project?"><%~ X.csrfInput() %><button class="btn btn-<%= P.archived ? 'default' : 'danger-secondary' %>" type="submit"><%= P.archived ? 'Unarchive project' : 'Archive project' %></button></form>
+  </div></div>
+  <div class="card"><div class="card-header">Change path</div><div class="card-body">
+    <p>A project's repository name defines its URL and its place on the file disk.</p>
+    <form method="post" action="<%= P.url %>/rename" class="gap8"><%~ X.csrfInput() %><label for="project_path">Path</label><span class="muted">/<%= P.ns_path %>/</span><input type="text" id="project_path" name="path" value="<%= P.path %>" required pattern="[a-zA-Z0-9_][a-zA-Z0-9_.\-]*"><button class="btn btn-danger-secondary" type="submit">Change path</button></form>
+  </div></div>
+  <div class="card"><div class="card-header">Transfer project</div><div class="card-body">
+    <p>Transfer your project into another namespace.</p>
+    <form method="post" action="<%= P.url %>/transfer" class="gap8" data-confirm="Transfer this project?"><%~ X.csrfInput() %><label for="new_namespace_id">Select a new namespace</label>
+      <select id="new_namespace_id" name="new_namespace_id" required><option value="">Select a namespace</option><% for (const n of it.namespaces) { %><option value="<%= n.id %>"><%= n.full_path %><%= n.kind === 'user' ? ' (personal)' : '' %></option><% } %></select>
+      <button class="btn btn-danger-secondary" type="submit">Transfer project</button></form>
+  </div></div>
+  <div class="danger-zone"><h3>Delete project</h3><p>This action deletes <code><%= P.full_path %></code> and everything this project contains. <strong>There is no going back.</strong></p>
+    <form method="post" action="<%= P.url %>/remove"><%~ X.csrfInput() %><label for="confirm_name_input">Enter the following to confirm: <code><%= P.full_path %></code></label><br>
+      <input type="text" id="confirm_name_input" name="confirm_name" autocomplete="off" required> <button class="btn btn-danger" type="submit" data-qa-selector="confirm_delete_button">Yes, delete project</button></form></div>
+</section>
+<% } %>

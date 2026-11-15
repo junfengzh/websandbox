@@ -1,0 +1,47 @@
+<% layout('layout') %>
+<% const X = it, P = it.project, v = it.values || {}, e = it.errors || {}, edit = !!it.issue;
+   const action = edit ? P.url + '/-/issues/' + it.issue.iid + '/edit' : P.url + '/-/issues';
+   const err = (k) => e[k] ? `<div class="field-error" role="alert">${X.h(e[k])}</div>` : ''; %>
+<h1 class="page-title"><%= edit ? 'Edit issue #' + it.issue.iid : 'New Issue' %></h1>
+<% if (Object.keys(e).length) { %><div class="flash flash-alert" role="alert">The form contains the following error<%= Object.keys(e).length > 1 ? 's' : '' %>:<ul><% for (const k in e) { %><li><%= e[k] %></li><% } %></ul></div><% } %>
+<form method="post" action="<%= action %>" class="issue-form" id="new_issue"><%~ X.csrfInput() %>
+  <div class="form-group<%= e.title ? ' has-error' : '' %>">
+    <label for="issue_title">Title <span class="req" aria-hidden="true">*</span></label>
+    <input class="form-control" type="text" id="issue_title" name="title" value="<%= v.title || '' %>" required maxlength="255" autofocus placeholder="Title" data-qa-selector="issuable_form_title_field"><%~ err('title') %>
+  </div>
+  <div class="form-group">
+    <label for="issue_type">Type</label>
+    <select id="issue_type" name="issue_type"><option value="issue"<%~ v.issue_type !== 'incident' ? ' selected' : '' %>>Issue</option><option value="incident"<%~ v.issue_type === 'incident' ? ' selected' : '' %>>Incident</option></select>
+  </div>
+  <div class="form-group">
+    <label for="issue_description">Description</label>
+    <textarea class="form-control" id="issue_description" name="description" rows="10" placeholder="Write a description or drag your files here…"><%= v.description || '' %></textarea>
+    <div class="md-hint">Supports Markdown. Use @username to mention, #123 for issues, !123 for merge requests.</div>
+  </div>
+  <div class="form-group"><label class="gap8" style="font-weight:400"><input type="checkbox" name="confidential" value="1"<%~ v.confidential ? ' checked' : '' %>> This issue is confidential and should only be visible to team members with at least Reporter access.</label></div>
+  <% if (!edit && it.canAdmin) { %>
+  <div class="row">
+    <div class="col form-group<%= e.assignee_ids ? ' has-error' : '' %>">
+      <span class="label-bold" id="assignee-label">Assignees</span>
+      <div role="group" aria-labelledby="assignee-label"><%~ include('collab/_user_picker', { field: 'assignee_ids', current: [], members: it.members, projectId: P.id }) %></div><%~ err('assignee_ids') %>
+    </div>
+    <div class="col form-group">
+      <label for="issue_milestone">Milestone</label>
+      <select id="issue_milestone" name="milestone_id"><option value="">Select milestone</option><% for (const m of it.milestones) { %><option value="<%= m.id %>"<%~ +v.milestone_id === m.id ? ' selected' : '' %>><%= m.title %></option><% } %></select>
+      <label for="issue_due_date" style="margin-top:12px">Due date</label>
+      <input type="date" id="issue_due_date" name="due_date" value="<%= v.due_date || '' %>" placeholder="YYYY-MM-DD"><%~ err('due_date') %>
+    </div>
+    <div class="col form-group">
+      <span class="label-bold" id="labels-label">Labels</span>
+      <input type="search" class="list-filter" data-target="#new-issue-labels" placeholder="Search labels" aria-label="Search labels">
+      <ul class="pick-list" id="new-issue-labels" role="group" aria-labelledby="labels-label" style="max-height:220px;overflow:auto;list-style:none;padding:0">
+        <% const sel = new Set((v.label_ids || []).map(Number)); for (const l of it.labels) { %><li><label style="font-weight:400"><input type="checkbox" name="label_ids[]" value="<%= l.id %>"<%~ sel.has(l.id) ? ' checked' : '' %>> <span class="label-swatch" style="background:<%= l.color %>"></span> <%= l.title %></label></li><% } %>
+      </ul>
+    </div>
+  </div>
+  <% } %>
+  <div class="form-actions">
+    <button class="btn btn-confirm" type="submit" data-qa-selector="issuable_create_button"><%= edit ? 'Save changes' : 'Create issue' %></button>
+    <a class="btn btn-default" href="<%= edit ? P.url + '/-/issues/' + it.issue.iid : P.url + '/-/issues' %>">Cancel</a>
+  </div>
+</form>

@@ -1,0 +1,25 @@
+<% layout('layout') %>
+<% const X = it, G = it.group; %>
+<div class="group-header">
+  <span class="project-avatar group lg" aria-hidden="true"><%= (G.name || '?')[0].toUpperCase() %></span>
+  <div class="group-meta"><h1><%= G.name %></h1>
+    <div class="muted">Group ID: <%= G.id %> · <%= G.visibility[0].toUpperCase() + G.visibility.slice(1) %> · <a href="<%= G.base %>/-/group_members"><%= X.plural(it.memberCount, 'member') %></a><% if (it.parent) { %> · Subgroup of <a href="/<%= it.parent.full_path %>"><%= it.parent.name %></a><% } %></div>
+    <% if (G.description) { %><p class="project-description-lg"><%= G.description %></p><% } %></div>
+  <div class="actions">
+    <% if (it.canRequest) { %><form class="inline-form" method="post" action="<%= G.base %>/-/group_members/request_access"><%~ X.csrfInput() %><button class="btn" type="submit">Request Access</button></form><% } %>
+    <% if (it.canCreate) { %><a class="btn" href="/groups/new?parent_id=<%= G.id %>">New subgroup</a><a class="btn btn-confirm" href="/projects/new?namespace_id=<%= G.id %>">New project</a><% } %>
+  </div>
+</div>
+<div class="top-area">
+  <ul class="nav-tabs"><li><a href="/<%= G.full_path %>" aria-current="page">Subgroups and projects</a></li><li><a href="<%= G.base %>/-/issues">Issues</a></li><li><a href="<%= G.base %>/-/merge_requests">Merge requests</a></li><li><a href="<%= G.base %>/-/milestones">Milestones</a></li><li><a href="<%= G.base %>/-/labels">Labels</a></li><li><a href="<%= G.base %>/-/group_members">Members</a></li></ul>
+  <form class="nav-controls" method="get" action="/<%= G.full_path %>" role="search"><label class="sr-only" for="gp-filter">Search projects</label><input type="search" id="gp-filter" name="filter" value="<%= it.q %>" placeholder="Search by name">
+    <label class="sr-only" for="gp-sort">Sort</label><select id="gp-sort" name="sort" data-autosubmit><% for (const [k, l] of [['latest_activity_desc', 'Last updated'], ['created_desc', 'Last created'], ['created_asc', 'Oldest created'], ['name_asc', 'Name'], ['name_desc', 'Name, descending'], ['stars_desc', 'Most stars']]) { %><option value="<%= k %>"<%~ it.sort === k ? ' selected' : '' %>><%= l %></option><% } %></select><button class="btn" type="submit">Search</button></form>
+</div>
+<% if (!it.subgroups.length && !it.projects.length) { %>
+<div class="empty-state"><h2>This group has no projects yet</h2><% if (it.canCreate) { %><p><a class="btn btn-confirm" href="/projects/new?namespace_id=<%= G.id %>">Create new project</a> <a class="btn" href="/groups/new?parent_id=<%= G.id %>">Create new subgroup</a></p><% } %></div>
+<% } else { %>
+<ul class="projects-list">
+  <% for (const s of it.subgroups) { %><li class="project-row"><span class="project-avatar group" aria-hidden="true"><%= s.name[0].toUpperCase() %></span><div class="project-details"><h2 class="project-title"><a href="/<%= s.full_path %>"><%= s.name %></a> <span class="badge badge-muted">Subgroup</span></h2><% if (s.description) { %><p class="project-description"><%= s.description %></p><% } %></div></li><% } %>
+  <% for (const p of it.projects) { %><%~ include('_project_row', { p, time: X.time, avatar: X.avatar, now: X.now }) %><% } %>
+</ul>
+<% } %>

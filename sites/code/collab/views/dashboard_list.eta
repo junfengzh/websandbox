@@ -1,0 +1,10 @@
+<% layout('layout') %>
+<% const X = it, isMr = it.kind === 'merge_request', u = X.user; %>
+<div class="page-title-row"><h1><%= isMr ? 'Merge requests' : 'Issues' %></h1>
+  <div class="gap8">
+    <a class="btn btn-sm" href="<%= it.base %>?assignee_username=<%= encodeURIComponent(u.username) %>">Assigned to you</a>
+    <% if (isMr) { %><a class="btn btn-sm" href="<%= it.base %>?reviewer_username=<%= encodeURIComponent(u.username) %>">Review requests for you</a><% } %>
+    <a class="btn btn-sm" href="<%= it.base %>?author_username=<%= encodeURIComponent(u.username) %>">Created by you</a>
+  </div></div>
+<%~ include('collab/_issuables', it) %>
+<% if (it.needFilter) { %><div class="empty-state"><h3>Please select at least one filter to see results</h3><p>For example <a href="<%= it.base %>?assignee_username=<%= encodeURIComponent(u.username) %>">items assigned to you</a>.</p></div><% } %>

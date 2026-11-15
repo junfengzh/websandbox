@@ -1,0 +1,77 @@
+<% layout('layout') %>
+<% const X = it, U = it.U, I = it.issue, P = it.project, base = P.url + '/-/issues/' + I.iid, can = it.can;
+   const overdue = I.due_date && I.state === 'opened' && I.due_date < it.today; %>
+<div class="detail-page-header">
+  <span class="state-badge state-<%= I.state %>" data-testid="issue-state"><%= I.state === 'opened' ? 'Open' : 'Closed' %></span>
+  <% if (I.confidential) { %><span class="badge badge-warning" title="Confidential issue"><%~ U.icon('eyeoff', 12) %> Confidential</span><% } %>
+  <% if (I.discussion_locked) { %><span class="badge badge-warning"><%~ U.icon('lock', 12) %> Locked</span><% } %>
+  <span class="header-meta"><%= I.issue_type === 'incident' ? 'Incident' : 'Issue' %> created <%~ X.time(I.created_at) %> by <a href="/<%= it.author ? it.author.username : '' %>" class="author-link"><%= it.author ? it.author.name : 'Ghost User' %></a><% if (I.state === 'closed' && I.closed_at) { %> · closed <%~ X.time(I.closed_at) %><% if (it.closedBy) { %> by <a href="/<%= it.closedBy.username %>"><%= it.closedBy.name %></a><% } %><% } %></span>
+  <div class="header-actions">
+    <% if (X.user) { %><form class="inline-form" method="post" action="<%= base %>/todo"><%~ X.csrfInput() %><button class="btn btn-sm" type="submit"><%= it.todo ? 'Mark as done' : 'Add a to do' %></button></form><% } %>
+    <% if (can.edit) { %><a class="btn btn-sm" href="<%= base %>/edit">Edit</a>
+      <form class="inline-form" method="post" action="<%= base %>/<%= I.state === 'opened' ? 'close' : 'reopen' %>"><%~ X.csrfInput() %><button class="btn btn-sm <%= I.state === 'opened' ? 'btn-default' : 'btn-default' %>" type="submit" data-testid="<%= I.state === 'opened' ? 'close-issue' : 'reopen-issue' %>"><%= I.state === 'opened' ? 'Close issue' : 'Reopen issue' %></button></form><% } %>
+    <% if (X.user) { %><a class="btn btn-sm btn-confirm" href="<%= P.url %>/-/issues/new">New issue</a><% } %>
+  </div>
+</div>
+<div class="issuable-layout">
+<div class="issuable-main-col">
+  <h1 class="issuable-title-h1 title" data-qa-selector="title_content"><%= I.title %></h1>
+  <% if (I.confidential) { %><div class="confidential-banner" role="note">This is a confidential issue. People without permission will never get a notification.</div><% } %>
+  <div class="detail-page-description description">
+    <% if (I.description) { %><div class="md md-plain"><%~ X.md(I.description, { project: P, breaks: true }) %></div><% } else { %><p class="description-empty">No description provided.</p><% } %>
+    <% if (I.last_edited_at) { %><div class="edited-text">Edited <%~ X.time(I.last_edited_at) %></div><% } %>
+  </div>
+  <div class="awards" aria-label="Reactions">
+    <% const aw = new Map(it.awards.map((a) => [a.name, a])); for (const [name, em] of [['thumbsup', U.icon('thumbsup')], ['thumbsdown', U.icon('thumbsdown')]]) { const a = aw.get(name); %>
+    <form class="inline-form" method="post" action="<%= base %>/award"><%~ X.csrfInput() %><input type="hidden" name="name" value="<%= name %>"><button class="btn btn-sm<%= a && a.mine ? ' on' : '' %>" type="submit" <%~ X.user ? '' : 'disabled' %> aria-label="<%= name %> <%= a ? a.n : 0 %>"><%~ em %> <%= a ? a.n : 0 %></button></form><% } %>
+    <% for (const a of it.awards) { if (a.name === 'thumbsup' || a.name === 'thumbsdown') continue; %><span class="btn btn-sm">:<%= a.name %>: <%= a.n %></span><% } %>
+  </div>
+  <% if (it.related.length) { %><h2 class="h5">Related merge requests</h2><ul class="related-list"><% for (const m of it.related) { %><li><a href="<%= P.url %>/-/merge_requests/<%= m.iid %>"><%= m.title %></a> <span class="muted">!<%= m.iid %></span> <span class="badge badge-<%= m.state === 'merged' ? 'merged' : m.state === 'closed' ? 'closed' : 'success' %>"><%= m.state %></span></li><% } %></ul><% } %>
+  <h2 id="notes" class="h5">Activity</h2>
+  <%~ include('collab/_timeline', { X, kind: 'issue', target: I, timeline: it.timeline, noteBase: base + '/notes', canComment: can.comment, project: P }) %>
+  <% if (I.discussion_locked) { %><div class="locked-banner">The discussion in this issue is locked. Only project members can comment.</div><% } %>
+  <% if (can.comment) { %>
+  <form class="note-form" method="post" action="<%= base %>/notes" id="new-note-form"><%~ X.csrfInput() %>
+    <label class="label-bold" for="note-body">Add a comment</label>
+    <textarea id="note-body" name="note" placeholder="Write a comment or drag your files here…" data-testid="comment-field"></textarea>
+    <div class="md-hint">Supports Markdown. Use @username to mention, #123 for issues, !123 for merge requests.</div>
+    <% if (P.access >= 20) { %><label class="gap8 muted"><input type="checkbox" name="internal" value="1"> Make this an internal note</label><% } %>
+    <div class="note-form-actions">
+      <button class="btn btn-confirm" type="submit" data-testid="comment-button">Comment</button>
+      <% if (can.edit) { %><button class="btn btn-default" type="submit" name="<%= I.state === 'opened' ? 'close' : 'reopen' %>" value="1"><%= I.state === 'opened' ? 'Comment & close issue' : 'Comment & reopen issue' %></button><% } %>
+    </div>
+  </form>
+  <% } else if (!X.user) { %><p class="note-form"><a href="/users/sign_in?next=<%= encodeURIComponent(base) %>">Sign in</a> or <a href="/users/sign_up">register</a> to comment.</p><% } %>
+</div>
+<aside class="issuable-sidebar right-sidebar" aria-label="Issue details">
+  <%~ include('collab/_sb_common', { X, kind: 'issue', T: I, action: base, labels: it.labels, allLabels: it.allLabels, milestone: it.milestone, milestones: it.milestones, assignees: it.assignees, members: it.members, can }) %>
+  <div class="sb-block due_date block" data-testid="sidebar-due-date">
+    <div class="sb-title"><span>Due date</span>
+    <% if (can.admin) { %><details class="sb-edit"><summary>Edit</summary>
+      <form class="sb-panel" method="post" action="<%= base %>/due_date"><%~ X.csrfInput() %>
+        <label class="sr-only" for="due-input">Due date</label><input type="date" id="due-input" name="due_date" value="<%= I.due_date || '' %>">
+        <div class="sb-actions"><button class="btn btn-confirm btn-sm" type="submit">Apply</button><% if (I.due_date) { %><button class="btn btn-sm" type="submit" name="remove" value="1">Remove due date</button><% } %></div>
+      </form></details><% } %></div>
+    <span class="sb-value<%= overdue ? ' overdue' : '' %>"><%= I.due_date ? U.dateFmt(I.due_date) + (overdue ? ' (Past due)' : '') : 'None' %></span>
+  </div>
+  <div class="sb-block confidentiality" data-testid="sidebar-confidentiality">
+    <div class="sb-title"><span>Confidentiality</span>
+    <% if (can.admin) { %><form class="inline-form" method="post" action="<%= base %>/confidential"><%~ X.csrfInput() %><input type="hidden" name="confidential" value="<%= I.confidential ? 0 : 1 %>"><button class="btn-link" type="submit"><%= I.confidential ? 'Turn off' : 'Turn on' %></button></form><% } %></div>
+    <span class="sb-value"><%= I.confidential ? 'This issue is confidential' : 'Not confidential' %></span>
+  </div>
+  <div class="sb-block lock">
+    <div class="sb-title"><span>Lock discussion</span>
+    <% if (can.admin) { %><form class="inline-form" method="post" action="<%= base %>/lock"><%~ X.csrfInput() %><input type="hidden" name="locked" value="<%= I.discussion_locked ? 0 : 1 %>"><button class="btn-link" type="submit"><%= I.discussion_locked ? 'Unlock' : 'Lock' %></button></form><% } %></div>
+    <span class="sb-value"><%= I.discussion_locked ? 'Locked' : 'Unlocked' %></span>
+  </div>
+  <div class="sb-block">
+    <div class="sb-title"><span><%= X.plural(it.participants.length, 'Participant') %></span></div>
+    <div class="participants"><% for (const u of it.participants) { %><a href="/<%= u.username %>" title="<%= u.name %>" aria-label="<%= u.name %>"><%~ X.avatar(u, 24) %></a><% } %></div>
+  </div>
+  <div class="sb-block">
+    <div class="sb-title"><span>Reference</span></div>
+    <code><%= P.full_path %>#<%= I.iid %></code>
+  </div>
+  <% if (can.delete) { %><div class="sb-block"><form method="post" action="<%= base %>/delete" data-confirm="Delete this issue? This cannot be undone."><%~ X.csrfInput() %><button class="btn btn-sm btn-danger-secondary" type="submit">Delete issue</button></form></div><% } %>
+</aside>
+</div>

@@ -1,0 +1,15 @@
+<% layout('layout') %>
+<% const X = it, v = it.values || {}, e = it.errors || {}; %>
+<h1><%= it.label ? 'Edit Label' : 'New Label' %></h1>
+<% if (Object.keys(e).length) { %><div class="flash flash-alert" role="alert"><ul><% for (const k in e) { %><li><%= e[k] %></li><% } %></ul></div><% } %>
+<form method="post" action="<%= it.action %>" class="label-form" style="max-width:640px"><%~ X.csrfInput() %>
+  <div class="form-group<%= e.title ? ' has-error' : '' %>"><label for="label_title">Title</label><input class="form-control" type="text" id="label_title" name="title" value="<%= v.title || '' %>" required maxlength="255" autofocus></div>
+  <div class="form-group"><label for="label_description">Description</label><input class="form-control" type="text" id="label_description" name="description" value="<%= v.description || '' %>"></div>
+  <div class="form-group<%= e.color ? ' has-error' : '' %>"><label for="label_color">Background color</label>
+    <div class="gap8"><span id="color-preview" class="label-swatch" style="width:32px;height:32px;background:<%= v.color || '#6699cc' %>"></span>
+    <input type="text" id="label_color" name="color" value="<%= v.color || '#6699cc' %>" pattern="#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?" data-color-preview="#color-preview" style="width:120px"></div>
+    <p class="form-text">Enter any color (hex, e.g. #FF0000) or choose one of the suggested colors below.</p>
+    <div class="color-picker"><% for (const c of it.colors) { %><button type="button" data-set-color="<%= c %>" data-target="#label_color" style="background:<%= c %>" title="<%= c %>" aria-label="Use color <%= c %>"></button><% } %></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-confirm" type="submit"><%= it.label ? 'Save changes' : 'Create label' %></button><a class="btn btn-default" href="<%= it.cancel %>">Cancel</a></div>
+</form>

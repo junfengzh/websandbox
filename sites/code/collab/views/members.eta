@@ -1,0 +1,73 @@
+<% layout('layout') %>
+<% const X = it, U = it.U, sc = it.sc, r = it.r, base = sc.base, v = it.values || {}, q = it.req.query || {};
+   const tabHref = (t) => base + (t === 'members' ? '' : '?tab=' + t); %>
+<div class="page-title-row">
+  <h1><%= sc.kind === 'project' ? 'Project members' : 'Group members' %></h1>
+  <div class="gap8">
+    <% if (it.myRow && !(sc.kind === 'project' && sc.personalOwner === X.user.id)) { %><form class="inline-form" method="post" action="<%= base %>/leave" data-confirm="Are you sure you want to leave the &quot;<%= sc.name %>&quot; <%= sc.kind %>?"><%~ X.csrfInput() %><button class="btn btn-danger-secondary" type="submit">Leave <%= sc.kind %></button></form><% } %>
+    <% if (it.canRequest) { %><form class="inline-form" method="post" action="<%= base %>/request_access"><%~ X.csrfInput() %><button class="btn" type="submit">Request access</button></form><% } %>
+  </div>
+</div>
+<p class="muted">You can invite a new member to <strong><%= sc.name %></strong><%= sc.kind === 'group' ? ' (members also get access to all projects of the group)' : '' %>.</p>
+<% if (it.canManage) { %>
+<section class="card" aria-labelledby="invite-h"><div class="card-header"><h2 id="invite-h" class="h5" style="margin:0">Invite members</h2></div><div class="card-body">
+  <form method="post" action="<%= base %>" class="invite-form" id="invite-members-form"><%~ X.csrfInput() %>
+    <div class="form-group" style="margin:0"><label for="invitees">Username or email address</label>
+      <input class="form-control" type="text" id="invitees" name="invitees" value="<%= v.invitees || '' %>" placeholder="e.g. alice, bob@example.com" list="invite-users" autocomplete="off" required>
+      <p class="form-text">Separate several with commas. An email address of a GitLab user adds that user; any other email gets an invitation.</p></div>
+    <div class="form-group" style="margin:0"><label for="access_level">Select a role</label>
+      <select id="access_level" name="access_level"><% for (const [l, n] of it.levels) { if (l === 50 && !it.isOwner) continue; %><option value="<%= l %>"<%~ +(v.access_level || 10) === l ? ' selected' : '' %>><%= n %></option><% } %></select></div>
+    <div class="form-group" style="margin:0"><label for="expires_at">Access expiration date (optional)</label>
+      <input type="date" id="expires_at" name="expires_at" value="<%= v.expires_at || '' %>" placeholder="YYYY-MM-DD"></div>
+    <div><button class="btn btn-confirm" type="submit" data-testid="invite-button">Invite</button></div>
+  </form>
+  <datalist id="invite-users"></datalist>
+</div></section>
+<% } %>
+<div class="top-area">
+  <ul class="nav-tabs" aria-label="Member lists">
+    <li><a href="<%= tabHref('members') %>"<%~ it.tab === 'members' ? ' aria-current="page"' : '' %>>Members <span class="issuable-count"><%= r.all.length %></span></a></li>
+    <% if (it.canManage) { %><li><a href="<%= tabHref('invited') %>"<%~ it.tab === 'invited' ? ' aria-current="page"' : '' %>>Invited <span class="issuable-count"><%= r.invited.length %></span></a></li>
+    <li><a href="<%= tabHref('access_requests') %>"<%~ it.tab === 'access_requests' ? ' aria-current="page"' : '' %>>Access requests <span class="issuable-count"><%= r.requests.length %></span></a></li><% } %>
+  </ul>
+  <% if (it.tab === 'members') { %><form method="get" action="<%= base %>" class="nav-controls" role="search">
+    <label class="sr-only" for="member-search">Search members</label><input type="search" id="member-search" name="search" value="<%= r.q %>" placeholder="Filter members">
+    <label class="sr-only" for="member-sort">Sort</label><select id="member-sort" name="sort" data-autosubmit><% for (const [k, l] of it.sortOptions) { %><option value="<%= k %>"<%~ r.sort === k ? ' selected' : '' %>><%= l %></option><% } %></select>
+    <button class="btn" type="submit">Search</button></form><% } %>
+</div>
+<% if (it.tab === 'members') { %>
+<table class="table members-table" data-testid="members-table">
+  <thead><tr><th scope="col">Account</th><th scope="col">Source</th><th scope="col">Max role</th><th scope="col">Expiration</th><th scope="col">Activity</th><% if (it.canManage) { %><th scope="col"><span class="sr-only">Actions</span></th><% } %></tr></thead>
+  <tbody>
+  <% for (const m of r.all) { const direct = !m.inherited_from && !m.owner_namespace; const editable = it.canManage && direct && (m.access_level < 50 || it.isOwner) && m.user_id !== sc.personalOwner; %>
+    <tr class="member" data-username="<%= m.username %>" data-access-level="<%= m.access_level %>">
+      <td><div class="member-info"><%~ X.avatar({ id: m.user_id, username: m.username, name: m.name, avatar: m.avatar }, 32) %><div><a class="name" href="/<%= m.username %>"><%= m.name %></a><% if (X.user && X.user.id === m.user_id) { %> <span class="badge badge-info">It's you</span><% } %><% if (m.user_state && m.user_state !== 'active') { %> <span class="badge badge-warning"><%= m.user_state %></span><% } %><div class="username">@<%= m.username %></div></div></div></td>
+      <td class="member-source"><% if (m.owner_namespace) { %>Owner of personal namespace<% } else if (m.inherited_from) { %>Inherited from <a href="/<%= m.inherited_from.full_path %>"><%= m.inherited_from.name %></a><% } else { %>Direct member<% if (m.created_by_username) { %> by <a href="/<%= m.created_by_username %>">@<%= m.created_by_username %></a><% } %><% } %></td>
+      <td><% if (editable) { %>
+        <form class="member-role-form" method="post" action="<%= base %>/<%= m.id %>/update"><%~ X.csrfInput() %>
+          <label class="sr-only" for="role-<%= m.id %>">Role of <%= m.username %></label>
+          <select id="role-<%= m.id %>" name="access_level" data-testid="access-level-dropdown"><% for (const [l, n] of it.levels) { if (l === 50 && !it.isOwner) continue; %><option value="<%= l %>"<%~ m.access_level === l ? ' selected' : '' %>><%= n %></option><% } %></select>
+          <button class="btn btn-sm" type="submit">Update role</button></form>
+      <% } else { %><span class="access-badge" data-testid="access-level"><%= U.ACCESS[m.access_level] || m.access_level %></span><% } %></td>
+      <td><% if (editable) { %><form class="member-role-form" method="post" action="<%= base %>/<%= m.id %>/update"><%~ X.csrfInput() %><label class="sr-only" for="exp-<%= m.id %>">Expiration of <%= m.username %></label><input type="date" id="exp-<%= m.id %>" name="expires_at" value="<%= m.expires_at || '' %>"><button class="btn btn-sm" type="submit">Set</button></form><% } else { %><%= m.expires_at ? U.dateFmt(m.expires_at) : 'No expiration set' %><% } %></td>
+      <td class="muted nowrap"><% if (m.created_at) { %>Joined <%~ X.time(m.created_at) %><br><% } %><% if (m.last_activity_on) { %>Last activity <%= U.dateFmt(m.last_activity_on) %><% } %></td>
+      <% if (it.canManage) { %><td class="text-right"><% if (editable) { %><form class="inline-form" method="post" action="<%= base %>/<%= m.id %>/delete" data-confirm="Remove @<%= m.username %> from <%= sc.name %>?"><%~ X.csrfInput() %><% if (sc.kind === 'project') { %><label class="muted" style="font-size:12px;font-weight:400"><input type="checkbox" name="unassign_issuables" value="1"> unassign from issues/MRs</label> <% } %><button class="btn btn-sm btn-danger-secondary" type="submit" aria-label="Remove member <%= m.username %>">Remove member</button></form><% } %></td><% } %>
+    </tr>
+  <% } %>
+  <% if (!r.all.length) { %><tr><td colspan="6" class="empty-state">No members found</td></tr><% } %>
+  </tbody>
+</table>
+<% } else if (it.tab === 'invited') { %>
+<table class="table members-table"><thead><tr><th scope="col">Email</th><th scope="col">Invited by</th><th scope="col">Role</th><th scope="col">Expiration</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>
+  <% for (const m of r.invited) { %><tr class="invite" data-email="<%= m.invite_email %>"><td><%= m.invite_email %><div class="muted">Invited <%~ X.time(m.created_at) %></div></td><td><%= m.created_by_username ? '@' + m.created_by_username : '' %></td><td><span class="access-badge"><%= U.ACCESS[m.access_level] %></span></td><td><%= m.expires_at ? U.dateFmt(m.expires_at) : 'No expiration set' %></td>
+    <td class="text-right"><form class="inline-form" method="post" action="<%= base %>/<%= m.id %>/resend_invite"><%~ X.csrfInput() %><button class="btn btn-sm" type="submit">Resend invite</button></form> <form class="inline-form" method="post" action="<%= base %>/<%= m.id %>/delete" data-confirm="Revoke the invitation for <%= m.invite_email %>?"><%~ X.csrfInput() %><button class="btn btn-sm btn-danger-secondary" type="submit">Revoke invite</button></form></td></tr><% } %>
+  <% if (!r.invited.length) { %><tr><td colspan="5" class="empty-state">No pending invitations</td></tr><% } %>
+</tbody></table>
+<% } else { %>
+<table class="table members-table"><thead><tr><th scope="col">Account</th><th scope="col">Requested</th><th scope="col">Role</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>
+  <% for (const m of r.requests) { %><tr><td><div class="member-info"><%~ X.avatar({ id: m.user_id, username: m.username, name: m.name, avatar: m.avatar }, 32) %><div><a class="name" href="/<%= m.username %>"><%= m.name %></a><div class="username">@<%= m.username %></div></div></div></td><td><%~ X.time(m.requested_at) %></td>
+    <td colspan="2"><form class="member-role-form" method="post" action="<%= base %>/<%= m.id %>/approve_access_request"><%~ X.csrfInput() %><label class="sr-only" for="ar-<%= m.id %>">Role</label><select id="ar-<%= m.id %>" name="access_level"><% for (const [l, n] of it.levels) { if (l === 50) continue; %><option value="<%= l %>"<%~ l === m.access_level ? ' selected' : '' %>><%= n %></option><% } %></select><button class="btn btn-sm btn-confirm" type="submit">Grant access</button></form>
+      <form class="inline-form" method="post" action="<%= base %>/<%= m.id %>/delete"><%~ X.csrfInput() %><button class="btn btn-sm btn-danger-secondary" type="submit">Deny access</button></form></td></tr><% } %>
+  <% if (!r.requests.length) { %><tr><td colspan="4" class="empty-state">No access requests</td></tr><% } %>
+</tbody></table>
+<% } %>

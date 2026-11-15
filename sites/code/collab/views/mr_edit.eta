@@ -1,0 +1,13 @@
+<% layout('layout') %>
+<% const X = it, P = it.project, M = it.mr, v = it.values || {}, e = it.errors || {}; %>
+<h1>Edit merge request !<%= M.iid %></h1>
+<% if (Object.keys(e).length) { %><div class="flash flash-alert" role="alert"><ul><% for (const k in e) { %><li><%= e[k] %></li><% } %></ul></div><% } %>
+<form method="post" action="<%= P.url %>/-/merge_requests/<%= M.iid %>/edit"><%~ X.csrfInput() %>
+  <div class="form-group"><label for="mr_title">Title</label><input class="form-control" type="text" id="mr_title" name="title" value="<%= v.title %>" required maxlength="255">
+    <p class="form-text">Start the title with <code>Draft:</code> to prevent a merge request draft from merging before it's ready.</p></div>
+  <div class="form-group"><label for="mr_description">Description</label><textarea class="form-control" id="mr_description" name="description" rows="10"><%= v.description || '' %></textarea></div>
+  <div class="form-group"><label for="mr_target">Target branch</label>
+    <select id="mr_target" name="target_branch"><% for (const b of it.targetBranches) { %><option value="<%= b.name %>"<%~ b.name === v.target_branch ? ' selected' : '' %>><%= b.name %></option><% } %></select></div>
+  <input type="hidden" name="squash" value="0"><label class="gap8" style="font-weight:400"><input type="checkbox" name="squash" value="1"<%~ M.squash ? ' checked' : '' %>> Squash commits when merge request is accepted.</label>
+  <div class="form-actions"><button class="btn btn-confirm" type="submit">Save changes</button><a class="btn btn-default" href="<%= P.url %>/-/merge_requests/<%= M.iid %>">Cancel</a></div>
+</form>

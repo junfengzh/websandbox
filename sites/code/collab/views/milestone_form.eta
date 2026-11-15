@@ -1,0 +1,13 @@
+<% layout('layout') %>
+<% const X = it, v = it.values || {}, e = it.errors || {}; %>
+<h1><%= it.m ? 'Edit Milestone' : 'New Milestone' %></h1>
+<% if (Object.keys(e).length) { %><div class="flash flash-alert" role="alert"><ul><% for (const k in e) { %><li><%= e[k] %></li><% } %></ul></div><% } %>
+<form method="post" action="<%= it.action %>" class="milestone-form" style="max-width:760px"><%~ X.csrfInput() %>
+  <div class="form-group<%= e.title ? ' has-error' : '' %>"><label for="milestone_title">Title</label><input class="form-control" type="text" id="milestone_title" name="title" value="<%= v.title || '' %>" required maxlength="255" autofocus></div>
+  <div class="row">
+    <div class="col form-group<%= e.start_date ? ' has-error' : '' %>"><label for="milestone_start_date">Start date</label><input type="date" id="milestone_start_date" name="start_date" value="<%= v.start_date || '' %>" placeholder="YYYY-MM-DD"><p class="form-text">Optional. YYYY-MM-DD</p></div>
+    <div class="col form-group<%= e.due_date ? ' has-error' : '' %>"><label for="milestone_due_date">Due date</label><input type="date" id="milestone_due_date" name="due_date" value="<%= v.due_date || '' %>" placeholder="YYYY-MM-DD"><p class="form-text">Optional. YYYY-MM-DD</p></div>
+  </div>
+  <div class="form-group"><label for="milestone_description">Description</label><textarea class="form-control" id="milestone_description" name="description" rows="8" placeholder="Write milestone description…"><%= v.description || '' %></textarea></div>
+  <div class="form-actions"><button class="btn btn-confirm" type="submit"><%= it.m ? 'Save changes' : 'Create milestone' %></button><a class="btn btn-default" href="<%= it.cancel %>">Cancel</a></div>
+</form>

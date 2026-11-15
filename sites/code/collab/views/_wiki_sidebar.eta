@@ -1,0 +1,5 @@
+<aside class="wiki-sidebar" aria-label="Wiki pages">
+  <h2 class="h5">Pages <span class="issuable-count"><%= it.pages.length %></span></h2>
+  <ul><% for (const p of it.pages.slice(0, 60)) { %><li><a href="<%= it.base %>/<%= it.enc(p.slug) %>"<%~ p.slug === it.current ? ' aria-current="page"' : '' %>><%= p.slug.replace(/-/g, ' ') %></a></li><% } %></ul>
+  <p><a href="<%= it.base %>/pages">View all pages</a></p>
+</aside>

@@ -1,0 +1,6 @@
+<% layout('layout') %>
+<% const X = it, b = it.base; %>
+<div class="wiki-page-header"><h1>Wiki Pages</h1>
+  <div class="gap8"><a class="btn" href="?sort=title&direction=<%= it.sort === 'title' && it.dir === 'ASC' ? 'desc' : 'asc' %>">Title<%= it.sort === 'title' ? (it.dir === 'ASC' ? ' ▲' : ' ▼') : '' %></a><a class="btn" href="?sort=created_at&direction=<%= it.sort !== 'title' && it.dir === 'ASC' ? 'desc' : 'asc' %>">Updated date<%= it.sort !== 'title' ? (it.dir === 'ASC' ? ' ▲' : ' ▼') : '' %></a><% if (it.canEdit) { %><a class="btn btn-confirm" href="<%= b %>/new">New page</a><% } %></div></div>
+<% if (!it.rows.length) { %><div class="empty-state">This wiki has no pages yet.</div><% } else { %>
+<ul class="content-list wiki-pages-list"><% for (const p of it.rows) { %><li><a href="<%= b %>/<%= it.enc(p.slug) %>"><strong><%= p.slug %></strong></a><div class="muted">Last updated <%~ X.time(p.updated_at) %><%= p.author_name ? ' by ' + p.author_name : '' %></div></li><% } %></ul><% } %>

@@ -1,0 +1,38 @@
+<% layout('layout') %>
+<% const X = it, q = it.req.query || {}; %>
+<div class="top-area">
+  <ul class="nav-tabs" aria-label="To-do state">
+    <li><a href="/dashboard/todos"<%~ it.state === 'pending' ? ' aria-current="page"' : '' %>>To Do <span class="issuable-count"><%= it.counts.pending %></span></a></li>
+    <li><a href="/dashboard/todos?state=done"<%~ it.state === 'done' ? ' aria-current="page"' : '' %>>Done <span class="issuable-count"><%= it.counts.done %></span></a></li>
+  </ul>
+  <div class="nav-controls"><% if (it.state === 'pending' && it.counts.pending) { %><form class="inline-form" method="post" action="/dashboard/todos/mark_all_as_done"><%~ X.csrfInput() %><button class="btn" type="submit">Mark all as done</button></form><% } %></div>
+</div>
+<h1 class="sr-only">To-Do List</h1>
+<form class="issuables-filter" method="get" action="/dashboard/todos" aria-label="Filter to-dos">
+  <% if (it.state === 'done') { %><input type="hidden" name="state" value="done"><% } %>
+  <label class="fl">Project<select name="project_id"><option value="">Any project</option><% for (const p of it.projects) { %><option value="<%= p.id %>"<%~ +q.project_id === p.id ? ' selected' : '' %>><%= p.full_path %></option><% } %></select></label>
+  <label class="fl">Author<select name="author_id"><option value="">Any author</option><% for (const a of it.authors) { %><option value="<%= a.id %>"<%~ +q.author_id === a.id ? ' selected' : '' %>><%= a.name %> (@<%= a.username %>)</option><% } %></select></label>
+  <label class="fl">Type<select name="type"><option value="">Any type</option><option value="Issue"<%~ q.type === 'Issue' ? ' selected' : '' %>>Issue</option><option value="MergeRequest"<%~ q.type === 'MergeRequest' ? ' selected' : '' %>>Merge request</option></select></label>
+  <label class="fl">Action<select name="action_id"><option value="">Any action</option><% for (const k of ['assigned', 'mentioned', 'marked', 'review_requested', 'approval_required', 'build_failed', 'unmergeable', 'directly_addressed']) { %><option value="<%= k %>"<%~ q.action_id === k ? ' selected' : '' %>><%= k.replace(/_/g, ' ') %></option><% } %></select></label>
+  <label class="fl">Sort<select name="sort"><option value="">Created date</option><option value="created_asc"<%~ q.sort === 'created_asc' ? ' selected' : '' %>>Oldest first</option></select></label>
+  <button class="btn" type="submit">Filter</button>
+</form>
+<% if (!it.rows.length) { %><div class="empty-state"><h3><%= it.state === 'pending' ? (it.active.length ? 'Nothing matches this filter' : 'Good job! Looks like you don\'t have anything left on your To-Do List') : 'There are no done to-do items yet.' %></h3></div>
+<% } else { %>
+<ul class="todo-list" style="margin-top:12px">
+<% for (const t of it.rows) { const url = t.project_path && t.target_iid ? '/' + t.project_path + (t.target_type === 'issue' ? '/-/issues/' : '/-/merge_requests/') + t.target_iid + (t.note_id ? '#note_' + t.note_id : '') : '#'; %>
+  <li class="todo-item<%= t.state === 'done' ? ' done' : '' %>" id="todo_<%= t.id %>">
+    <%~ X.avatar({ id: t.author_id, username: t.author_username, name: t.author_name, avatar: t.author_avatar }, 32) %>
+    <div class="todo-body">
+      <div class="todo-title"><a href="/<%= t.author_username %>"><strong><%= t.author_id === X.user.id ? 'You' : t.author_name %></strong></a> <%= it.actions[t.action] || t.action %>
+        <a href="<%= url %>"><%= t.target_type === 'issue' ? 'issue' : 'merge request' %> <%= t.target_type === 'issue' ? '#' : '!' %><%= t.target_iid %> "<%= t.target_title %>"</a>
+        <% if (t.target_state && t.target_state !== 'opened') { %><span class="badge badge-<%= t.target_state === 'merged' ? 'merged' : 'closed' %>"><%= t.target_state %></span><% } %>
+        <span class="muted">· <a class="muted" href="/<%= t.project_path %>"><%= t.project_name %></a> · <%~ X.time(t.created_at) %></span></div>
+      <% if (t.note_body) { %><div class="todo-note"><%= t.note_body.slice(0, 300) %></div><% } %>
+    </div>
+    <form class="inline-form" method="post" action="/dashboard/todos/<%= t.id %>/<%= t.state === 'pending' ? 'done' : 'restore' %>"><%~ X.csrfInput() %><input type="hidden" name="back" value="<%= it.req.url %>"><button class="btn btn-sm" type="submit"><%= t.state === 'pending' ? 'Mark as done' : 'Undo' %></button></form>
+  </li>
+<% } %>
+</ul>
+<%~ include('_pager', { pager: it.pager }) %>
+<% } %>

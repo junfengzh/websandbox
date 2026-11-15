@@ -1,0 +1,36 @@
+<%/* include('collab/_sb_common', {X, kind, T, action, labels, allLabels, milestone, milestones, assignees, members, can}) : assignee/label/milestone blocks */%>
+<% const X = it.X, U = X.U, T = it.T, P = X.project, a = it.action, can = it.can, isMr = it.kind === 'merge_request', listBase = P.url + (isMr ? '/-/merge_requests' : '/-/issues'); %>
+<div class="sb-block assignee" data-testid="sidebar-assignees">
+  <div class="sb-title"><span>Assignee<%= it.assignees.length > 1 ? 's' : '' %></span>
+  <% if (can.admin) { %><details class="sb-edit"><summary>Edit</summary>
+    <form class="sb-panel" method="post" action="<%= a %>/assignees"><%~ X.csrfInput() %>
+      <%~ include('collab/_user_picker', { field: 'assignee_ids', current: it.assignees, members: it.members, projectId: P.id }) %>
+      <div class="sb-actions"><button class="btn btn-confirm btn-sm" type="submit">Apply</button><button class="btn btn-sm" type="submit" name="unassign_all" value="1">Unassign all</button></div>
+    </form></details><% } %></div>
+  <% if (it.assignees.length) { %><ul class="sb-users"><% for (const u of it.assignees) { %><li><%~ X.avatar(u, 24) %> <a href="/<%= u.username %>" class="author-link"><%= u.name %></a> <span class="muted">@<%= u.username %></span></li><% } %></ul>
+  <% } else { %><span class="sb-none">None<% if (can.admin) { %> - <form class="inline-form" method="post" action="<%= a %>/assignees"><%~ X.csrfInput() %><input type="hidden" name="assign_self" value="1"><button class="btn-link" type="submit">assign yourself</button></form><% } %></span><% } %>
+</div>
+<% if (it.reviewersBlock) { %><%~ it.reviewersBlock %><% } %>
+<div class="sb-block labels" data-testid="sidebar-labels">
+  <div class="sb-title"><span>Labels</span>
+  <% if (can.admin) { %><details class="sb-edit"><summary>Edit</summary>
+    <form class="sb-panel" method="post" action="<%= a %>/labels"><%~ X.csrfInput() %>
+      <label class="sr-only" for="lbl-filter">Search labels</label><input type="search" id="lbl-filter" class="list-filter" data-target="#lbl-pick" placeholder="Search labels">
+      <ul class="pick-list" id="lbl-pick">
+        <% const have = new Set(it.labels.map((l) => l.id)); for (const l of it.allLabels) { %><li><label><input type="checkbox" name="label_ids[]" value="<%= l.id %>"<%~ have.has(l.id) ? ' checked' : '' %>> <span class="label-swatch" style="background:<%= l.color %>"></span> <%= l.title %></label></li><% } %>
+      </ul>
+      <div class="sb-actions"><button class="btn btn-confirm btn-sm" type="submit">Apply</button><a class="btn btn-sm" href="<%= P.url %>/-/labels">Manage project labels</a></div>
+    </form></details><% } %></div>
+  <% if (it.labels.length) { %><div class="sb-labels"><% for (const l of it.labels) { %><%~ include('collab/_label', { l, U, href: listBase + '?label_name[]=' + encodeURIComponent(l.title) }) %><% } %></div><% } else { %><span class="sb-none">None</span><% } %>
+</div>
+<div class="sb-block milestone" data-testid="sidebar-milestone">
+  <div class="sb-title"><span>Milestone</span>
+  <% if (can.admin) { %><details class="sb-edit"><summary>Edit</summary>
+    <form class="sb-panel" method="post" action="<%= a %>/milestone"><%~ X.csrfInput() %>
+      <label class="sr-only" for="ms-select">Milestone</label>
+      <select id="ms-select" name="milestone_id"><option value="">No milestone</option>
+        <% for (const m of it.milestones) { %><option value="<%= m.id %>"<%~ T.milestone_id === m.id ? ' selected' : '' %>><%= m.title %><%= m.state === 'closed' ? ' (closed)' : '' %><%= m.group_id ? ' (group)' : '' %></option><% } %></select>
+      <div class="sb-actions"><button class="btn btn-confirm btn-sm" type="submit">Apply</button></div>
+    </form></details><% } %></div>
+  <% if (it.milestone) { %><a class="sb-value" href="<%= it.milestone.project_id ? P.url + '/-/milestones/' + it.milestone.iid : '#' %>"><%= it.milestone.title %></a><% if (it.milestone.due_date) { %> <span class="muted">(due <%= U.dateFmt(it.milestone.due_date) %>)</span><% } %><% } else { %><span class="sb-none">None</span><% } %>
+</div>

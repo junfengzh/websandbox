@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Rebuild the code-hosting site's base.db from the WebArena GitLab squashfs image.
 # Usage: sites/code/build/build.sh [step...]
-#   steps: mount pgcopy pgstart export repocopy git templates assemble media verify licenses cleanup
+#   steps: mount pgcopy pgstart export repocopy git templates assemble collab media verify licenses cleanup
 #   (default: all, in that order). See README.md.
 set -euo pipefail
 
@@ -64,6 +64,10 @@ step_templates() { python3 -I -B "$HERE/templates.py" --rails "$RAILS" --work "$
 
 step_assemble() { python3 -I -B "$HERE/assemble.py" --rel "$WORK/rel.db" --shards "$WORK/shards" --out "$OUT/base.db"; }
 
+step_collab() {   # indexes + label_priorities + topics for the collaboration side (collab_indexes.sql)
+  python3 -I -B -c 'import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.executescript(open(sys.argv[2]).read()); d.close()' "$OUT/base.db" "$HERE/collab_indexes.sql"
+}
+
 step_media() {    # the only uploaded avatars (2 bots); everyone else gets a letter avatar
   local up=$MNT/var/opt/gitlab/gitlab-rails/uploads/-/system/user/avatar
   for d in $(sudo ls "$up"); do
@@ -85,7 +89,7 @@ step_cleanup() {
 }
 
 steps=("$@")
-[ ${#steps[@]} -eq 0 ] && steps=(mount pgcopy pgstart export repocopy git templates assemble media verify licenses cleanup)
+[ ${#steps[@]} -eq 0 ] && steps=(mount pgcopy pgstart export repocopy git templates assemble collab media verify licenses cleanup)
 for s in "${steps[@]}"; do
   echo "== $s ($(date +%T))"
   "step_$s"

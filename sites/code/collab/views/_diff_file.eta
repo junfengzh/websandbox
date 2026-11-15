@@ -1,0 +1,15 @@
+<%/* include('collab/_diff_file', {f, X, P, sha}) */%>
+<% const f = it.f, X = it.X, P = it.P, st = f.new_file ? 'added' : f.deleted_file ? 'deleted' : f.renamed_file ? 'renamed' : 'modified'; %>
+<div class="file-holder diff-file" id="diff-<%= f.ord %>" data-path="<%= f.new_path %>">
+  <div class="diff-file-header">
+    <span class="badge badge-<%= f.new_file ? 'success' : f.deleted_file ? 'danger' : 'info' %>"><%= st %></span>
+    <span class="file-path"><% if (f.renamed_file && f.old_path) { %><%= f.old_path %> → <% } %><%= f.new_path %></span>
+    <span class="file-stats"><span class="add-count">+<%= f.additions %></span> <span class="del-count">−<%= f.deletions %></span></span>
+    <% if (it.sha && !f.deleted_file) { %><a class="btn btn-sm" href="<%= P.url %>/-/blob/<%= it.sha %>/<%= X.enc(f.new_path) %>">View file @ <%= it.sha.slice(0, 8) %></a><% } %>
+  </div>
+  <% if (f.lines) { %>
+  <table class="diff-table" role="presentation"><tbody>
+  <% for (const r of f.lines) { if (r.t === 'hunk') { %><tr class="hunk"><td class="ln"></td><td class="ln"></td><td class="lc"><%= r.s %></td></tr><% } else { %><tr class="<%= r.t %>"><td class="ln"><%= r.o != null && r.t !== 'add' ? r.o : '' %></td><td class="ln"><%= r.n != null && r.t !== 'del' ? r.n : '' %></td><td class="lc"><span class="sr-only"><%= r.t === 'add' ? 'added: ' : r.t === 'del' ? 'removed: ' : '' %></span><%= r.t === 'add' ? '+' : r.t === 'del' ? '-' : ' ' %><%= r.s %></td></tr><% } } %>
+  </tbody></table>
+  <% } else { %><div class="diff-omitted"><%= f.binary ? 'Binary file not shown.' : f.too_large ? 'This diff is too large to display.' : 'The diff of this file is too large or not available in this sandbox. View the file instead.' %></div><% } %>
+</div>

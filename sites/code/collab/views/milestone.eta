@@ -1,0 +1,46 @@
+<% layout('layout') %>
+<% const X = it, U = it.U, m = it.m, s = it.st, base = it.base, expired = m.due_date && m.due_date < it.today && m.state === 'active';
+   const issueItem = (i) => { %><li><a href="/<%= i.project.full_path %>/-/issues/<%= i.iid %>"><%= i.title %></a><div class="muted"><%= i.project.full_path %>#<%= i.iid %><% for (const l of i.labels) { %> <%~ include('collab/_label', { l, U }) %><% } %><% if (i.assignees.length) { %> · <%= i.assignees.map((a) => '@' + a.username).join(', ') %><% } %></div></li><% }; %>
+<div class="detail-page-header">
+  <span class="state-badge state-<%= m.state === 'active' ? 'opened' : 'closed' %>"><%= m.state === 'active' ? 'Open' : 'Closed' %></span>
+  <% if (expired) { %><span class="badge badge-warning">Expired</span><% } %>
+  <span class="header-meta">Milestone<% if (m.group_id) { %> (group)<% } %> · created <%~ X.time(m.created_at) %></span>
+  <% if (it.canAdmin) { %><div class="header-actions">
+    <a class="btn btn-sm" href="<%= base %>/edit">Edit</a>
+    <form class="inline-form" method="post" action="<%= base %>/<%= m.state === 'active' ? 'close' : 'reopen' %>"><%~ X.csrfInput() %><button class="btn btn-sm" type="submit"><%= m.state === 'active' ? 'Close milestone' : 'Reopen milestone' %></button></form>
+    <form class="inline-form" method="post" action="<%= base %>/delete" data-confirm="Delete milestone <%= m.title %>? Its issues and merge requests stay, without a milestone."><%~ X.csrfInput() %><button class="btn btn-sm btn-danger-secondary" type="submit">Delete</button></form>
+  </div><% } %>
+</div>
+<div class="milestone-detail">
+<div id="content-body-milestone">
+  <h1 class="issuable-title-h1 title"><%= m.title %></h1>
+  <% if (m.description) { %><div class="md md-plain description"><%~ X.md(m.description, { project: it.project, breaks: true }) %></div><% } %>
+  <nav class="mr-tabs" aria-label="Milestone tabs"><ul class="nav-tabs">
+    <li><a href="<%= base %>"<%~ it.tab === 'issues' ? ' aria-current="page"' : '' %>>Issues <span class="issuable-count"><%= s.issues %></span></a></li>
+    <li><a href="<%= base %>?tab=merge_requests"<%~ it.tab === 'merge_requests' ? ' aria-current="page"' : '' %>>Merge requests <span class="issuable-count"><%= s.mrs %></span></a></li>
+    <li><a href="<%= base %>?tab=labels"<%~ it.tab === 'labels' ? ' aria-current="page"' : '' %>>Labels <span class="issuable-count"><%= it.labelsUsed.length %></span></a></li>
+  </ul></nav>
+  <% if (it.tab === 'issues') { %>
+  <div class="ms-columns">
+    <section class="ms-col"><h3>Unstarted Issues (open and unassigned) <span class="issuable-count"><%= it.unstarted.length %></span></h3><ul><% for (const i of it.unstarted) issueItem(i); %></ul></section>
+    <section class="ms-col"><h3>Ongoing Issues (open and assigned) <span class="issuable-count"><%= it.ongoing.length %></span></h3><ul><% for (const i of it.ongoing) issueItem(i); %></ul></section>
+    <section class="ms-col"><h3>Completed Issues (closed) <span class="issuable-count"><%= it.closed.length %></span></h3><ul><% for (const i of it.closed) issueItem(i); %></ul></section>
+  </div>
+  <% } else if (it.tab === 'merge_requests') { %>
+  <% if (!it.mrRows.length) { %><div class="empty-state">No merge requests in this milestone.</div><% } else { %>
+  <ul class="issuable-list mr-list issuable-list-wrap" style="border-top:1px solid var(--line)"><% for (const t of it.mrRows) { %><%~ include('collab/_issuable_row', { t, kind: 'merge_request', showProject: !!it.group, it: X }) %><% } %></ul><% } %>
+  <% } else { %>
+  <ul class="labels-list"><% for (const l of it.labelsUsed) { %><li><span class="label-name"><%~ include('collab/_label', { l, U }) %></span><span class="label-desc"><%= l.description || '' %></span><span class="muted"><%= X.plural(l.n, 'issue') %></span></li><% } %></ul>
+  <% } %>
+</div>
+<aside class="issuable-sidebar milestone-sidebar" aria-label="Milestone details">
+  <div class="block progress-block"><span class="title">Progress</span>
+    <div class="progress" role="progressbar" aria-valuenow="<%= s.pct %>" aria-valuemin="0" aria-valuemax="100"><span style="width:<%= s.pct %>%"></span></div>
+    <span class="value"><strong><%= s.pct %>%</strong> complete</span></div>
+  <div class="block start_date"><span class="title">Start date</span><span class="value"><%= m.start_date ? U.dateFmt(m.start_date) : 'No start date' %></span></div>
+  <div class="block due_date"><span class="title">Due date</span><span class="value<%= expired ? ' overdue' : '' %>"><%= m.due_date ? U.dateFmt(m.due_date) : 'No due date' %><%= expired ? ' (Past due)' : '' %></span></div>
+  <div class="block issues"><span class="title">Issues <span class="issuable-count"><%= s.issues %></span></span><span class="value">Open: <%= s.open %> · Closed: <%= s.closed %></span><br><a href="<%= it.issuesHref %>">View issues</a></div>
+  <div class="block merge-requests"><span class="title">Merge requests <span class="issuable-count"><%= s.mrs %></span></span><span class="value">Merged: <%= s.merged %></span></div>
+  <div class="block"><span class="title">Reference</span><code><%= it.project ? it.project.full_path : it.group.full_path %>%"<%= m.title %>"</code></div>
+</aside>
+</div>

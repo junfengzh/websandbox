@@ -1,0 +1,12 @@
+<% layout('layout') %>
+<% const X = it, v = it.values || {}, e = it.errors || {}, b = it.base, pg = it.page; %>
+<h1><%= pg ? 'Edit Page' : 'New Wiki Page' %></h1>
+<% if (Object.keys(e).length) { %><div class="flash flash-alert" role="alert"><ul><% for (const k in e) { %><li><%= e[k] %></li><% } %></ul></div><% } %>
+<form method="post" action="<%= pg ? b + '/' + it.enc(pg.slug) + '/edit' : (v.title ? b + '/' + it.enc(v.title.replace(/\s+/g, '-')) + '/edit' : b) %>" class="wiki-form" style="max-width:900px"><%~ X.csrfInput() %>
+  <div class="form-group<%= e.title ? ' has-error' : '' %>"><label for="wiki_title">Title</label><input class="form-control" type="text" id="wiki_title" name="title" value="<%= v.title || '' %>" required>
+    <p class="form-text">Tip: You can move this page by adding the path to the beginning of the title (e.g. <code>docs/setup</code>).</p></div>
+  <div class="form-group"><label for="wiki_format">Format</label><select id="wiki_format" name="format"><% for (const [f, l] of it.formats) { %><option value="<%= f %>"<%~ (v.format || 'markdown') === f ? ' selected' : '' %>><%= l %></option><% } %></select></div>
+  <div class="form-group<%= e.content ? ' has-error' : '' %>"><label for="wiki_content">Content</label><textarea class="form-control" id="wiki_content" name="content" rows="18" placeholder="Write your content or drag files here…"><%= v.content || '' %></textarea></div>
+  <div class="form-group"><label for="wiki_message">Commit message</label><input class="form-control" type="text" id="wiki_message" name="message" value="<%= v.message || (pg ? 'Update ' + pg.title : 'Create ' + (v.title || 'page')) %>"></div>
+  <div class="form-actions"><button class="btn btn-confirm" type="submit"><%= pg ? 'Save changes' : 'Create page' %></button><a class="btn btn-default" href="<%= pg ? b + '/' + it.enc(pg.slug) : b + '/home' %>">Cancel</a></div>
+</form>

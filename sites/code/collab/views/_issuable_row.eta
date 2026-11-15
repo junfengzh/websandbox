@@ -1,0 +1,33 @@
+<%/* include('collab/_issuable_row', {t, kind, base, showProject, it}) */%>
+<% const t = it.t, X = it.it, U = X.U, kind = it.kind, isMr = kind === 'merge_request';
+   const pbase = '/' + t.project.full_path, url = pbase + (isMr ? '/-/merge_requests/' : '/-/issues/') + t.iid;
+   const lbase = (it.base || pbase + (isMr ? '/-/merge_requests' : '/-/issues')) + '?label_name[]=';
+   const overdue = !isMr && t.due_date && t.state === 'opened' && t.due_date < X.today; %>
+<li class="issuable-row <%= t.state %>" id="<%= isMr ? 'merge_request' : 'issue' %>_<%= t.id %>" data-iid="<%= t.iid %>">
+  <div class="issuable-main">
+    <div class="issuable-title">
+      <% if (t.confidential) { %><span class="confidential-icon" title="Confidential"><%~ U.icon('eyeoff') %><span class="sr-only">Confidential</span></span><% } %>
+      <% if (isMr && t.draft) { %><span class="badge badge-draft">Draft</span><% } %>
+      <a href="<%= url %>"><%= t.title %></a>
+      <% for (const l of t.labels) { %><%~ include('collab/_label', { l, U, href: lbase + encodeURIComponent(l.title) }) %><% } %>
+    </div>
+    <div class="issuable-meta">
+      <span class="issuable-reference"><% if (it.showProject) { %><%= t.project.full_path %><% } %><%= isMr ? '!' : '#' %><%= t.iid %></span>
+      <span>· created <%~ X.time(t.created_at) %> by <% if (t.author) { %><a href="/<%= t.author.username %>" class="author-link"><%= t.author.name %></a><% } else { %>Ghost User<% } %></span>
+      <% if (isMr) { %><span class="ic" title="Target branch"><svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3v10M11 6v7M11 6a2 2 0 1 0 0-.1M5 13a2 2 0 1 0 0 .1M5 3a2 2 0 1 0 0 .1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><a class="ref-name" href="<%= pbase %>/-/tree/<%= X.enc(t.target_branch) %>"><%= t.target_branch %></a></span><% } %>
+      <% if (t.milestone) { %><a class="ic" href="<%= t.milestone.project_id ? pbase + '/-/milestones/' + t.milestone.iid : '#' %>" title="Milestone"><%~ U.icon('clock', 12) %> <%= t.milestone.title %></a><% } %>
+      <% if (t.due_date) { %><span class="ic<%= overdue ? ' overdue' : '' %>" title="Due date"><%~ U.icon('calendar', 12) %> <%= U.dateFmt(t.due_date) %><%= overdue ? ' (overdue)' : '' %></span><% } %>
+    </div>
+  </div>
+  <div class="issuable-meta-right">
+    <div class="controls">
+      <% if (t.state === 'closed') { %><span class="badge badge-closed">CLOSED</span><% } else if (t.state === 'merged') { %><span class="badge badge-merged">MERGED</span><% } else if (t.state === 'locked') { %><span class="badge badge-warning">LOCKED</span><% } %>
+      <% if (isMr && t.approvals) { %><span class="ic" title="<%= t.approvals %> approval<%= t.approvals === 1 ? '' : 's' %>"><%~ U.icon('check', 12) %> <%= t.approvals %></span><% } %>
+      <% if (t.assignees.length) { %><span class="avatars" title="Assigned to <%= t.assignees.map((a) => a.name).join(', ') %>"><% for (const a of t.assignees.slice(0, 3)) { %><a href="/<%= a.username %>" aria-label="Assigned to <%= a.name %>"><%~ X.avatar(a, 20) %></a><% } %></span><% } %>
+      <% if (isMr && t.reviewers.length) { %><span class="avatars" title="Review requested from <%= t.reviewers.map((a) => a.name).join(', ') %>"><% for (const a of t.reviewers.slice(0, 3)) { %><a href="/<%= a.username %>" aria-label="Reviewer <%= a.name %>"><%~ X.avatar(a, 20) %></a><% } %></span><% } %>
+      <% if (t.upvotes) { %><span class="ic" title="Upvotes"><%~ U.icon('thumbsup', 12) %> <%= t.upvotes %></span><% } %>
+      <a class="ic" href="<%= url %>#notes" title="Comments" aria-label="<%= t.user_notes_count %> comments"><%~ U.icon('comment', 12) %> <%= t.user_notes_count %></a>
+    </div>
+    <span class="muted">updated <%~ X.time(t.updated_at || t.created_at) %></span>
+  </div>
+</li>

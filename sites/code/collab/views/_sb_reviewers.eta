@@ -1,0 +1,15 @@
+<% const X = it.X, M = it.M, base = it.base, P = X.project, me = X.user, mine = me && X.reviewers.find((r) => r.id === me.id);
+   const stl = { unreviewed: 'Review requested', reviewed: 'Reviewed', requested_changes: 'Requested changes' }; %>
+<div class="sb-block reviewer" data-testid="sidebar-reviewers">
+  <div class="sb-title"><span>Reviewer<%= X.reviewers.length > 1 ? 's' : '' %></span>
+  <% if (me && (it.can.admin || it.can.edit)) { %><details class="sb-edit"><summary>Edit</summary>
+    <form class="sb-panel" method="post" action="<%= base %>/reviewers"><%~ X.csrfInput() %>
+      <%~ include('collab/_user_picker', { field: 'reviewer_ids', current: X.reviewers, members: X.members, projectId: P.id }) %>
+      <div class="sb-actions"><button class="btn btn-confirm btn-sm" type="submit">Apply</button><button class="btn btn-sm" type="submit" name="unassign_all" value="1">Remove all</button></div>
+    </form></details><% } %></div>
+  <% if (X.reviewers.length) { %><ul class="sb-users"><% for (const u of X.reviewers) { %><li><%~ X.avatar(u, 24) %> <a href="/<%= u.username %>"><%= u.name %></a> <span class="muted">@<%= u.username %></span><span class="reviewer-state"><%= stl[u.review_state] || u.review_state %></span></li><% } %></ul>
+  <% } else { %><span class="sb-none">None<% if (me && (it.can.admin || it.can.edit)) { %> - <form class="inline-form" method="post" action="<%= base %>/reviewers"><%~ X.csrfInput() %><input type="hidden" name="assign_self" value="1"><button class="btn-link" type="submit">assign yourself</button></form><% } %></span><% } %>
+  <% if (mine && M.state === 'opened') { %><form class="sb-actions" method="post" action="<%= base %>/review_state"><%~ X.csrfInput() %>
+    <label class="sr-only" for="rv-state">Your review</label><select id="rv-state" name="state"><% for (const k in stl) { %><option value="<%= k %>"<%~ mine.review_state === k ? ' selected' : '' %>><%= stl[k] %></option><% } %></select>
+    <button class="btn btn-sm" type="submit">Update review</button></form><% } %>
+</div>

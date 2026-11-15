@@ -1,0 +1,26 @@
+<% layout('layout') %>
+<% const X = it, v = it.values || {}, e = it.errors || {}; %>
+<h1>Create group</h1>
+<p class="muted">Groups allow you to manage and collaborate across multiple projects. Members of a group have access to all of its projects.</p>
+<% if (Object.keys(e).length) { %><div class="flash flash-alert" role="alert">The form contains the following errors:<ul><% for (const k in e) { %><li><%= e[k] %></li><% } %></ul></div><% } %>
+<form method="post" action="/groups" id="new_group" style="max-width:760px"><%~ X.csrfInput() %>
+  <% if (it.parent) { %><input type="hidden" name="parent_id" value="<%= it.parent.id %>"><p>Subgroup of <a href="/<%= it.parent.full_path %>"><strong><%= it.parent.full_path %></strong></a></p><% } %>
+  <div class="form-group<%= e.name ? ' has-error' : '' %>"><label for="group_name">Group name</label>
+    <input class="form-control" type="text" id="group_name" name="name" value="<%= v.name || '' %>" required maxlength="255" placeholder="My awesome group" autofocus>
+    <p class="form-text">Must start with letter, digit, emoji, or underscore. Can also contain periods, dashes, spaces, and parentheses.</p></div>
+  <div class="form-group<%= e.path ? ' has-error' : '' %>"><label for="group_path">Group URL</label>
+    <div class="input-group"><span class="input-group-text">/<%= it.parent ? it.parent.full_path + '/' : '' %></span><input class="form-control" type="text" id="group_path" name="path" value="<%= v.path || '' %>" placeholder="my-awesome-group" pattern="[a-zA-Z0-9_][a-zA-Z0-9_.\-]*"></div>
+    <p class="form-text">Leave empty to derive it from the name.</p></div>
+  <fieldset><legend>Visibility level</legend>
+    <ul class="radio-list">
+      <% for (const [k, l, d] of [['private', 'Private', 'The group and its projects can only be viewed by members.'], ['internal', 'Internal', 'The group and any internal projects can be viewed by any logged in user except external users.'], ['public', 'Public', 'The group and any public projects can be viewed without any authentication.']]) { %>
+      <li><label><input type="radio" name="visibility" value="<%= k %>"<%~ (v.visibility || 'private') === k ? ' checked' : '' %>> <%= l %></label><div class="help"><%= d %></div></li><% } %>
+    </ul></fieldset>
+  <div class="form-group"><label for="group_description">Group description (optional)</label><textarea class="form-control" id="group_description" name="description" rows="3"><%= v.description || '' %></textarea></div>
+  <div class="form-group<%= e.invitees ? ' has-error' : '' %>"><label for="group_invitees">Invite members (optional)</label>
+    <input class="form-control" type="text" id="group_invitees" name="invitees" value="<%= v.invitees || '' %>" placeholder="Usernames or emails, separated by commas" autocomplete="off">
+    <label for="group_invite_level" class="muted" style="font-weight:400;margin-top:6px">Role for invited members</label>
+    <select id="group_invite_level" name="invite_access_level"><% for (const [l, n] of it.levels) { %><option value="<%= l %>"<%~ (+v.invite_access_level || 30) === l ? ' selected' : '' %>><%= n %></option><% } %></select>
+    <p class="form-text">You can also add members later from the group's Members page.</p></div>
+  <div class="form-actions"><button class="btn btn-confirm" type="submit" data-qa-selector="create_group_button">Create group</button><a class="btn btn-default" href="/dashboard/groups">Cancel</a></div>
+</form>

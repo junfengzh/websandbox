@@ -1,0 +1,6 @@
+<% layout('layout') %>
+<h1>Activity</h1>
+<% if (!it.events.length) { %><div class="empty-state">No activity yet.</div><% } else { %>
+<ul class="event-list"><% for (const e of it.events) { %><%~ include('_event', { e, time: it.time, avatar: it.avatar, now: it.now }) %><% } %></ul>
+<nav class="gl-pagination" aria-label="Pagination"><% if (it.page > 1) { %><a class="page-link" href="?page=<%= it.page - 1 %>">‹ Prev</a><% } %><% if (it.events.length === 40) { %><a class="page-link" href="?page=<%= it.page + 1 %>">Next ›</a><% } %></nav>
+<% } %>

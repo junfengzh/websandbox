@@ -1,0 +1,73 @@
+<%/* include('collab/_issuables', it) : state tabs, filter bar, active filter tokens, list, pager.
+     needs it.r (lists.list result), it.kind, it.base, it.labels?, it.milestones?, it.showProject?, it.hidden? */%>
+<% const X = it, r = it.r, kind = it.kind, isMr = kind === 'merge_request', q = it.req.query || {}, base = it.base;
+   const href = (changes) => { const p = new URLSearchParams(); const m = { ...q, ...changes };
+     for (const [k, v] of Object.entries(m)) { if (v == null || v === '') continue; for (const x of [].concat(v)) if (x != null && x !== '') p.append(k, x); }
+     const s = p.toString(); return base + (s ? '?' + s : ''); };
+   const labelsQ = [].concat(q['label_name[]'] || []).filter(Boolean);
+   const states = isMr ? [['opened', 'Open'], ['merged', 'Merged'], ['closed', 'Closed'], ['all', 'All']] : [['opened', 'Open'], ['closed', 'Closed'], ['all', 'All']];
+   const noun = isMr ? 'merge requests' : 'issues'; %>
+<div class="issuables-tabs top-area">
+  <ul class="nav-tabs" role="tablist" aria-label="Filter by state">
+  <% for (const [s, l] of states) { %><li role="presentation"><a role="tab" href="<%= href({ state: s, page: null }) %>"<%~ r.state === s ? ' aria-current="page" aria-selected="true"' : ' aria-selected="false"' %> data-state="<%= s %>"><%= l %> <span class="issuable-count"><%= X.num(r.counts[s]) %></span></a></li><% } %>
+  </ul>
+  <div class="nav-controls">
+    <% if (it.newHref) { %><a class="btn btn-confirm" href="<%= it.newHref %>"><%= isMr ? 'New merge request' : 'New issue' %></a><% } %>
+  </div>
+</div>
+<form class="issuables-filter" method="get" action="<%= base %>" role="search" aria-label="Filter <%= noun %>">
+  <input type="hidden" name="state" value="<%= r.state %>">
+  <% for (const h of (it.hidden || [])) { %><input type="hidden" name="<%= h[0] %>" value="<%= h[1] %>"><% } %>
+  <% for (const l of labelsQ) { %><input type="hidden" name="label_name[]" value="<%= l %>"><% } %>
+  <label class="fl grow">Search or filter results
+    <input type="search" name="search" value="<%= q.search || '' %>" placeholder="Search <%= noun %> by title or description"></label>
+  <label class="fl">Author
+    <input type="text" name="author_username" value="<%= q.author_username || '' %>" placeholder="username" list="cl-users" autocomplete="off"></label>
+  <label class="fl">Assignee
+    <input type="text" name="assignee_username" value="<%= [].concat(q.assignee_username || q['assignee_username[]'] || [])[0] || '' %>" placeholder="username, None or Any" list="cl-users" autocomplete="off"></label>
+  <% if (isMr) { %><label class="fl">Reviewer
+    <input type="text" name="reviewer_username" value="<%= q.reviewer_username || '' %>" placeholder="username" list="cl-users" autocomplete="off"></label><% } %>
+  <% if (it.labels) { %><label class="fl">Label
+    <select name="label_name[]">
+      <option value="">Add a label…</option>
+      <option value="None">None (no labels)</option><option value="Any">Any label</option>
+      <% for (const l of it.labels) { if (labelsQ.includes(l.title)) continue; %><option value="<%= l.title %>"><%= l.title %></option><% } %>
+    </select></label><% } %>
+  <% if (it.milestones) { %><label class="fl">Milestone
+    <select name="milestone_title">
+      <option value="">Any or none</option>
+      <% for (const [v, l] of [['None', 'None'], ['Any', 'Any'], ['Upcoming', 'Upcoming'], ['Started', 'Started']]) { %><option value="<%= v %>"<%~ q.milestone_title === v ? ' selected' : '' %>><%= l %></option><% } %>
+      <% for (const m of it.milestones) { %><option value="<%= m.title %>"<%~ q.milestone_title === m.title ? ' selected' : '' %>><%= m.title %><%= m.state === 'closed' ? ' (closed)' : '' %></option><% } %>
+    </select></label><% } %>
+  <label class="fl">Sort by
+    <select name="sort">
+      <% for (const [v, l] of r.sortOptions) { %><option value="<%= v %>"<%~ r.sort === v ? ' selected' : '' %>><%= l %></option><% } %>
+    </select></label>
+  <button class="btn btn-default" type="submit">Search</button>
+  <% if (r.active.length) { %><a class="btn btn-link" href="<%= base %>?state=<%= r.state %><%= (it.hidden || []).map((h) => '&' + h[0] + '=' + encodeURIComponent(h[1])).join('') %>">Clear</a><% } %>
+</form>
+<% if (r.active.length) { %>
+<div class="filter-tokens" aria-label="Active filters">
+  <span class="muted">Filtered by:</span>
+  <% for (const a of r.active) {
+       let rm;
+       if (a.name === 'label_name') rm = href({ 'label_name[]': labelsQ.filter((x) => x !== a.value), label_name: null, page: null });
+       else if (a.name === 'assignee_username') rm = href({ assignee_username: null, 'assignee_username[]': [].concat(q['assignee_username[]'] || []).filter((x) => x !== a.value), page: null });
+       else rm = href({ [a.name]: null, ...(a.name === 'assignee_id' ? { assignee_username: null } : {}), ...(a.name === 'reviewer_id' ? { reviewer_username: null } : {}), page: null }); %>
+  <span class="filter-token" data-filter="<%= a.name %>"><span class="tk-name"><%= a.label %></span><span class="tk-value"><%= a.value %></span><a class="tk-remove" href="<%= rm %>" aria-label="Remove filter <%= a.label %> <%= a.value %>">×</a></span>
+  <% } %>
+</div>
+<% } %>
+<div class="issuable-list-wrap">
+<% if (!r.rows.length) { %>
+  <div class="empty-state"><h3><%= r.active.length ? 'Sorry, your filter produced no results' : (r.state === 'opened' ? 'There are no open ' + noun : 'There are no ' + noun + ' to show') %></h3>
+  <% if (r.active.length) { %><p>To widen your search, change or remove filters above.</p><% } %></div>
+<% } else { %>
+<ul class="issuable-list <%= isMr ? 'mr-list' : 'issues-list' %>" aria-label="<%= noun %>">
+  <% for (const t of r.rows) { %><%~ include('collab/_issuable_row', { t, kind, base: it.labelBase || null, showProject: it.showProject, it: X }) %><% } %>
+</ul>
+<% } %>
+</div>
+<%~ include('_pager', { pager: r.pager }) %>
+<% if (r.pager.total) { %><p class="kit-count">Showing <%= X.num(r.pager.from) %>-<%= X.num(r.pager.to) %> of <%= X.num(r.pager.total) %> <%= noun %></p><% } %>
+<datalist id="cl-users"><% for (const u of (it.userHints || [])) { %><option value="<%= u.username %>"><%= u.name %></option><% } %></datalist>

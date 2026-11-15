@@ -1,0 +1,62 @@
+<% layout('layout') %>
+<% const X = it, P = it.project, sp = it.sp, tp = it.tp, e = it.errors || {}; %>
+<h1>New merge request</h1>
+<% if (it.step === 1) { %>
+<% if (Array.isArray(it.errors) && it.errors.length) { %><div class="flash flash-alert" role="alert"><% for (const m of it.errors) { %><div><%= m %></div><% } %></div><% } %>
+<form method="get" action="<%= P.url %>/-/merge_requests/new" class="compare-form">
+  <div class="branch-pickers">
+    <section class="card"><div class="card-header">Source branch</div><div class="card-body">
+      <label for="src-project">Source project</label>
+      <select id="src-project" name="merge_request[source_project_id]"><% for (const p of it.related) { %><option value="<%= p.id %>"<%~ p.id === sp.id ? ' selected' : '' %>><%= p.full_path %></option><% } %></select>
+      <label for="src-branch">Source branch</label>
+      <select id="src-branch" name="merge_request[source_branch]" required><option value="">Select source branch</option><% for (const b of it.sourceBranches) { %><option value="<%= b.name %>"<%~ b.name === it.sb ? ' selected' : '' %>><%= b.name %></option><% } %></select>
+      <% if (it.related.length > 1) { %><p class="form-text">Changed the source project? Click "Compare branches" to reload its branches.</p><% } %>
+    </div></section>
+    <section class="card"><div class="card-header">Target branch</div><div class="card-body">
+      <label for="tgt-project">Target project</label>
+      <select id="tgt-project" name="merge_request[target_project_id]"><% for (const p of it.related) { %><option value="<%= p.id %>"<%~ p.id === tp.id ? ' selected' : '' %>><%= p.full_path %></option><% } %></select>
+      <label for="tgt-branch">Target branch</label>
+      <select id="tgt-branch" name="merge_request[target_branch]" required><% for (const b of it.targetBranches) { %><option value="<%= b.name %>"<%~ b.name === it.tb ? ' selected' : '' %>><%= b.name %><%= b.name === tp.default_branch ? ' (default)' : '' %></option><% } %></select>
+    </div></section>
+  </div>
+  <div class="form-actions"><button class="btn btn-confirm" type="submit">Compare branches and continue</button></div>
+</form>
+<% } else { const c = it.cmp, v = it.values || {}; %>
+<p class="compare-commit">From <code class="mr-source-branch"><%= sp.id !== tp.id ? sp.full_path + ':' : '' %><%= it.sb %></code> into <code class="mr-source-branch"><%= tp.id !== P.id || sp.id !== tp.id ? tp.full_path + ':' : '' %><%= it.tb %></code>
+  <a class="btn btn-sm" href="<%= P.url %>/-/merge_requests/new?merge_request[source_project_id]=<%= sp.id %>&merge_request[source_branch]=<%= encodeURIComponent(it.sb) %>&merge_request[target_project_id]=<%= tp.id %>&merge_request[target_branch]=<%= encodeURIComponent(it.tb) %>&change_branches=1">Change branches</a></p>
+<% if (Object.keys(e).length) { %><div class="flash flash-alert" role="alert"><ul><% for (const k in e) { %><li><%= e[k] %></li><% } %></ul></div><% } %>
+<form method="post" action="<%= P.url %>/-/merge_requests" id="new_merge_request"><%~ X.csrfInput() %>
+  <input type="hidden" name="source_project_id" value="<%= sp.id %>"><input type="hidden" name="source_branch" value="<%= it.sb %>">
+  <input type="hidden" name="target_project_id" value="<%= tp.id %>"><input type="hidden" name="target_branch" value="<%= it.tb %>">
+  <div class="form-group<%= e.title ? ' has-error' : '' %>">
+    <label for="mr_title">Title <span class="req" aria-hidden="true">*</span></label>
+    <input class="form-control" type="text" id="mr_title" name="title" value="<%= v.title || '' %>" required maxlength="255">
+    <label class="gap8 muted" style="font-weight:400;margin-top:6px"><input type="checkbox" name="draft" value="1"<%~ v.draft ? ' checked' : '' %>> Mark as draft</label>
+  </div>
+  <div class="form-group"><label for="mr_description">Description</label>
+    <textarea class="form-control" id="mr_description" name="description" rows="8" placeholder="Describe the goal of the changes and what reviewers should be aware of."><%= v.description || '' %></textarea></div>
+  <div class="row">
+    <div class="col form-group<%= e.assignee_ids ? ' has-error' : '' %>"><span class="label-bold" id="mr-assignees">Assignees</span>
+      <div role="group" aria-labelledby="mr-assignees"><%~ include('collab/_user_picker', { field: 'assignee_ids', current: [], members: it.members, projectId: tp.id }) %></div>
+      <% if (X.user) { %><p class="form-text">Tip: type your own username (<%= X.user.username %>) to assign yourself.</p><% } %></div>
+    <div class="col form-group<%= e.reviewer_ids ? ' has-error' : '' %>"><span class="label-bold" id="mr-reviewers">Reviewers</span>
+      <div role="group" aria-labelledby="mr-reviewers"><%~ include('collab/_user_picker', { field: 'reviewer_ids', current: [], members: it.members, projectId: tp.id }) %></div></div>
+  </div>
+  <% if (it.canAdmin) { %><div class="row">
+    <div class="col form-group"><label for="mr_milestone">Milestone</label>
+      <select id="mr_milestone" name="milestone_id"><option value="">Select milestone</option><% for (const m of it.milestones) { %><option value="<%= m.id %>"><%= m.title %></option><% } %></select></div>
+    <div class="col form-group"><span class="label-bold" id="mr-labels">Labels</span>
+      <ul class="pick-list" role="group" aria-labelledby="mr-labels" style="max-height:200px;overflow:auto;list-style:none;padding:0"><% for (const l of it.labels) { %><li><label style="font-weight:400"><input type="checkbox" name="label_ids[]" value="<%= l.id %>"> <span class="label-swatch" style="background:<%= l.color %>"></span> <%= l.title %></label></li><% } %></ul></div>
+  </div><% } %>
+  <fieldset><legend>Merge options</legend>
+    <label class="gap8" style="font-weight:400"><input type="checkbox" name="force_remove_source_branch" value="1" checked> Delete source branch when merge request is accepted.</label>
+    <label class="gap8" style="font-weight:400"><input type="checkbox" name="squash" value="1"> Squash commits when merge request is accepted.</label>
+  </fieldset>
+  <div class="form-actions"><button class="btn btn-confirm" type="submit" data-qa-selector="issuable_create_button">Create merge request</button><a class="btn btn-default" href="<%= P.url %>/-/merge_requests">Cancel</a></div>
+</form>
+<h2 class="h5">Commits <span class="issuable-count"><%= c.commits.length %></span></h2>
+<ul class="commit-list"><% for (const cm of c.commits.slice(0, 50)) { const full = cm; %><li class="commit-row"><div class="commit-detail"><span class="commit-row-message"><%= full.title || '' %></span><div class="committer"><%= full.author_name %> · <%~ X.time(full.committed_at) %></div></div><code class="commit-sha"><%= full.sha.slice(0, 8) %></code></li><% } %></ul>
+<h2 class="h5">Changes <span class="issuable-count"><%= c.files.length %></span></h2>
+<% if (c.unavailable) { %><p class="muted">The file contents of these commits are not available in this sandbox; the files the commits touch are listed.</p><% } %>
+<ul class="diff-file-list"><% for (const f of c.files.slice(0, 200)) { %><li><span class="change-<%= f.change %>"><%= f.change %></span> <%= f.path %></li><% } %></ul>
+<% } %>

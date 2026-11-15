@@ -1,0 +1,21 @@
+<% layout('layout') %>
+<% const X = it, P = it.project, pg = it.page, b = it.base; %>
+<div class="wiki-layout">
+<div>
+  <div class="wiki-page-header">
+    <h1><%= pg ? pg.title : it.empty ? 'Wiki' : it.slug %></h1>
+    <div class="gap8"><% if (it.canEdit) { %><a class="btn" href="<%= b %>/new">New page</a><% if (pg) { %><a class="btn btn-confirm" href="<%= b %>/<%= it.enc(pg.slug) %>/edit">Edit</a><% } %><% } %><a class="btn" href="<%= b %>/pages">Wiki pages</a></div>
+  </div>
+  <% if (pg) { %>
+  <p class="wiki-last-edit">Last edited by <strong><%= pg.author_name || 'unknown' %></strong> <%~ X.time(pg.updated_at) %></p>
+  <div class="md wiki" data-testid="wiki-page-content"><% if (pg.format === 'markdown') { %><%~ X.md(pg.content, { project: P }) %><% } else { %><pre><%= pg.content %></pre><% } %></div>
+  <% if (it.canEdit) { %><form method="post" action="<%= b %>/<%= it.enc(pg.slug) %>/delete" data-confirm="Delete the wiki page &quot;<%= pg.title %>&quot;?"><%~ X.csrfInput() %><button class="btn btn-sm btn-danger-secondary" type="submit">Delete page</button></form><% } %>
+  <% } else if (it.empty) { %>
+  <div class="empty-state"><h2>Get started with wikis</h2><p>Use GitLab Wiki to collaborate on documentation in a project or group. You can store wiki pages written in markup formats like Markdown or AsciiDoc in a separate Git repository, and access the wiki through Git, the GitLab web interface, or the API.</p>
+  <% if (it.canEdit) { %><a class="btn btn-confirm" href="<%= b %>/home/edit">Create your first page</a><% } %></div>
+  <% } else { %>
+  <div class="empty-state"><h2>This page does not exist</h2><% if (it.canEdit) { %><a class="btn btn-confirm" href="<%= b %>/<%= it.enc(it.slug) %>/edit">Create this page</a><% } %></div>
+  <% } %>
+</div>
+<%~ include('collab/_wiki_sidebar', { pages: it.pages, base: b, enc: it.enc, current: pg ? pg.slug : it.slug }) %>
+</div>
