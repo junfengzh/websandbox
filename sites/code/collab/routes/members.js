@@ -100,7 +100,7 @@ module.exports = function members(app, ctx) {
   async function invite(req, reply, s) {
     const sc = scopeOf(s); need(sc);
     const b = req.body || {};
-    const raw = [...U.arr(b['user_ids[]'] ?? b.user_ids), ...U.str(b.invitees || b.usernames || b.user_id || b.email).split(/[\s,;]+/)].map((x) => String(x).trim()).filter(Boolean);
+    const raw = [...U.arr(b['user_ids[]'] ?? b.user_ids), ...U.str(b.invitees || b.usernames || b.user_id || b.email).split(/[,;\n]+/)].map((x) => String(x).trim()).filter(Boolean);
     const level = U.int(b.access_level, 10);
     const expires = U.str(b.expires_at);
     const errors = [];
@@ -111,7 +111,16 @@ module.exports = function members(app, ctx) {
     if (exp === undefined) errors.push('Access expiration date is invalid (use YYYY-MM-DD).');
     else if (exp && exp <= kit.nowSql().slice(0, 10)) errors.push('Access expiration date must be in the future.');
     const invitees = [];
+    // Entries are comma-separated; an entry may be a username, an e-mail, or a user's full name
+    // ("Jakub Klinkovský", as GitLab's invite picker finds by name); otherwise space-separated usernames.
+    const byName = (n) => { const r = kit.sql("SELECT * FROM users WHERE name = ? COLLATE NOCASE AND state = 'active' LIMIT 2").all(n); return r.length === 1 ? r[0] : null; };
+    const findUser = (v) => kit.sql("SELECT * FROM users WHERE (username = ? OR email = ? COLLATE NOCASE OR public_email = ? COLLATE NOCASE) AND state = 'active'").get(v, v, v);
+    const entries = [];
     for (const x of raw) {
+      const v = x.replace(/^@/, '');
+      if (/\s/.test(v) && !findUser(v)) { const u = byName(v); if (u) entries.push('@' + u.username); else entries.push(...v.split(/\s+/)); } else entries.push(x);
+    }
+    for (const x of entries) {
       const s2 = x.replace(/^@/, '');
       const byId = /^\d+$/.test(s2) ? kit.sql("SELECT * FROM users WHERE id = ? AND state = 'active'").get(+s2) : null;
       const u = byId || kit.sql("SELECT * FROM users WHERE (username = ? OR email = ? COLLATE NOCASE OR public_email = ? COLLATE NOCASE) AND state = 'active'").get(s2, s2, s2);

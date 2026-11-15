@@ -196,7 +196,7 @@ branch, file contents not stored for `recent`-policy history).
 | Method / path | Fields | Writes |
 |---|---|---|
 | GET `/:ns/:proj/-/project_members?search=&sort=&tab=invited|access_requests` | | direct + inherited (group, personal namespace owner) members, roles, expiry |
-| POST `/:ns/:proj/-/project_members` | `invitees` (usernames and/or e-mails, comma list; also `user_ids[]`), `access_level` (10/20/30/40/50), `expires_at` | `members` row per user (`source_type` 'project'); an existing member is updated; an e-mail of a user adds that user, other e-mails a pending invite (`user_id` NULL, `invite_email`); `events` joined |
+| POST `/:ns/:proj/-/project_members` | `invitees` (usernames, e-mails and/or full names (a unique exact name), comma list; also `user_ids[]`), `access_level` (10/20/30/40/50), `expires_at` | `members` row per user (`source_type` 'project'); an existing member is updated; an e-mail of a user adds that user, other e-mails a pending invite (`user_id` NULL, `invite_email`); `events` joined |
 | POST `/-/project_members/:id/update` | `access_level`, `expires_at` | |
 | POST `/-/project_members/:id/delete` | `unassign_issuables=1` | removes the row (also revokes an invite / denies a request) |
 | POST `/-/project_members/leave`, `/request_access`, `/:id/approve_access_request` | | |

@@ -14,7 +14,7 @@
   <form method="post" action="<%= base %>" class="invite-form" id="invite-members-form"><%~ X.csrfInput() %>
     <div class="form-group" style="margin:0"><label for="invitees">Username or email address</label>
       <input class="form-control" type="text" id="invitees" name="invitees" value="<%= v.invitees || '' %>" placeholder="e.g. alice, bob@example.com" list="invite-users" autocomplete="off" required>
-      <p class="form-text">Separate several with commas. An email address of a GitLab user adds that user; any other email gets an invitation.</p></div>
+      <p class="form-text">Separate several with commas (usernames, full names or e-mail addresses). An email address of a GitLab user adds that user; any other email gets an invitation.</p></div>
     <div class="form-group" style="margin:0"><label for="access_level">Select a role</label>
       <select id="access_level" name="access_level"><% for (const [l, n] of it.levels) { if (l === 50 && !it.isOwner) continue; %><option value="<%= l %>"<%~ +(v.access_level || 10) === l ? ' selected' : '' %>><%= n %></option><% } %></select></div>
     <div class="form-group" style="margin:0"><label for="expires_at">Access expiration date (optional)</label>
