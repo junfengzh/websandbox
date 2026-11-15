@@ -62,7 +62,7 @@ function decorate(site, req, reply) {
     if (msg === undefined) [type, msg] = ['info', type];
     const f = req.session.get('_flash') || [];
     f.push({ type, msg });
-    req.session.set('_flash', f);
+    req.session.set('_flash', f.slice(-10)); // unread flashes don't pile up (e.g. scripted POSTs)
   };
   req.takeFlashes = () => {
     const f = req.session.get('_flash');

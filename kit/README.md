@@ -78,6 +78,10 @@ if (require.main === module) module.exports.main();
 
 ## Running a site (CLI)
 
+Performance (BENCH.md): kit overhead ≈ a bare Fastify route; reset < 1 ms server-side
+(58 ms after rewriting a whole 1.3 GB DB); ~30-55 MB RAM per tenant. One event loop does
+~50 average requests/s on a busy box, so run **`--workers 4`** for 16-32 tenants.
+
 ```
 node sites/<site>/server.js --tenants N --port P --data $WSB_DATA_ROOT/<site> [options]
   --bind ports        (default) tenant i on 127.0.0.1:P+i                      -- dev, tests
@@ -264,6 +268,11 @@ distance (≤1 for short words, ≤2), ranked by document frequency -- run it on
 finds nothing. Use an unstemmed tokenizer (`unicode61`) for the vocabulary source; with
 `porter` the suggestions are stems (keep a small unstemmed titles index for suggestions).
 FTS5 tables are inside the tenant transaction, so writes update the index and resets restore it.
+
+Cost: bm25 is computed for every matching row (~5-7 µs each): fine for thousands of
+matches, 200+ ms for a common word over a million rows (BENCH.md). On big tables rank a
+short field (titles/names), use `kit.countCapped`, and switch to a column sort (or show the
+first N by rowid) when the match count hits the cap.
 
 ## Background jobs
 
