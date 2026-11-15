@@ -1,0 +1,13 @@
+<% layout('layout') %>
+<header class="page-header">
+  <h1>Forums by category</h1>
+  <nav class="tabs" aria-label="Forum lists"><a href="/forums">List</a><a href="/forums/all">All (A-Z)</a><a href="/forums/by_category" aria-current="page" class="active">By category</a></nav>
+</header>
+<% for (const g of it.groups) { %>
+<section class="category">
+  <h2><a href="/tag/<%= encodeURIComponent(g.name) %>"><%= g.name %></a> <span class="muted">(<%= g.forums.length %>)</span></h2>
+  <% if (g.description) { %><p class="muted"><%= g.description %></p><% } %>
+  <ul class="inline-list"><% for (const f of g.forums) { %><li><a href="/f/<%= f.name %>"><%= f.name %></a></li><% } %></ul>
+</section>
+<% } %>
+<% if (it.untagged.length) { %><section class="category"><h2>Uncategorized</h2><ul class="inline-list"><% for (const f of it.untagged) { %><li><a href="/f/<%= f.name %>"><%= f.name %></a></li><% } %></ul></section><% } %>

@@ -1,0 +1,39 @@
+<% layout('layout') %>
+<% const F = it.F; const W = F.WINDOWS; const windowed = F.SORTS[it.sort].window; %>
+<div class="cols">
+<div class="content">
+  <% if (it.forum) { %>
+  <header class="forum-header">
+    <h1 class="forum-header__title"><a href="/f/<%= it.forum.name %>"><%= it.forum.title %></a></h1>
+    <p class="forum-header__name">/f/<%= it.forum.name %></p>
+  </header>
+  <% } else { %>
+  <header class="page-header">
+    <h1><%= it.heading %></h1>
+    <nav class="tabs" aria-label="Front page">
+      <% for (const [k, l] of [['subscribed', 'Subscribed'], ['all', 'All'], ['featured', 'Featured'], ['moderated', 'Moderated']]) { if ((k === 'subscribed' || k === 'moderated') && !it.user) continue; %>
+      <a href="/<%= k %>"<%~ it.frontKind === k ? ' aria-current="page" class="active"' : '' %>><%= l %></a><% } %>
+    </nav>
+  </header>
+  <% } %>
+  <% if (it.note) { %><p class="notice"><%= it.note %></p><% } %>
+  <div class="listing-controls">
+    <nav class="tabs sort-tabs" aria-label="Sort submissions">
+      <% for (const [k, s] of Object.entries(F.SORTS)) { %><a href="<%= it.sortHref(k) %><%= it.t !== 'all' && F.SORTS[k].window ? '?t=' + it.t : '' %>"<%~ it.sort === k ? ' aria-current="page" class="active"' : '' %>><%= s.label %></a><% } %>
+    </nav>
+    <% if (windowed) { %>
+    <form method="get" action="<%= it.sortHref(it.sort) %>" class="window-form">
+      <label for="t-select">Time</label>
+      <select id="t-select" name="t" data-autosubmit><% for (const [k, [l]] of Object.entries(W)) { %><option value="<%= k %>"<%= it.t === k ? ' selected' : '' %>><%= l %></option><% } %></select>
+      <noscript><button type="submit">Go</button></noscript>
+    </form>
+    <% } %>
+  </div>
+  <% if (!it.rows.length) { %><p class="empty"><%= it.empty %></p><% } %>
+  <div class="submission-list">
+  <% for (const r of it.rows) { %><%~ include('_post', { g: it, r, mine: it.votes.get(r.id), showForum: !it.forum }) %><% } %>
+  </div>
+  <%~ include('_pager', { p: it.p }) %>
+</div>
+<%~ include('_sidebar', { g: it, sb: it.sidebar }) %>
+</div>

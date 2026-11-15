@@ -1,0 +1,10 @@
+<% layout('layout') %>
+<h1>Banned users in <a href="/f/<%= it.forum.name %>">/f/<%= it.forum.name %></a></h1>
+<form method="get" action="/f/<%= it.forum.name %>/bans" class="inline-form">
+  <label for="ban-username">Ban a user</label> <input id="ban-username" name="username" required> <button type="submit">Continue</button>
+</form>
+<% if (!it.rows.length) { %><p class="empty">Nobody is banned from this forum.</p><% } else { %>
+<table class="grid"><thead><tr><th scope="col">User</th><th scope="col">Reason</th><th scope="col">Banned</th><th scope="col">Expires</th><th scope="col">By</th><th scope="col">Actions</th></tr></thead><tbody>
+<% for (const b of it.rows) { %><tr><td><a href="/user/<%= b.username %>"><%= b.username %></a></td><td><%= b.reason %></td><td><%~ it.time(b.created_at) %></td><td><%= b.expires_at ? it.abs(b.expires_at) : 'Never' %></td><td><%= b.banned_by %></td>
+<td><form method="post" action="/f/<%= it.forum.name %>/unban/<%= b.username %>" class="inline"><%~ it.csrfInput() %><button type="submit" class="link">Unban</button></form></td></tr><% } %>
+</tbody></table><% } %>

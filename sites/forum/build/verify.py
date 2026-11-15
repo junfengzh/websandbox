@@ -21,6 +21,7 @@ import sqlite3
 import subprocess
 import sys
 
+SEEDED = {'forum_tags', 'forums_tags'}  # seeded by site.sql (forum categories)
 TABLE_MAP = {  # lite table -> source table
     'users': 'users', 'forums': 'forums', 'images': 'images', 'submissions': 'submissions', 'comments': 'comments',
     'submission_votes': 'submission_votes', 'comment_votes': 'comment_votes', 'moderators': 'moderators',
@@ -119,7 +120,9 @@ def main():
     for t, s in TABLE_MAP.items():
         n = db.execute(f'SELECT count(*) FROM {t}').fetchone()[0]
         rep['counts'][t] = {'lite': n, 'source': src.get(s)}
-        if n != src.get(s):
+        if t in SEEDED:  # site.sql adds rows the source doesn't have
+            rep['counts'][t]['seeded'] = True
+        elif n != src.get(s):
             fail(f'count {t}: lite {n} != source {src.get(s)}')
     for t, base in (('submissions_fts', 'submissions'), ('comments_fts', 'comments'), ('forums_fts', 'forums')):
         n = db.execute(f"SELECT count(*) FROM {t}_docsize").fetchone()[0]
@@ -132,6 +135,12 @@ def main():
     q = db.execute("SELECT count(*) FROM submissions s WHERE comment_count <> (SELECT count(*) FROM comments c WHERE c.submission_id = s.id)").fetchone()[0]
     if q:
         fail(f'{q} submissions with comment_count != #comments')
+    # site.sql: user_stats totals == aggregates over visible rows
+    us = db.execute("SELECT total(submissions), total(comments), total(submission_karma), total(comment_karma) FROM user_stats").fetchone()
+    agg = db.execute("""SELECT (SELECT count(*) FROM submissions WHERE visibility = 'visible'), (SELECT count(*) FROM comments WHERE visibility = 'visible'),
+        (SELECT total(net_score) FROM submissions WHERE visibility = 'visible'), (SELECT total(net_score) FROM comments WHERE visibility = 'visible')""").fetchone()
+    if tuple(map(int, us)) != tuple(map(int, agg)):
+        fail(f'user_stats totals {us} != aggregates {agg}')
     rep['images_without_webp'] = db.execute('SELECT count(*) FROM images WHERE path IS NULL').fetchone()[0]
     if a.media:
         missing = [p for (p,) in db.execute('SELECT path FROM images WHERE path IS NOT NULL UNION ALL SELECT thumb_path FROM images WHERE thumb_path IS NOT NULL')

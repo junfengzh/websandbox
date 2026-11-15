@@ -1,0 +1,10 @@
+<% layout('layout') %>
+<section class="form-page">
+  <h1>Send a message to <a href="/user/<%= it.to.username %>"><%= it.to.username %></a></h1>
+  <form method="post" action="/user/<%= it.to.username %>/compose_message" class="form">
+    <%~ it.csrfInput() %>
+    <%~ include('_field', { id: 'message_subject', name: 'subject', label: 'Subject', value: it.values.subject, error: it.errors.subject, required: true }) %>
+    <%~ include('_field', { id: 'message_body', name: 'message', label: 'Message', type: 'textarea', rows: 6, value: it.values.message, error: it.errors.message, required: true }) %>
+    <div class="form-actions"><button type="submit">Send message</button> <a href="/user/<%= it.to.username %>">Cancel</a></div>
+  </form>
+</section>

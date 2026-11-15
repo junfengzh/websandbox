@@ -1,0 +1,15 @@
+<% layout('layout') %>
+<header class="page-header">
+  <h1><%= it.tag ? `Category: ${it.tag.name}` : 'All forums' %></h1>
+  <nav class="tabs" aria-label="Forum lists"><a href="/forums">List</a><a href="/forums/all"<%~ it.tag ? '' : ' aria-current="page" class="active"' %>>All (A-Z)</a><a href="/forums/by_category">By category</a></nav>
+</header>
+<% if (it.tag && it.tag.description) { %><p><%= it.tag.description %></p><% } %>
+<% if (!it.rows.length) { %><p class="empty">No forums.</p><% } %>
+<ul class="forum-grid">
+<% for (const f of it.rows) { %><li class="forum-card">
+  <h2><a href="/f/<%= f.name %>">/f/<%= f.name %></a></h2>
+  <% if (f.title !== f.name) { %><p><%= f.title %></p><% } %>
+  <p class="muted"><%= it.fmt.number(f.submissions) %> submissions · <%= it.fmt.number(f.subscribers) %> subscribers</p>
+  <%~ include('_subscribe', { g: it, f }) %>
+</li><% } %>
+</ul>

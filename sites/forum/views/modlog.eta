@@ -1,0 +1,11 @@
+<% layout('layout') %>
+<% const LABEL = { ban: 'Ban', submission_deletion: 'Removed submission', submission_restored: 'Restored submission', submission_lock: 'Lock', comment_deletion: 'Removed comment', comment_restored: 'Restored comment' }; %>
+<h1><%= it.title %></h1>
+<% if (!it.rows.length) { %><p class="empty">No moderation actions have been logged.</p><% } else { %>
+<table class="grid modlog"><thead><tr><th scope="col">When</th><% if (!it.forum) { %><th scope="col">Forum</th><% } %><th scope="col">Moderator</th><th scope="col">Action</th><th scope="col">Details</th></tr></thead><tbody>
+<% for (const l of it.rows) { const sub = l.submission_id && l.slug ? it.F.subUrl({ id: l.submission_id, slug: l.slug, forum_name: l.forum_name }) : null; %>
+<tr><td><%~ it.time(l.created_at) %></td><% if (!it.forum) { %><td><a href="/f/<%= l.forum_name %>">/f/<%= l.forum_name %></a></td><% } %><td><a href="/user/<%= l.moderator %>"><%= l.moderator %></a><%= l.was_admin ? ' (admin)' : '' %></td>
+<td><%= l.action_type === 'ban' ? (l.banned === 0 ? 'Unban' : 'Ban') : l.action_type === 'submission_lock' ? (l.locked ? 'Locked submission' : 'Unlocked submission') : LABEL[l.action_type] || l.action_type %></td>
+<td><% if (l.author) { %><a href="/user/<%= l.author %>"><%= l.author %></a><% } %><% if (l.title) { %> — <% if (sub) { %><a href="<%= l.comment_id ? it.F.commentUrl({ id: l.submission_id, slug: l.slug, forum_name: l.forum_name }, l.comment_id) : sub %>"><%= l.title %></a><% } else { %><%= l.title %><% } %><% } %><% if (l.reason) { %> <span class="muted">(<%= l.reason %>)</span><% } %></td></tr><% } %>
+</tbody></table><% } %>
+<%~ include('_pager', { p: it.p }) %>

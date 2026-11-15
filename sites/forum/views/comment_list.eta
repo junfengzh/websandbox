@@ -1,0 +1,7 @@
+<% layout('layout') %>
+<div class="cols"><div class="content">
+  <h1><%= it.heading %></h1>
+  <% if (!it.rows.length) { %><p class="empty">No comments yet.</p><% } %>
+  <div class="comment-list"><% for (const c of it.rows) { %><%~ include('_comment_row', { g: it, c, mine: it.votes.get(c.id) }) %><% } %></div>
+  <%~ include('_pager', { p: it.p }) %>
+</div></div>

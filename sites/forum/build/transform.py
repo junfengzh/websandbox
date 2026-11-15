@@ -191,6 +191,7 @@ def main():
 
     print('indexing (FTS5, triggers)...', file=sys.stderr)
     db.executescript(open(os.path.join(HERE, 'search.sql')).read())
+    db.executescript(open(os.path.join(HERE, 'site.sql')).read())  # lite-site indexes + seeded forum categories
     for t in ('submissions_fts', 'comments_fts', 'forums_fts'):
         db.execute(f"INSERT INTO {t}({t}) VALUES ('optimize')")
     fk = db.execute('PRAGMA foreign_key_check').fetchall()

@@ -1,0 +1,26 @@
+<% layout('layout') %>
+<header class="page-header">
+  <h1>Forums</h1>
+  <nav class="tabs" aria-label="Forum lists">
+    <a href="/forums" aria-current="page" class="active">List</a><a href="/forums/all">All (A-Z)</a><a href="/forums/by_category">By category</a>
+    <% if (it.user) { %><a href="/create_forum">Create forum</a><% } %>
+  </nav>
+</header>
+<p class="muted"><%= it.total %> forums</p>
+<table class="grid forum-table">
+  <thead><tr>
+    <% for (const [k, l] of Object.entries(it.LIST_SORTS)) { %><th scope="col"><a href="/forums/<%= k %>"<%~ it.sort === k ? ' aria-current="true"' : '' %>><%= l %><%= it.sort === k ? ' ▼' : '' %></a></th><% } %>
+    <th scope="col"><span class="visually-hidden">Subscription</span></th>
+  </tr></thead>
+  <tbody>
+  <% for (const f of it.rows) { %><tr>
+    <td><a href="/f/<%= f.name %>">/f/<%= f.name %></a><% for (const t of f.tags) { %> <a class="tag" href="/tag/<%= encodeURIComponent(t) %>"><%= t %></a><% } %></td>
+    <td><%= f.title %></td>
+    <td class="num"><%= it.fmt.number(f.submissions) %></td>
+    <td class="num"><%= it.fmt.number(f.subscribers) %></td>
+    <td><%~ it.time(f.created_at) %></td>
+    <td><%~ include('_subscribe', { g: it, f }) %></td>
+  </tr><% } %>
+  </tbody>
+</table>
+<%~ include('_pager', { p: it.p }) %>

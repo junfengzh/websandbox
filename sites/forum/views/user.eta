@@ -1,0 +1,41 @@
+<% layout('layout') %>
+<% const u = it.u; %>
+<div class="cols">
+<div class="content">
+  <header class="page-header user-header">
+    <h1><span class="avatar avatar--big" aria-hidden="true"><%= u.username.slice(0, 1).toUpperCase() %></span><%= u.username %></h1>
+    <nav class="tabs" aria-label="User pages">
+      <a href="/user/<%= u.username %>"<%~ it.tab === 'overview' ? ' aria-current="page" class="active"' : '' %>>Overview</a>
+      <a href="/user/<%= u.username %>/submissions"<%~ it.tab === 'submissions' ? ' aria-current="page" class="active"' : '' %>>Submissions</a>
+      <a href="/user/<%= u.username %>/comments"<%~ it.tab === 'comments' ? ' aria-current="page" class="active"' : '' %>>Comments</a>
+    </nav>
+  </header>
+  <% if (!it.items.length) { %><p class="empty"><%= u.username %> has not posted anything<%= it.tab === 'overview' ? '' : ' here' %> yet.</p><% } %>
+  <div class="user-items">
+  <% for (const x of it.items) { if (x.kind === 'submission') { %><%~ include('_post', { g: it, r: x, mine: it.svotes.get(x.id) }) %><% } else { %><%~ include('_comment_row', { g: it, c: x, mine: it.cvotes.get(x.id) }) %><% } } %>
+  </div>
+  <%~ include('_pager', { p: it.p }) %>
+</div>
+<aside id="sidebar" class="sidebar" aria-label="About <%= u.username %>">
+  <section class="sidebar__section user-bio">
+    <h2 class="sidebar__title"><%= u.username %></h2>
+    <div class="user-bio__biography"><% if (u.biography) { %><%~ it.md(u.biography) %><% } else { %><p class="muted">No biography yet.</p><% } %></div>
+    <dl class="stats">
+      <div><dt>Post karma</dt><dd class="karma karma--posts"><%= it.fmt.number(it.karma.post_karma) %></dd></div>
+      <div><dt>Comment karma</dt><dd class="karma karma--comments"><%= it.fmt.number(it.karma.comment_karma) %></dd></div>
+      <div><dt>Submissions</dt><dd><%= it.fmt.number(it.karma.posts) %></dd></div>
+      <div><dt>Comments</dt><dd><%= it.fmt.number(it.karma.comments) %></dd></div>
+      <div><dt>Registered</dt><dd><%~ u.created_at > '1971' ? it.time(u.created_at) : 'unknown' %></dd></div>
+    </dl>
+    <% if (it.me || it.admin) { %>
+    <ul class="plain-list">
+      <li><a href="/user/<%= u.username %>/edit_biography">Edit biography</a></li>
+      <li><a href="/user/<%= u.username %>/preferences">Preferences</a></li>
+      <li><a href="/user/<%= u.username %>/account">Account settings</a></li>
+    </ul>
+    <% } %>
+    <% if (it.user && !it.me) { %><a class="button wide" href="/user/<%= u.username %>/compose_message">Send message</a><% } %>
+  </section>
+  <% if (it.moderates.length) { %><section class="sidebar__section"><h2 class="sidebar__title">Moderates</h2><ul class="plain-list"><% for (const n of it.moderates) { %><li><a href="/f/<%= n %>">/f/<%= n %></a></li><% } %></ul></section><% } %>
+</aside>
+</div>

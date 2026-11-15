@@ -1,0 +1,10 @@
+<%/* include('_comment_row', {g, c, mine, snip}) a comment out of its thread (user page, search, recent) */%>
+<% const g = it.g; const c = it.c; const F = g.F; const sub = { id: c.submission_id, slug: c.slug, forum_name: c.forum_name }; %>
+<article class="comment comment-row" id="comment-<%= c.id %>">
+  <%~ include('_vote', { g, kind: 'comment', id: c.id, score: c.net_score, mine: it.mine || 0 }) %>
+  <div class="comment__main">
+    <p class="comment__context"><a href="/user/<%= c.username %>" class="comment__author"><%= c.username %></a> commented on <a href="<%= F.subUrl(sub) %>"><%= c.title %></a> in <a href="/f/<%= c.forum_name %>">/f/<%= c.forum_name %></a> · <%~ g.time(c.created_at) %></p>
+    <div class="comment__body"><% if (it.snip) { %><p><%~ g.mark(it.snip) %></p><% } else { %><%~ g.md(c.body) %><% } %></div>
+    <nav class="comment__nav" aria-label="Comment actions"><a href="<%= F.commentUrl(sub, c.id) %>">Permalink</a><% if (c.parent_id) { %> · <a href="<%= F.commentUrl(sub, c.parent_id) %>">Parent</a><% } %> · <a href="<%= F.subUrl(sub) %>">Full thread</a></nav>
+  </div>
+</article>

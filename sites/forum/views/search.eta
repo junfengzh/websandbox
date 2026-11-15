@@ -1,0 +1,27 @@
+<% layout('layout') %>
+<% const TYPES = [['submissions', 'Posts'], ['comments', 'Comments'], ['forums', 'Forums'], ['users', 'Users']]; %>
+<header class="page-header"><h1><%= it.q ? `Search results for “${it.q}”` : 'Search' %></h1></header>
+<form method="get" action="/search" class="search-form" role="search">
+  <div class="field"><label for="search-q">Search for</label><input type="search" id="search-q" name="q" value="<%= it.q %>" required></div>
+  <div class="field"><label for="search-type">In</label><select id="search-type" name="type"><% for (const [k, l] of TYPES) { %><option value="<%= k %>"<%= it.type === k ? ' selected' : '' %>><%= l %></option><% } %></select></div>
+  <% if (it.type === 'submissions' || it.type === 'comments') { %>
+  <div class="field"><label for="search-sort">Sort</label><select id="search-sort" name="sort"><% for (const [k, l] of [['relevance', 'Relevance'], ['new', 'Newest'], ['top', 'Top']]) { %><option value="<%= k %>"<%= it.sort === k ? ' selected' : '' %>><%= l %></option><% } %></select></div>
+  <div class="field"><label for="search-t">Time</label><select id="search-t" name="t"><% for (const [k, [l]] of Object.entries(it.F.WINDOWS)) { %><option value="<%= k %>"<%= it.t === k ? ' selected' : '' %>><%= l %></option><% } %></select></div>
+  <div class="field"><label for="search-f">Forum</label><input id="search-f" name="f" value="<%= it.forum ? it.forum.name : (it.req.query.f || '') %>" placeholder="any" size="12"></div>
+  <% } %>
+  <button type="submit">Search</button>
+</form>
+<% if (it.q) { %>
+<nav class="tabs" aria-label="Result types"><% for (const [k, l] of TYPES) { %><a href="<%= it.url({ type: k, page: null }) %>"<%~ it.type === k ? ' aria-current="page" class="active"' : '' %>><%= l %></a><% } %></nav>
+<% if (it.req.query.f && !it.forum) { %><p class="notice notice--error">There is no forum named “<%= it.req.query.f %>”; searching all forums.</p><% } %>
+<% if (it.countLabel) { %><p class="muted result-count"><%= it.countLabel %>.<% if (it.big) { %> Many items match these words, so results come from the newest 3,000 matches<%= it.sort === 'top' ? '' : ', newest first' %>. Add words to narrow the search.<% } %></p><% } %>
+<% if (it.suggestion) { %><p class="did-you-mean">Did you mean <a href="<%= it.url({ q: it.suggestion, page: null }) %>"><%= it.suggestion %></a>?</p><% } %>
+<% if (!it.rows.length) { %><p class="empty">No results found.</p><% } %>
+<div class="search-results">
+<% if (it.type === 'submissions') { for (const r of it.rows) { %><%~ include('_post', { g: it, r, mine: it.votes && it.votes.get(r.id), snip: r.snip }) %><% } %>
+<% } else if (it.type === 'comments') { for (const c of it.rows) { %><%~ include('_comment_row', { g: it, c, snip: c.snip }) %><% } %>
+<% } else if (it.type === 'forums') { %><ul class="forum-grid"><% for (const f of it.rows) { %><li class="forum-card"><h2><a href="/f/<%= f.name %>">/f/<%= f.name %></a></h2><p><%= f.title %></p><p class="muted"><%= it.fmt.number(f.submissions) %> submissions · <%= it.fmt.number(f.subscribers) %> subscribers</p></li><% } %></ul>
+<% } else { %><ul class="plain-list user-results"><% for (const u of it.rows) { %><li><a href="/user/<%= u.username %>"><%= u.username %></a></li><% } %></ul><% } %>
+</div>
+<%~ include('_pager', { p: it.p }) %>
+<% } %>

@@ -1,0 +1,14 @@
+<% layout('layout') %>
+<h1><%= it.t.subject || 'Conversation' %></h1>
+<p class="muted">Conversation with <% for (const [i, o] of it.others.entries()) { %><%= i ? ', ' : '' %><a href="/user/<%= o.username %>"><%= o.username %></a><% } %></p>
+<ol class="message-list">
+<% for (const m of it.msgs) { %><li class="message<%= it.user && m.sender_id === it.user.id ? ' message--mine' : '' %>" id="message-<%= m.id %>">
+  <p class="message__meta"><a href="/user/<%= m.username %>"><%= m.username %></a> · <%~ it.time(m.created_at) %></p>
+  <div class="message__body"><%~ it.md(m.body) %></div>
+</li><% } %>
+</ol>
+<form method="post" action="/messages/thread/<%= it.t.id %>/reply" class="form">
+  <%~ it.csrfInput() %>
+  <%~ include('_field', { id: 'message_reply', name: 'message', label: 'Reply', type: 'textarea', rows: 4, required: true }) %>
+  <button type="submit">Send reply</button>
+</form>

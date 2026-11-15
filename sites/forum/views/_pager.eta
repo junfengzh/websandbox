@@ -1,0 +1,7 @@
+<% const p = it.p; if (p && (p.prev || p.next)) { %>
+<nav class="pagination" aria-label="Pagination">
+  <% if (p.prev) { %><a class="button secondary" href="<%= p.prev %>" rel="prev">« Previous</a><% } %>
+  <span class="pagination__page">Page <%= p.page %></span>
+  <% if (p.next) { %><a class="button secondary" href="<%= p.next %>" rel="next">More »</a><% } %>
+</nav>
+<% } %>

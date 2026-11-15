@@ -1,0 +1,62 @@
+<% layout('layout') %>
+<% const s = it.s; const F = it.F; const live = s.visibility === 'visible'; const show = live || it.mod || it.own;
+   let domain = null; if (s.url) { try { domain = new URL(s.url).hostname.replace(/^www\./, ''); } catch {} }
+   it.canReply = live && !(s.locked && !it.mod) && !it.ban; %>
+<div class="cols">
+<div class="content">
+  <article class="submission submission--full<%= live ? '' : ' submission--deleted' %>" id="submission-<%= s.id %>">
+    <% if (live) { %><%~ include('_vote', { g: it, kind: 'submission', id: s.id, score: s.net_score, mine: it.vote }) %><% } %>
+    <div class="submission__inner">
+      <% if (!live) { %><p class="notice notice--error"><%= s.visibility === 'trashed' ? 'This submission was removed by a moderator.' : 'This submission was deleted by its author.' %></p><% } %>
+      <h1 class="submission__title"><% if (show) { %><%= s.title %><% } else { %>[deleted]<% } %>
+        <% if (s.sticky) { %><span class="tag tag--sticky">Pinned</span><% } %><% if (s.locked) { %><span class="tag tag--locked">Locked</span><% } %></h1>
+      <p class="submission__info">Submitted by <% if (show) { %><a class="submission__submitter" href="/user/<%= s.username %>"><%= s.username %></a><% } else { %>[deleted]<% } %> <%~ it.time(s.created_at) %> in <a href="/f/<%= s.forum_name %>">/f/<%= s.forum_name %></a><% if (s.edited_at) { %> · <span title="<%= it.abs(s.edited_at) %>">edited <%= it.ago(s.edited_at) %></span><% } %></p>
+      <% if (show) { %>
+        <% if (s.url) { %><p class="submission__url"><a href="<%= s.url %>" rel="nofollow ugc"<%~ it.newTab ? ' target="_blank"' : '' %>><%= s.url %></a> <span class="muted">(<%= domain || 'link' %>)</span></p><% } %>
+        <% if (s.media_type === 'image' && s.image_path) { %><figure class="submission__image"><a href="<%= F.imageHref(s.image_file) %>"><img src="<%= F.imageHref(s.image_file) %>" alt="<%= s.title %>"<% if (s.image_w) { %> width="<%= s.image_w %>" height="<%= s.image_h %>"<% } %>></a></figure><% } %>
+        <% if (s.body) { %><div class="submission__body"><%~ it.md(s.body) %></div><% } %>
+      <% } %>
+      <nav class="submission__nav" aria-label="Submission actions">
+        <a href="<%= F.subUrl(s) %>"><%= it.commentCount %> comment<%= it.commentCount === 1 ? '' : 's' %></a>
+        <% if (it.own && live) { %><a href="<%= F.subUrl(s) %>/edit">Edit</a>
+          <form method="post" action="<%= F.subUrl(s) %>/delete" class="inline" data-confirm="Delete this submission?"><%~ it.csrfInput() %><button type="submit" class="link">Delete</button></form><% } %>
+        <% if (it.mod) { %>
+          <% if (!it.own && live) { %><a href="<%= F.subUrl(s) %>/edit">Edit</a><% } %>
+          <% if (live) { %><form method="post" action="<%= F.subUrl(s) %>/delete" class="inline" data-confirm="Remove this submission as a moderator?"><%~ it.csrfInput() %><input type="hidden" name="reason" value="Removed by moderator"><button type="submit" class="link danger-link">Remove</button></form>
+          <% } else { %><form method="post" action="<%= F.subUrl(s) %>/restore" class="inline"><%~ it.csrfInput() %><button type="submit" class="link">Restore</button></form><% } %>
+          <form method="post" action="<%= F.subUrl(s) %>/<%= s.locked ? 'unlock' : 'lock' %>" class="inline"><%~ it.csrfInput() %><button type="submit" class="link"><%= s.locked ? 'Unlock' : 'Lock' %></button></form>
+          <form method="post" action="<%= F.subUrl(s) %>/<%= s.sticky ? 'unpin' : 'pin' %>" class="inline"><%~ it.csrfInput() %><button type="submit" class="link"><%= s.sticky ? 'Unpin' : 'Pin' %></button></form>
+          <a href="/f/<%= s.forum_name %>/ban/<%= s.username %>">Ban user</a>
+        <% } %>
+      </nav>
+    </div>
+  </article>
+
+  <section class="comments" aria-labelledby="comments-heading">
+    <h2 id="comments-heading"><%= it.focus ? 'Single comment thread' : `Comments (${it.commentCount})` %></h2>
+    <% if (it.focus) { %><p class="notice">You are viewing a single comment's thread. <a href="<%= F.subUrl(s) %>">View all comments</a><% if (it.parent) { %> · <a href="<%= F.commentUrl(s, it.parent.id) %>">View parent comment</a><% } %></p><% } %>
+    <% if (!it.focus) { %>
+      <% if (it.user && it.canReply) { %>
+      <form method="post" action="<%= F.subUrl(s) %>/comment" class="comment-form comment-form--top">
+        <%~ it.csrfInput() %>
+        <label for="comment-new">Write a comment</label>
+        <textarea id="comment-new" name="comment" rows="5" required placeholder="What are your thoughts?"></textarea>
+        <button type="submit">Post comment</button>
+      </form>
+      <% } else if (s.locked) { %><p class="notice">This submission is locked. New comments are not allowed.</p>
+      <% } else if (it.ban) { %><p class="notice notice--error">You are banned from /f/<%= s.forum_name %> and cannot comment.</p>
+      <% } else if (!it.user) { %><p class="notice"><a href="/login?next=<%= encodeURIComponent(it.req.url) %>">Log in</a> or <a href="/registration">sign up</a> to leave a comment.</p><% } %>
+      <form method="get" action="<%= F.subUrl(s) %>" class="comment-sort">
+        <label for="comment-sort">Sort comments by</label>
+        <select id="comment-sort" name="sort" data-autosubmit><% for (const [k, l] of Object.entries(it.COMMENT_SORTS)) { %><option value="<%= k %>"<%= it.sort === k ? ' selected' : '' %>><%= l %></option><% } %></select>
+        <noscript><button type="submit">Sort</button></noscript>
+      </form>
+    <% } %>
+    <% if (!it.roots.length) { %><p class="empty">There are no comments yet.</p><% } %>
+    <div class="comment-tree">
+    <% for (const c of it.roots) { %><%~ include('_comment', { g: it, c, depth: 0 }) %><% } %>
+    </div>
+  </section>
+</div>
+<%~ include('_sidebar', { g: it, sb: it.sidebar }) %>
+</div>

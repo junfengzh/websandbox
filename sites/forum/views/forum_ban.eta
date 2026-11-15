@@ -1,0 +1,12 @@
+<% layout('layout') %>
+<section class="form-page">
+  <h1>Ban <a href="/user/<%= it.u.username %>"><%= it.u.username %></a> from /f/<%= it.forum.name %></h1>
+  <% if (it.current) { %><p class="notice notice--error"><%= it.u.username %> is currently banned (reason: <%= it.current.reason %><%= it.current.expires_at ? ', until ' + it.abs(it.current.expires_at) : '' %>).</p>
+  <form method="post" action="/f/<%= it.forum.name %>/unban/<%= it.u.username %>" class="form"><%~ it.csrfInput() %><button type="submit" class="secondary">Unban <%= it.u.username %></button></form><% } %>
+  <form method="post" action="/f/<%= it.forum.name %>/ban/<%= it.u.username %>" class="form">
+    <%~ it.csrfInput() %>
+    <%~ include('_field', { id: 'ban_reason', name: 'reason', label: 'Reason', value: it.values.reason, error: it.errors.reason, required: true }) %>
+    <%~ include('_field', { id: 'ban_expires', name: 'expires', label: 'Expires on (leave empty for a permanent ban)', type: 'date', value: it.values.expires, error: it.errors.expires }) %>
+    <div class="form-actions"><button type="submit" class="danger">Ban user</button> <a href="/f/<%= it.forum.name %>/bans">Cancel</a></div>
+  </form>
+</section>

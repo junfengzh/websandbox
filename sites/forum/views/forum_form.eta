@@ -1,0 +1,19 @@
+<% layout('layout') %>
+<% const v = it.values; const e = it.errors; const f = it.forum; %>
+<section class="form-page">
+  <h1><%= f ? `Edit /f/${f.name}` : 'Create forum' %></h1>
+  <form method="post" action="<%= f ? `/f/${f.name}/edit` : '/create_forum' %>" class="form">
+    <%~ it.csrfInput() %>
+    <% if (!f) { %><%~ include('_field', { id: 'forum_name', name: 'name', label: 'Name', value: v.name, error: e.name, required: true, help: 'Used in the address: /f/<name>. 3-25 letters, numbers or underscores. Cannot be changed later.' }) %><% } %>
+    <%~ include('_field', { id: 'forum_title', name: 'title', label: 'Title', value: v.title, error: e.title, required: true }) %>
+    <%~ include('_field', { id: 'forum_description', name: 'description', label: 'Description', type: 'textarea', rows: 3, value: v.description, error: e.description, required: true, help: 'A short summary shown in forum lists.' }) %>
+    <%~ include('_field', { id: 'forum_sidebar', name: 'sidebar', label: 'Sidebar', type: 'textarea', rows: 8, value: v.sidebar, error: e.sidebar, help: 'Rules and information shown beside the forum. Markdown supported.' }) %>
+    <%~ include('_field', { id: 'forum_tags', name: 'tags', label: 'Categories', value: v.tags, error: e.tags, help: 'Comma-separated, e.g. ' + (it.allTags.slice(0, 3).join(', ') || 'Technology, Science') + '.', attrs: ' list="forum-tag-options"' }) %>
+    <datalist id="forum-tag-options"><% for (const t of it.allTags) { %><option value="<%= t %>"></option><% } %></datalist>
+    <% if (f) { %>
+      <%~ include('_field', { id: 'forum_moderation_log_public', name: 'moderation_log_public', label: 'Moderation log is public', type: 'checkbox', value: v.moderation_log_public }) %>
+      <% if (it.user && it.user.role === 'admin') { %><%~ include('_field', { id: 'forum_featured', name: 'featured', label: 'Featured forum', type: 'checkbox', value: v.featured }) %><% } %>
+    <% } %>
+    <div class="form-actions"><button type="submit"><%= f ? 'Save changes' : 'Create forum' %></button> <a href="<%= f ? '/f/' + f.name : '/forums' %>">Cancel</a></div>
+  </form>
+</section>

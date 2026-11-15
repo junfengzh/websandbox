@@ -1,0 +1,58 @@
+<%/* include('_sidebar', {g, sb}) */%>
+<% const g = it.g; const sb = it.sb; const F = g.F; %>
+<aside id="sidebar" class="sidebar" aria-label="Sidebar">
+<% if (sb.type === 'forum') { const f = sb.forum; %>
+  <section class="sidebar__section forum-info">
+    <h2 class="sidebar__title"><a href="/f/<%= f.name %>">/f/<%= f.name %></a></h2>
+    <% if (f.title !== f.name) { %><p class="forum-info__title"><%= f.title %></p><% } %>
+    <div class="forum-info__description"><%~ g.md(f.description) %></div>
+    <dl class="stats">
+      <div><dt>Submissions</dt><dd><%= g.fmt.number(sb.counts.submissions) %></dd></div>
+      <div><dt>Subscribers</dt><dd class="forum-subscribers"><%= g.fmt.number(sb.counts.subscribers) %></dd></div>
+      <div><dt>Created</dt><dd><%~ g.time(f.created_at) %></dd></div>
+    </dl>
+    <% if (g.user) { %>
+    <form method="post" action="/f/<%= f.name %>/<%= sb.subscribed ? 'unsubscribe' : 'subscribe' %>" class="subscribe-form" data-subscribe>
+      <%~ g.csrfInput() %><input type="hidden" name="next" value="<%= g.req.url %>">
+      <button type="submit" class="<%= sb.subscribed ? 'secondary' : '' %> wide" aria-pressed="<%= sb.subscribed %>"><%= sb.subscribed ? 'Unsubscribe' : 'Subscribe' %></button>
+    </form>
+    <% if (!sb.ban) { %><a class="button wide" href="/submit/<%= f.name %>">Create a submission</a><% } else { %><p class="notice notice--error">You are banned from this forum.</p><% } %>
+    <% } else { %><a class="button wide" href="/login?next=<%= encodeURIComponent(g.req.url) %>">Log in to subscribe or post</a><% } %>
+  </section>
+  <% if (f.sidebar) { %><section class="sidebar__section forum-sidebar"><h2 class="sidebar__title">About</h2><div class="forum-sidebar__content"><%~ g.md(f.sidebar) %></div></section><% } %>
+  <% if (sb.tags.length) { %><section class="sidebar__section"><h2 class="sidebar__title">Categories</h2><p><% for (const t of sb.tags) { %><a class="tag" href="/tag/<%= encodeURIComponent(t) %>"><%= t %></a> <% } %></p></section><% } %>
+  <section class="sidebar__section">
+    <h2 class="sidebar__title">Moderators</h2>
+    <% if (sb.mods.length) { %><ul class="plain-list"><% for (const m of sb.mods) { %><li><a href="/user/<%= m %>"><%= m %></a></li><% } %></ul><% } else { %><p class="muted">This forum has no moderators.</p><% } %>
+    <p><a href="/f/<%= f.name %>/moderators">All moderators</a> · <a href="/f/<%= f.name %>/moderation_log">Moderation log</a></p>
+  </section>
+  <% if (sb.canModerate) { %>
+  <section class="sidebar__section">
+    <h2 class="sidebar__title">Moderation</h2>
+    <ul class="plain-list">
+      <li><a href="/f/<%= f.name %>/edit">Edit forum</a></li>
+      <li><a href="/f/<%= f.name %>/moderators">Manage moderators</a></li>
+      <li><a href="/f/<%= f.name %>/bans">Bans</a></li>
+    </ul>
+  </section>
+  <% } %>
+<% } else { %>
+  <% if (g.user) { %>
+  <section class="sidebar__section">
+    <h2 class="sidebar__title">Subscribed forums</h2>
+    <% if (sb.subs.length) { %><ul class="plain-list"><% for (const f of sb.subs) { %><li><a href="/f/<%= f.name %>"><%= f.name %></a></li><% } %></ul>
+    <% } else { %><p class="muted">You are not subscribed to any forums.</p><% } %>
+  </section>
+  <% if (sb.mod.length) { %><section class="sidebar__section"><h2 class="sidebar__title">Forums you moderate</h2><ul class="plain-list"><% for (const n of sb.mod) { %><li><a href="/f/<%= n %>"><%= n %></a></li><% } %></ul></section><% } %>
+  <% } %>
+  <section class="sidebar__section">
+    <h2 class="sidebar__title">Popular forums</h2>
+    <ol class="plain-list ranked"><% for (const f of sb.popular) { %><li><a href="/f/<%= f.name %>"><%= f.name %></a> <span class="muted"><%= g.fmt.number(f.submissions) %> posts</span></li><% } %></ol>
+    <p><a href="/forums">Browse all forums</a></p>
+  </section>
+  <section class="sidebar__section">
+    <% if (g.user) { %><a class="button wide" href="/submit">Create a submission</a><a class="button secondary wide" href="/create_forum">Create a forum</a><% } else { %>
+    <p>Join the discussion: <a href="/registration">sign up</a> or <a href="/login">log in</a>.</p><% } %>
+  </section>
+<% } %>
+</aside>

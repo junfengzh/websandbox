@@ -1,8 +1,9 @@
 # Forum lite schema
 
 `base.db` (SQLite) built by [build/](build/) from the WebArena Postmill database.
-DDL: [build/schema.sql](build/schema.sql) (tables, views) and
-[build/search.sql](build/search.sql) (FTS5 + triggers). Media under
+DDL: [build/schema.sql](build/schema.sql) (tables, views),
+[build/search.sql](build/search.sql) (FTS5 + triggers) and [build/site.sql](build/site.sql)
+(lite-site additions: `user_stats`, the `submissions_hidden` index, seeded forum categories). Media under
 `DATA/media/` (served by the kit at `/media/...`).
 
 Conventions: ids of users, forums, submissions, comments are **Postmill's ids**
@@ -18,7 +19,7 @@ output, so the page showed `&amp;`).
 |---|---|---|
 | `users` | 661,782 | `username` (display), `normalized_username` = lower (unique; use for login and `/user/<name>`), `password_hash` (see Passwords), `role` `user`/`admin` (1 admin: `KrokmaniakPL`), `biography` (WebArena stored the Reddit account id `t2_...` here -- this is what the profile page shows), `created_at`, `last_seen_at`, preference columns copied from Postmill (`timezone`, `front_page`, `front_page_sort_mode`, `night_mode`, `show_thumbnails`, `allow_private_messages`, ...) |
 | `forums` | 95 | `name` (mixed case, e.g. `DIY`, `EarthPorn`), `normalized_name` (lower, unique: `/f/diy` == `/f/DIY`), `title`, `description` (= name in the data), `sidebar` (= subreddit id `t5_...` in the data), `created_at`, `featured`, `moderation_log_public` |
-| `forum_tags`, `forums_tags` | 0 | forum categories (`/tag/<name>`); empty in the source |
+| `forum_tags`, `forums_tags` | 9, 95 | forum categories (`/forums/by_category`, `/tag/<name>`); empty in the source, **seeded by site.sql** (Technology, Gaming, Science & Learning, News & Politics, Entertainment, Humor & Memes, Pictures & Art, Lifestyle & Advice, Places; one per forum) |
 | `moderators` | 0 | (forum, user); empty in the source -- nobody moderates; site admin can |
 | `forum_subscriptions` | 0 | (user, forum, subscribed_at); empty -- every subscriber count is 0 |
 | `hidden_forums` | 0 | |
@@ -33,6 +34,7 @@ output, so the page showed `&amp;`).
 | `notifications` | 0 | `notification_type` `comment`/`submission_mention`/`comment_mention`/`message`; `read_at` lite addition |
 | `wiki_pages`, `wiki_revisions` | 0 | `/wiki/<path>`; current text = latest revision |
 | `site_settings` | 17 | key/value copy of Postmill's `sites` row, plus `source_bcrypt_0` (the shared original bcrypt hash) (`site_name`=Postmill, `wiki_enabled`, `forum_create_role`=ROLE_USER, `default_sort_mode`=hot, ...) |
+| `user_stats` | 657,182 | site.sql: per-user `submissions`, `comments` (visible counts), `submission_karma`, `comment_karma` (sums of visible `net_score`); kept exact by triggers on submissions/comments (insert, `net_score`/`visibility` change, delete). The profile page reads it |
 | views `user_karma`, `forum_stats` | | karma = sum of visible scores (Postmill has no karma); submission/subscriber counts |
 | FTS5 `submissions_fts(title, body, url)`, `comments_fts(body)` | | external content, `porter unicode61` (stemmed, like Postmill's english tsvector search) |
 | FTS5 `forums_fts(name, title, description, sidebar)` | | `unicode61` (unstemmed; usable as `kit.search.didYouMean` vocabulary) |

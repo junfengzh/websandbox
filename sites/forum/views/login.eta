@@ -1,0 +1,13 @@
+<% layout('layout') %>
+<section class="auth-box">
+  <h1>Log in</h1>
+  <% if (it.error) { %><div class="kit-flash kit-flash-error" role="alert"><%= it.error %></div><% } %>
+  <form method="post" action="/login" class="form">
+    <%~ it.csrfInput() %>
+    <input type="hidden" name="next" value="<%= it.next %>">
+    <div class="field"><label for="login-username">Username</label><input type="text" id="login-username" name="login" value="<%= it.values.login || '' %>" autocomplete="username" required autofocus></div>
+    <div class="field"><label for="login-password">Password</label><input type="password" id="login-password" name="password" autocomplete="current-password" required></div>
+    <button type="submit" class="wide">Log in</button>
+  </form>
+  <p>Don't have an account? <a href="/registration">Sign up</a></p>
+</section>

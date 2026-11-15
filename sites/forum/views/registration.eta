@@ -1,0 +1,13 @@
+<% layout('layout') %>
+<section class="auth-box">
+  <h1>Sign up</h1>
+  <form method="post" action="/registration" class="form">
+    <%~ it.csrfInput() %>
+    <%~ include('_field', { id: 'user_username', name: 'username', label: 'Username', value: it.values.username, error: it.errors.username, required: true, help: '3-25 characters: letters, numbers, _ and -.', attrs: ' autocomplete="username"' }) %>
+    <%~ include('_field', { id: 'user_email', name: 'email', label: 'Email address (optional)', type: 'email', value: it.values.email, error: it.errors.email }) %>
+    <%~ include('_field', { id: 'user_password', name: 'password', label: 'Password', type: 'password', error: it.errors.password, required: true, help: 'At least 8 characters.', attrs: ' autocomplete="new-password"' }) %>
+    <%~ include('_field', { id: 'user_password_repeat', name: 'password_repeat', label: 'Repeat password', type: 'password', error: it.errors.password_repeat, required: true, attrs: ' autocomplete="new-password"' }) %>
+    <button type="submit" class="wide">Sign up</button>
+  </form>
+  <p>Already have an account? <a href="/login">Log in</a></p>
+</section>

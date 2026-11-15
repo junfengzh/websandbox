@@ -1,0 +1,6 @@
+<% layout('layout') %>
+<h1><%= it.title %></h1>
+<% if (!it.rows.length) { %><p class="empty">No changes yet.</p><% } else { %>
+<table class="grid"><thead><tr><th scope="col">Revision</th><% if (!it.pg) { %><th scope="col">Page</th><% } %><th scope="col">Title</th><th scope="col">Author</th><th scope="col">When</th></tr></thead><tbody>
+<% for (const r of it.rows) { %><tr><td><a href="/wiki/_revision/<%= r.id %>">#<%= r.id %></a></td><% if (!it.pg) { %><td><a href="/wiki/<%= r.path %>"><%= r.path %></a></td><% } %><td><%= r.title %></td><td><a href="/user/<%= r.username %>"><%= r.username %></a></td><td><%~ it.time(r.created_at) %></td></tr><% } %>
+</tbody></table><% } %>

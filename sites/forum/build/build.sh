@@ -2,6 +2,7 @@
 # Rebuild the forum's base.db + media/ from the WebArena Postmill squashfs image.
 # Usage: sites/forum/build/build.sh [step...]
 #   steps: mount pg export images transform verify cleanup   (default: all, in that order)
+#   site: apply site.sql (lite-site indexes, forum categories) in place to an existing base.db
 # See README.md. Needs: sudo (loop mount, copy of the Postgres datadir), docker, python3
 # with Pillow (WebP), node >= 20 with kit/node_modules installed.
 set -euo pipefail
@@ -48,6 +49,18 @@ step_images() {
 step_transform() {
   $PY "$HERE/transform.py" --export "$WORK/export" --manifest "$WORK/images_manifest.jsonl" \
     --kit "$REPO/kit" --out "$OUT/base.db"
+}
+
+step_site() {  # transform already runs site.sql; this patches an existing base.db without a rebuild
+  $PY - "$OUT/base.db" "$HERE/site.sql" <<'PYEOF'
+import sqlite3, sys
+db = sqlite3.connect(sys.argv[1], isolation_level=None)
+db.executescript(open(sys.argv[2]).read())
+db.execute('ANALYZE')
+assert db.execute('PRAGMA journal_mode').fetchone()[0] == 'delete'
+db.close()
+PYEOF
+  echo "site.sql applied to $OUT/base.db"
 }
 
 step_verify() {

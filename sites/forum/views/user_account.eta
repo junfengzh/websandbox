@@ -1,0 +1,16 @@
+<% layout('layout') %>
+<% const v = it.values; const e = it.errors; %>
+<section class="form-page">
+  <h1>Account settings</h1>
+  <form method="post" action="/user/<%= it.u.username %>/account" class="form">
+    <%~ it.csrfInput() %>
+    <%~ include('_field', { id: 'user_username', name: 'username', label: 'Username', value: v.username, error: e.username, required: true }) %>
+    <%~ include('_field', { id: 'user_email', name: 'email', label: 'Email address', type: 'email', value: v.email, error: e.email }) %>
+    <fieldset><legend>Change password</legend>
+    <%~ include('_field', { id: 'user_new_password', name: 'new_password', label: 'New password', type: 'password', error: e.new_password, attrs: ' autocomplete="new-password"' }) %>
+    <%~ include('_field', { id: 'user_new_password_repeat', name: 'new_password_repeat', label: 'Repeat new password', type: 'password', error: e.new_password_repeat, attrs: ' autocomplete="new-password"' }) %>
+    </fieldset>
+    <%~ include('_field', { id: 'user_current_password', name: 'current_password', label: 'Current password', type: 'password', error: e.current_password, help: 'Required to change your username, email or password.', attrs: ' autocomplete="current-password"' }) %>
+    <div class="form-actions"><button type="submit">Save account settings</button></div>
+  </form>
+</section>

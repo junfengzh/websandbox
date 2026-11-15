@@ -1,0 +1,31 @@
+<% layout('layout') %>
+<% const v = it.values; const e = it.errors; const ed = it.editing; const type = v.type || 'link'; %>
+<section class="form-page">
+  <h1><%= ed ? 'Edit submission' : 'Create submission' %></h1>
+  <form method="post" action="<%= ed ? it.F.subUrl(ed) + '/edit' : '/submit' %>" enctype="multipart/form-data" class="form submit-form" id="submission-form">
+    <%~ it.csrfInput() %>
+    <% if (!ed) { %>
+    <fieldset class="post-type">
+      <legend>Post type</legend>
+      <% for (const [k, l] of [['link', 'Link'], ['text', 'Text'], ['image', 'Image']]) { %>
+      <label class="radio"><input type="radio" name="type" value="<%= k %>"<%= type === k ? ' checked' : '' %>> <%= l %></label><% } %>
+    </fieldset>
+    <div class="field<%= e.forum ? ' has-error' : '' %>">
+      <label for="submission_forum">Forum <span class="req" aria-hidden="true">*</span></label>
+      <select id="submission_forum" name="forum" required>
+        <option value="">Choose a forum…</option>
+        <% for (const f of it.forums) { %><option value="<%= f %>"<%= String(v.forum || '').toLowerCase() === f.toLowerCase() ? ' selected' : '' %>><%= f %></option><% } %>
+      </select>
+      <% if (e.forum) { %><p class="field-error" role="alert"><%= e.forum %></p><% } %>
+    </div>
+    <% } else { %><p>Forum: <a href="/f/<%= ed.forum_name %>">/f/<%= ed.forum_name %></a></p><% } %>
+    <%~ include('_field', { id: 'submission_title', name: 'title', label: 'Title', value: v.title, error: e.title, required: true, attrs: ' maxlength="300"' }) %>
+    <% if (!ed || type === 'link') { %><div class="type-link"><%~ include('_field', { id: 'submission_url', name: 'url', label: 'URL', type: 'url', value: v.url, error: e.url, help: 'For link posts: the address of the page you are sharing.' }) %></div><% } %>
+    <% if (!ed) { %><div class="type-image"><%~ include('_field', { id: 'submission_image', name: 'image', label: 'Image', type: 'file', error: e.image, help: 'For image posts: PNG, JPEG, GIF or WebP, up to 20 MB.', attrs: ' accept="image/png,image/jpeg,image/gif,image/webp"' }) %></div><% } %>
+    <%~ include('_field', { id: 'submission_body', name: 'body', label: 'Body', type: 'textarea', value: v.body, error: e.body, rows: 8, help: 'Optional. Markdown is supported: **bold**, *italic*, [links](https://example.com), > quotes, lists.' }) %>
+    <div class="form-actions">
+      <button type="submit"><%= ed ? 'Save changes' : 'Create submission' %></button>
+      <a href="<%= ed ? it.F.subUrl(ed) : (v.forum ? '/f/' + v.forum : '/') %>">Cancel</a>
+    </div>
+  </form>
+</section>

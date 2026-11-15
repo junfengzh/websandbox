@@ -1,0 +1,15 @@
+<% layout('layout') %>
+<h1>Moderators of <a href="/f/<%= it.forum.name %>">/f/<%= it.forum.name %></a></h1>
+<% if (!it.rows.length) { %><p class="empty">This forum has no moderators.</p><% } else { %>
+<table class="grid"><thead><tr><th scope="col">Moderator</th><th scope="col">Since</th><% if (it.canModerate) { %><th scope="col">Actions</th><% } %></tr></thead><tbody>
+<% for (const m of it.rows) { %><tr><td><a href="/user/<%= m.username %>"><%= m.username %></a></td><td><%~ it.time(m.created_at) %></td>
+<% if (it.canModerate) { %><td><form method="post" action="/f/<%= it.forum.name %>/moderators/<%= m.username %>/remove" class="inline" data-confirm="Remove <%= m.username %> as moderator?"><%~ it.csrfInput() %><button type="submit" class="link danger-link">Remove</button></form></td><% } %></tr><% } %>
+</tbody></table><% } %>
+<% if (it.canModerate) { %>
+<h2>Add a moderator</h2>
+<form method="post" action="/f/<%= it.forum.name %>/moderators" class="form inline-form">
+  <%~ it.csrfInput() %>
+  <%~ include('_field', { id: 'moderator_user', name: 'username', label: 'Username', required: true }) %>
+  <button type="submit">Add moderator</button>
+</form>
+<% } %>

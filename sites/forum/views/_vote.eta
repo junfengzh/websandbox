@@ -1,0 +1,10 @@
+<%/* include('_vote', {g, kind: 'submission'|'comment', id, score, mine: 1|-1|0}) */%>
+<% const g = it.g; const up = it.mine === 1; const down = it.mine === -1; const what = it.kind === 'comment' ? 'comment' : 'submission'; %>
+<div class="<%= it.kind === 'comment' ? 'comment__vote' : 'submission__vote' %> vote-box">
+<form method="post" action="/<%= it.kind === 'comment' ? 'cv' : 'sv' %>/<%= it.id %>" class="vote<%= up ? ' vote--user-upvoted' : down ? ' vote--user-downvoted' : '' %>" data-vote="<%= it.kind %>" data-id="<%= it.id %>">
+  <%~ g.csrfInput() %><input type="hidden" name="next" value="<%= g.req.url %><%= it.kind === 'comment' ? '#comment-' + it.id : '' %>">
+  <button type="submit" name="choice" value="<%= up ? 0 : 1 %>" class="vote__up" aria-label="<%= up ? 'Remove upvote' : 'Upvote' %> <%= what %>" aria-pressed="<%= up %>" title="Upvote">▲</button>
+  <span class="vote__net-score" aria-label="Score"><%= it.score %></span>
+  <button type="submit" name="choice" value="<%= down ? 0 : -1 %>" class="vote__down" aria-label="<%= down ? 'Remove downvote' : 'Downvote' %> <%= what %>" aria-pressed="<%= down %>" title="Downvote">▼</button>
+</form>
+</div>

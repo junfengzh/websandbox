@@ -1,0 +1,6 @@
+<% layout('layout') %>
+<h1>All wiki pages</h1>
+<% if (!it.rows.length) { %><p class="empty">The wiki has no pages yet.<% if (it.user) { %> <a href="/wiki/_create">Create the first one</a>.<% } %></p><% } else { %>
+<table class="grid"><thead><tr><th scope="col">Page</th><th scope="col">Path</th><th scope="col">Last edited</th></tr></thead><tbody>
+<% for (const r of it.rows) { %><tr><td><a href="/wiki/<%= r.path %>"><%= r.title %></a><%= r.locked ? ' (locked)' : '' %></td><td><code><%= r.path %></code></td><td><%~ it.time(r.updated_at) %></td></tr><% } %>
+</tbody></table><% } %>

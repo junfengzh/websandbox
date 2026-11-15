@@ -1,0 +1,9 @@
+<% layout('layout') %>
+<section class="form-page">
+  <h1>Edit biography</h1>
+  <form method="post" action="/user/<%= it.u.username %>/edit_biography" class="form">
+    <%~ it.csrfInput() %>
+    <%~ include('_field', { id: 'user_biography_biography', name: 'biography', label: 'Biography', type: 'textarea', value: it.values.biography, error: it.errors.biography, rows: 5, help: 'Shown on your profile page. Up to 300 characters; Markdown supported.' }) %>
+    <div class="form-actions"><button type="submit">Save</button> <a href="/user/<%= it.u.username %>">Cancel</a></div>
+  </form>
+</section>

@@ -1,0 +1,11 @@
+<% layout('layout') %>
+<section class="form-page">
+  <h1><%= it.pg ? `Edit wiki page: ${it.pg.path}` : 'Create wiki page' %></h1>
+  <form method="post" action="<%= it.pg ? '/wiki/_edit/' + it.pg.path : '/wiki/_create' %>" class="form">
+    <%~ it.csrfInput() %>
+    <% if (!it.pg) { %><%~ include('_field', { id: 'wiki_path', name: 'path', label: 'Path', value: it.values.path, error: it.errors.path, required: true, help: 'The page address: /wiki/<path>. Lower-case letters, digits, _, - and /.' }) %><% } %>
+    <%~ include('_field', { id: 'wiki_title', name: 'title', label: 'Title', value: it.values.title, error: it.errors.title, required: true }) %>
+    <%~ include('_field', { id: 'wiki_body', name: 'body', label: 'Content', type: 'textarea', rows: 14, value: it.values.body, error: it.errors.body, required: true, help: 'Markdown supported.' }) %>
+    <div class="form-actions"><button type="submit">Save page</button> <a href="<%= it.pg ? '/wiki/' + it.pg.path : '/wiki' %>">Cancel</a></div>
+  </form>
+</section>

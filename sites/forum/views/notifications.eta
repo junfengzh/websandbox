@@ -1,0 +1,22 @@
+<% layout('layout') %>
+<header class="page-header"><h1>Notifications</h1>
+<form method="post" action="/notifications/clear" class="inline"><%~ it.csrfInput() %><button type="submit" class="secondary">Mark all as read</button></form></header>
+<% if (!it.rows.length) { %><p class="empty">You have no notifications.</p><% } %>
+<ul class="notification-list">
+<% for (const n of it.rows) { const sub = n.submission_id && n.slug ? { id: n.submission_id, slug: n.slug, forum_name: n.forum_name } : null; %>
+<li class="notification<%= n.read_at ? '' : ' unread' %>">
+  <% if (n.notification_type === 'message') { %>
+    <p><strong><a href="/user/<%= n.message_user %>"><%= n.message_user %></a></strong> sent you a <a href="/messages/thread/<%= n.thread_id %>#message-<%= n.message_id %>">message</a> <%~ it.time(n.created_at) %></p>
+    <p class="muted"><%= it.F.excerpt(n.message_body, 160) %></p>
+  <% } else if (n.notification_type === 'comment') { %>
+    <p><strong><a href="/user/<%= n.comment_user %>"><%= n.comment_user %></a></strong> replied to you in <a href="<%= sub ? it.F.commentUrl(sub, n.comment_id) : '#' %>"><%= n.title %></a> <%~ it.time(n.created_at) %></p>
+    <p class="muted"><%= it.F.excerpt(n.comment_body, 160) %></p>
+  <% } else if (n.notification_type === 'comment_mention') { %>
+    <p><strong><a href="/user/<%= n.comment_user %>"><%= n.comment_user %></a></strong> mentioned you in a comment on <a href="<%= sub ? it.F.commentUrl(sub, n.comment_id) : '#' %>"><%= n.title %></a> <%~ it.time(n.created_at) %></p>
+  <% } else { %>
+    <p><strong><a href="/user/<%= n.submission_user %>"><%= n.submission_user %></a></strong> mentioned you in <a href="<%= sub ? it.F.subUrl(sub) : '#' %>"><%= n.title %></a> <%~ it.time(n.created_at) %></p>
+  <% } %>
+  <% if (!n.read_at) { %><form method="post" action="/notifications/<%= n.id %>/read" class="inline"><%~ it.csrfInput() %><button type="submit" class="link small">Mark as read</button></form><% } %>
+</li><% } %>
+</ul>
+<%~ include('_pager', { p: it.p }) %>

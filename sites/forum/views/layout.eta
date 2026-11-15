@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="<%= it.csrf() %>">
+<title><%= it.title ? it.title + ' - ' : '' %><%= it.site.title %></title>
+<link rel="stylesheet" href="/_kit/kit.css">
+<link rel="stylesheet" href="/static/forum.css">
+<% if (it.skin.css) { %><style><%~ it.skin.css %></style><% } %>
+</head>
+<% const theme = it.skin.theme || (it.user && it.user.night_mode === 'dark' ? 'dark' : 'light'); %>
+<body class="skin-<%= it.skin.name %> theme-<%= theme %> nav-<%= it.skin.nav || 'top' %>">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="site-brand" href="/"><span class="site-brand__logo" aria-hidden="true">P</span><%= it.site.title %></a>
+    <nav class="site-nav" aria-label="Main">
+      <% for (const m of it.menu) { %><a href="<%= m.href %>"<% if (it.req.path === m.href || it.req.path.startsWith(m.href + '/')) { %> aria-current="page"<% } %>><%= m.label %></a>
+      <% } %>
+    </nav>
+    <form class="site-search" method="get" action="/search" role="search">
+      <label for="site-search-q" class="visually-hidden">Search</label>
+      <input type="search" id="site-search-q" name="q" placeholder="Search Postmill" value="<%= it.req.path === '/search' ? (it.req.query.q || '') : '' %>">
+      <button type="submit">Search</button>
+    </form>
+    <div class="site-user">
+    <% if (it.user) { %>
+      <a class="site-user__icon" href="/notifications" aria-label="Notifications<%= it.counts && it.counts.notifications ? ` (${it.counts.notifications} unread)` : '' %>"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><% if (it.counts && it.counts.notifications) { %><span class="badge"><%= it.counts.notifications %></span><% } %></a>
+      <a class="site-user__icon" href="/messages" aria-label="Messages<%= it.counts && it.counts.messages ? ` (${it.counts.messages} unread)` : '' %>"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><% if (it.counts && it.counts.messages) { %><span class="badge"><%= it.counts.messages %></span><% } %></a>
+      <details class="user-menu">
+        <summary><span class="avatar" aria-hidden="true"><%= it.user.username.slice(0, 1).toUpperCase() %></span><%= it.user.username %></summary>
+        <ul>
+          <li><a href="/user/<%= it.user.username %>">Profile</a></li>
+          <li><a href="/subscribed">Subscribed forums</a></li>
+          <li><a href="/user/<%= it.user.username %>/preferences">Preferences</a></li>
+          <li><a href="/user/<%= it.user.username %>/account">Account settings</a></li>
+          <li><a href="/messages">Messages</a></li>
+          <li><a href="/notifications">Notifications</a></li>
+          <li><a href="/create_forum">Create forum</a></li>
+          <li><form method="post" action="/logout"><%~ it.csrfInput() %><button type="submit" class="link">Log out</button></form></li>
+        </ul>
+      </details>
+    <% } else { %>
+      <a class="button secondary" href="/login<%= it.req.path !== '/login' && it.req.path !== '/registration' ? '?next=' + encodeURIComponent(it.req.url) : '' %>">Log in</a>
+      <a class="button" href="/registration">Sign up</a>
+    <% } %>
+    </div>
+  </div>
+</header>
+<main id="main" class="site-main">
+<%~ include('kit/crumbs', { crumbs: it.crumbs }) %>
+<%~ include('kit/flash', { flashes: it.flashes }) %>
+<%~ it.body %>
+</main>
+<footer class="site-footer">
+  <nav aria-label="Footer"><a href="/forums">Forums</a> · <a href="/forums/by_category">Categories</a> · <a href="/comments">Latest comments</a> · <a href="/wiki">Wiki</a> · <a href="/moderation_log">Moderation log</a> · <a href="/users">Users</a></nav>
+  <p><%= it.L('footer', 'Running Postmill (websandbox lite).') %></p>
+</footer>
+<script src="/_kit/kit.js" defer></script>
+<script src="/static/forum.js" defer></script>
+</body>
+</html>

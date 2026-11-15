@@ -159,3 +159,73 @@ a new submission gets id 137403 and `ranking` = unixtime.
   last_seen up to 2023-07-11). Suggest "today" = 2023-07-11 or later so
   time-window sorts (`top?t=week`) are well defined; WebArena tasks only use
   `all`-time sorts.
+
+## UI build (2026-11-14)
+
+Site: `sites/forum/` -- [server.js](../sites/forum/server.js), routes/, views/, public/,
+[ROUTES.md](../sites/forum/ROUTES.md) (every URL, params, effects), [grade.js](../sites/forum/grade.js),
+tests in `test/`. Run: `node sites/forum/server.js --tenants 2 --port 7200 --data $WSB_DATA_ROOT/forum`.
+
+Decisions:
+- **Clock**: "today" = 2023-07-11 16:00 UTC (running), after the newest data (users seen up to
+  2023-07-11), so all-time sorts are as in WebArena and short windows (`?t=week`) are empty
+  until the rollout posts something.
+- **Deletes are soft**: author delete -> `visibility='soft_deleted'`, moderator removal ->
+  `'trashed'` (+ `moderated=1`, log entry). Nothing is hard-deleted; graders test `visibility`.
+- **Auto-upvote**: new submissions and comments get the author's upvote (Postmill does this:
+  the one source vote is MarvelsGrantMan136 on his own post), so they start at score 1.
+- **Titles link to the submission page** (not the external URL; the domain link next to it
+  goes to `url`). Postmill's `submission_link_destination=url` sent title clicks off-site,
+  a dead end for agents.
+- Forum creators become moderator and subscriber. Login-required GETs redirect to `/login?next=`.
+- **Postmill-compatible bits for task conversion**: URL scheme; vote widget classes
+  (`vote--user-upvoted`); `.user-bio__biography`, `.submission__title/__body`, `#sidebar > section`;
+  form ids `#forum_description`, `#forum_sidebar`; images linked as `/submission_images/<original
+  file_name>` (tasks 615-619 look for `<sha256>.jpg` in href/src).
+- Markdown: a small safe CommonMark subset in `lib/forum.js` (HTML escaped, entities kept, so
+  Reddit's `&gt;` shows as `>`; titles are escaped verbatim so `&amp;` shows as in Postmill).
+- Search: FTS5. Words ANDed, phrases kept. Prefix match only on the last word of post
+  searches and only with 4+ letters (`"the"*` over 2.5M comments takes 1.5 s). bm25 ranking up to
+  3,000 post / 1,500 comment matches; beyond that results come from the newest 3,000 matches,
+  newest first (cold random row reads cost ~0.1 ms each, so the scan stays small). Forum/time
+  filters apply within that bound. "Did you mean" uses the forum-name vocabulary only.
+  FTS gotcha: `rowid IN (?, ?, ...)` with bound params plus MATCH makes FTS5 visit every match
+  (minutes for common words); the snippet query inlines the integer ids instead.
+
+Build additions ([build/site.sql](../sites/forum/build/site.sql), run by `transform.py` and by
+`build.sh site` in place; base.db was patched in place, 1.25 GiB):
+- `submissions_hidden` partial index (`forum_id WHERE visibility <> 'visible'`): visible
+  submission counts per forum = covering count minus this (the forum list went from 270 ms to 20 ms).
+- `user_stats` (per-user visible counts and karma) + triggers: the profile of `[deleted]`
+  (id 10000, 327,659 comments, 8,855 posts) took 2.7 s to aggregate, now 15 ms.
+- Seeded forum categories (9 tags, one per forum) for `/forums/by_category`; `verify.py`
+  treats `forum_tags`/`forums_tags` as seeded (no source count check) and checks `user_stats`
+  totals against the aggregates. Verify passes.
+
+DB mode: the kit default **overlay** (all tenants on the one base.db, no copies; copy mode
+also works: `--db-mode copy`). Stop forum servers before `build.sh site`/`transform` touch base.db.
+
+Performance (single client, warm, `node sites/forum/test/bench.js --rounds 10`: 47 pages incl.
+listings with sorts/windows/deep pages, 244-comment thread, user pages incl. `[deleted]`,
+searches for common words, logged-in pages), on the shared build box at load ~23:
+overlay p50 21 ms, p95 85 ms, p99 138 ms, max 225 ms (copy mode: p50 27-30, p95 103-117).
+Reset 0.5-0.7 ms. 2 tenants start in ~1 s.
+
+Tests: `node --test sites/forum/test/forum.test.js` (18 tests against the real base.db, 2
+tenants in-process: every page renders, listing order == SQL for each sort (incl. task facts
+404, 562-566, 714), login, CSRF, votes JSON + form, comments/replies/notifications, submit
+text/link/image, subscriptions, forum create/edit, lock/remove/ban/log, bio/prefs/account,
+registration, messages, wiki, search, grade.js, user_stats exactness, reset + tenant
+isolation). Browser: `node sites/forum/test/smoke.js --base http://127.0.0.1:7200` (log in
+as MarvelsGrantMan136, browse, JS votes, comment, reply, post, subscribe, search, reset
+restores the DB exactly and drops the session); passes on both tenants of a `--tenants 2` server.
+
+Headless Chrome gotcha (Chrome 145, new headless): after a password form is submitted, the
+window silently stops receiving input (the invisible "save password?" prompt; profile prefs
+and incognito don't help). The smoke test moves the session cookie to a new browser context
+after logging in through the form. Rollout harnesses that log in through the UI in headless
+Chrome may hit the same thing (`POST /__rl/login` avoids it).
+
+Not built / simplified: hidden forums, user blocks, site-wide bans UI (table exists), forum
+deletion, flair, themes/custom CSS, Postmill's cursor-based `next[...]` paging (pages are
+`?page=N`), comment search sort by relevance for very common words (see above).

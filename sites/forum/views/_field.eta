@@ -1,0 +1,16 @@
+<%/* include('_field', {id, name, label, value, error, type, required, help, rows, options, attrs}) */%>
+<% const t = it.type || 'text'; const id = it.id || 'f-' + it.name; %>
+<div class="field<%= it.error ? ' has-error' : '' %>">
+<% if (t === 'checkbox') { %>
+  <label class="check"><input type="checkbox" id="<%= id %>" name="<%= it.name %>" value="1"<%= it.value ? ' checked' : '' %>> <%= it.label %></label>
+<% } else { %>
+  <label for="<%= id %>"><%= it.label %><% if (it.required) { %> <span class="req" aria-hidden="true">*</span><% } %></label>
+  <% if (t === 'textarea') { %><textarea id="<%= id %>" name="<%= it.name %>" rows="<%= it.rows || 6 %>"<%= it.required ? ' required' : '' %><%~ it.help ? ` aria-describedby="${id}-help"` : '' %>><%= it.value ?? '' %></textarea>
+  <% } else if (t === 'select') { %><select id="<%= id %>" name="<%= it.name %>"<%= it.required ? ' required' : '' %>>
+    <% for (const o of it.options || []) { const [v, l] = Array.isArray(o) ? o : [o, o]; %><option value="<%= v %>"<%= String(v) === String(it.value ?? '') ? ' selected' : '' %>><%= l %></option><% } %>
+  </select>
+  <% } else { %><input type="<%= t %>" id="<%= id %>" name="<%= it.name %>" value="<%= it.value ?? '' %>"<%= it.required ? ' required' : '' %><%~ it.help ? ` aria-describedby="${id}-help"` : '' %><%~ it.attrs || '' %>><% } %>
+<% } %>
+<% if (it.help) { %><p class="help" id="<%= id %>-help"><%= it.help %></p><% } %>
+<% if (it.error) { %><p class="field-error" role="alert"><%= it.error %></p><% } %>
+</div>

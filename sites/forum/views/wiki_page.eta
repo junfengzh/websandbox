@@ -1,0 +1,21 @@
+<% layout('layout') %>
+<div class="cols"><div class="content">
+<% if (!it.rev) { %>
+  <h1>Wiki: <%= it.path %></h1>
+  <p class="empty">This wiki page does not exist yet.<% if (it.canEdit) { %> <a href="/wiki/_create/<%= it.path %>">Create it</a>.<% } else { %> <a href="/login">Log in</a> to create it.<% } %></p>
+<% } else { %>
+  <article class="wiki-page">
+    <h1><%= it.rev.title %></h1>
+    <% if (it.revision) { %><p class="notice">You are viewing revision <%= it.rev.id %> by <%= it.rev.username %> (<%= it.abs(it.rev.created_at) %>). <a href="/wiki/<%= it.pg.path %>">View the current version</a></p><% } %>
+    <div class="wiki-page__body"><%~ it.md(it.rev.body) %></div>
+    <p class="muted">Last edited by <a href="/user/<%= it.rev.username %>"><%= it.rev.username %></a> <%~ it.time(it.rev.created_at) %><%= it.pg.locked ? ' · locked' : '' %></p>
+    <% if (!it.revision) { %><nav class="submission__nav" aria-label="Wiki actions">
+      <% if (it.canEdit) { %><a href="/wiki/_edit/<%= it.pg.path %>">Edit</a><% } %>
+      <a href="/wiki/_history/<%= it.pg.path %>">History</a>
+      <% if (it.admin) { %><form method="post" action="/wiki/<%= it.pg.locked ? '_unlock' : '_lock' %>/<%= it.pg.path %>" class="inline"><%~ it.csrfInput() %><button type="submit" class="link"><%= it.pg.locked ? 'Unlock' : 'Lock' %></button></form><% } %>
+    </nav><% } %>
+  </article>
+<% } %>
+</div>
+<aside id="sidebar" class="sidebar" aria-label="Wiki"><section class="sidebar__section"><h2 class="sidebar__title">Wiki</h2><ul class="plain-list"><li><a href="/wiki/index">Main page</a></li><li><a href="/wiki/_all">All pages</a></li><li><a href="/wiki/_recent">Recent changes</a></li><% if (it.user) { %><li><a href="/wiki/_create">Create a page</a></li><% } %></ul></section></aside>
+</div>

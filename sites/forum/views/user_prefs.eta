@@ -1,0 +1,20 @@
+<% layout('layout') %>
+<% const v = it.values; const e = it.errors; %>
+<section class="form-page">
+  <h1>Preferences</h1>
+  <form method="post" action="/user/<%= it.u.username %>/preferences" class="form">
+    <%~ it.csrfInput() %>
+    <%~ include('_field', { id: 'user_settings_front_page', name: 'front_page', label: 'Front page shows', type: 'select', value: v.front_page, error: e.front_page, options: [['subscribed', 'Subscribed forums'], ['all', 'All forums'], ['featured', 'Featured forums'], ['moderated', 'Forums I moderate']] }) %>
+    <%~ include('_field', { id: 'user_settings_front_page_sort_mode', name: 'front_page_sort_mode', label: 'Default sort', type: 'select', value: v.front_page_sort_mode, error: e.front_page_sort_mode, options: Object.entries(it.F.SORTS).map(([k, s]) => [k, s.label]) }) %>
+    <%~ include('_field', { id: 'user_settings_timezone', name: 'timezone', label: 'Time zone', type: 'select', value: v.timezone, error: e.timezone, options: it.TZS.includes(v.timezone) ? it.TZS : [v.timezone, ...it.TZS] }) %>
+    <%~ include('_field', { id: 'user_settings_night_mode', name: 'night_mode', label: 'Theme', type: 'select', value: v.night_mode, error: e.night_mode, options: [['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark']] }) %>
+    <fieldset><legend>Display and notifications</legend>
+    <%~ include('_field', { id: 'user_settings_show_thumbnails', name: 'show_thumbnails', label: 'Show thumbnails in listings', type: 'checkbox', value: v.show_thumbnails }) %>
+    <%~ include('_field', { id: 'user_settings_open_external_links_in_new_tab', name: 'open_external_links_in_new_tab', label: 'Open external links in a new tab', type: 'checkbox', value: v.open_external_links_in_new_tab }) %>
+    <%~ include('_field', { id: 'user_settings_notify_on_reply', name: 'notify_on_reply', label: 'Notify me of replies', type: 'checkbox', value: v.notify_on_reply }) %>
+    <%~ include('_field', { id: 'user_settings_notify_on_mentions', name: 'notify_on_mentions', label: 'Notify me when I am mentioned', type: 'checkbox', value: v.notify_on_mentions }) %>
+    <%~ include('_field', { id: 'user_settings_allow_private_messages', name: 'allow_private_messages', label: 'Allow private messages', type: 'checkbox', value: v.allow_private_messages }) %>
+    </fieldset>
+    <div class="form-actions"><button type="submit">Save preferences</button></div>
+  </form>
+</section>

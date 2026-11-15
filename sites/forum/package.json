@@ -1,0 +1,13 @@
+{
+  "name": "websandbox-forum",
+  "private": true,
+  "description": "websandbox forum site (forum.wa). Runtime deps come from ../../kit; puppeteer-core is only for test/smoke.js.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/forum.test.js",
+    "smoke": "node test/smoke.js"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}
