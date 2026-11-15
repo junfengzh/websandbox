@@ -47,7 +47,7 @@ let s; let base;
 test.before(async () => {
   const site = require('../../server.js');
   const up = fs.mkdtempSync(path.join((process.env.WSB_TMP || os.tmpdir()), 'wsb-store-test-'));
-  s = await site.start({ tenants: 1, port: 0, data: DATA, bind: 'ports', uploads: up, jobTickMs: 50 });
+  s = await site.start({ tenants: 2, port: 0, data: DATA, bind: 'ports', uploads: up, jobTickMs: 50 });
   base = s.url(0);
   await ctrl(base, '/__rl/reset', { frozen: true, now: '2023-06-12T16:00:00Z' });
 });
@@ -247,4 +247,22 @@ test('customer and admin sessions are separate on one host', async (t) => {
   r = await c.get('/customer/account/');
   assert.equal(r.status, 302);
   await ctrl(base, '/__rl/reset', { frozen: true, now: '2023-06-12T16:00:00Z' });
+});
+
+test('listing index follows tenant writes (price, name, visibility) and resets', async () => {
+  const t0 = s.tenants.get(0);
+  const pid = (await query(base, "SELECT p.id FROM product_categories pc JOIN products p ON p.id = pc.product_id WHERE pc.category_id = (SELECT id FROM categories WHERE url_path = 'video-games/playstation-4/accessories') AND p.status = 1 AND p.visibility = 4 AND p.type = 'simple' ORDER BY p.id LIMIT 1"))[0].id;
+  const url = '/video-games/playstation-4/accessories.html?product_list_order=price&product_list_dir=desc';
+  const first = (html) => (/class="product-item-link" href="([^"]+)">([^<]*)/.exec(html) || [])[2];
+  const c0 = new Client(base); const c1 = new Client(s.url(1));
+  const before = first((await c0.get(url)).text);
+  await t0.run((db) => db.prepare("UPDATE products SET price = 99999, name = 'ZZ Test Most Expensive' WHERE id = ?").run(pid));
+  assert.equal(first((await c0.get(url)).text), 'ZZ Test Most Expensive', 'tenant 0 sees its write');
+  assert.equal(first((await c1.get(url)).text), before, 'tenant 1 does not');
+  let r = await c0.get('/catalogsearch/result/?q=ZZ+Test+Most+Expensive');
+  assert.match(r.text, /ZZ Test Most Expensive/);
+  await t0.run((db) => db.prepare('UPDATE products SET status = 2 WHERE id = ?').run(pid));
+  assert.notEqual(first((await c0.get(url)).text), 'ZZ Test Most Expensive', 'disabled product leaves the listing');
+  await ctrl(base, '/__rl/reset', { frozen: true, now: '2023-06-12T16:00:00Z' });
+  assert.equal(first((await c0.get(url)).text), before, 'reset restores');
 });
