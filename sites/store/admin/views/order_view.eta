@@ -1,0 +1,117 @@
+<% layout('admin/layout') %>
+<% const U = it.U; const o = it.o; const h = it.h; const addr = (lines) => lines.map((l) => h(l)).join('<br>'); %>
+<div class="with-side-tabs">
+<nav aria-label="Order View"><ul class="side-tabs" id="sales_order_view_tabs"><li class="tabs-title">Order View</li>
+<% for (const [l, href, cur] of it.tabs) { %><li><a href="<%= href %>"<%= cur ? ' aria-current="page"' : '' %>><%= l %></a></li><% } %>
+</ul></nav>
+<div class="order-view-content">
+<% if (it.tab === 'order_info') { %>
+  <section class="admin__page-section order-view-account-information">
+    <h2 class="admin__page-section-title"><span class="title">Order &amp; Account Information</span></h2>
+    <div class="admin__page-section-content">
+      <div class="admin__page-section-item order-information">
+        <h3 class="admin__page-section-item-title"><span class="title">Order # <%= o.increment_id %></span> <span class="muted">(The order confirmation email was sent)</span></h3>
+        <table class="admin__table-secondary order-information-table"><tbody>
+          <tr><th>Order Date</th><td><%= U.date.datetime(o.created_at) %></td></tr>
+          <tr><th>Order Status</th><td><span id="order_status" class="order-status-label"><%= o.statusLabel %></span></td></tr>
+          <tr><th>Purchased From</th><td>Main Website<br>Main Website Store<br>Default Store View</td></tr>
+          <% if (o.remote_ip) { %><tr><th>Placed from IP</th><td><%= o.remote_ip %></td></tr><% } %>
+        </tbody></table>
+      </div>
+      <div class="admin__page-section-item order-account-information">
+        <h3 class="admin__page-section-item-title"><span class="title">Account Information</span><% if (it.customer) { %> <a href="/admin/customer/index/edit/id/<%= it.customer.id %>/">Edit Customer</a><% } %></h3>
+        <table class="admin__table-secondary order-account-information-table"><tbody>
+          <tr><th>Customer Name</th><td><% if (it.customer) { %><a href="/admin/customer/index/edit/id/<%= it.customer.id %>/"><span><%= [o.customer_firstname, o.customer_lastname].filter(Boolean).join(' ') %></span></a><% } else { %><%= [o.customer_firstname, o.customer_lastname].filter(Boolean).join(' ') || 'Guest' %><% } %></td></tr>
+          <tr><th>Email</th><td><a href="mailto:<%= o.customer_email %>"><%= o.customer_email %></a></td></tr>
+          <tr><th>Customer Group</th><td><%= it.group %></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </section>
+  <section class="admin__page-section order-addresses">
+    <h2 class="admin__page-section-title"><span class="title">Address Information</span></h2>
+    <div class="admin__page-section-content">
+      <div class="admin__page-section-item order-billing-address"><h3 class="admin__page-section-item-title"><span class="title">Billing Address</span><% if (o.billing) { %> <a href="/admin/sales/order/address/address_id/<%= o.billing.id %>/">Edit</a><% } %></h3><address class="admin__page-section-item-content"><%~ addr(it.billing) %></address></div>
+      <div class="admin__page-section-item order-shipping-address"><h3 class="admin__page-section-item-title"><span class="title">Shipping Address</span><% if (o.shipping) { %> <a href="/admin/sales/order/address/address_id/<%= o.shipping.id %>/">Edit</a><% } %></h3><address class="admin__page-section-item-content"><%~ addr(it.shipping) %></address></div>
+    </div>
+  </section>
+  <section class="admin__page-section order-payment-method">
+    <h2 class="admin__page-section-title"><span class="title">Payment &amp; Shipping Method</span></h2>
+    <div class="admin__page-section-content">
+      <div class="admin__page-section-item order-payment-method"><h3 class="admin__page-section-item-title"><span class="title">Payment Information</span></h3><div class="order-payment-method-title"><%= it.payTitle %></div><div class="order-payment-currency">The order was placed using USD.</div></div>
+      <div class="admin__page-section-item order-shipping-method"><h3 class="admin__page-section-item-title"><span class="title">Shipping &amp; Handling Information</span></h3><div><strong><%= o.shipping_description || 'No shipping information' %></strong> <%= U.money(o.shipping_amount) %></div>
+        <% const tr = it.shipments.filter((s) => s.tracks); if (tr.length) { %><div>Tracking numbers: <%= tr.map((s) => s.tracks).join(', ') %></div><% } %></div>
+    </div>
+  </section>
+  <section class="admin__page-section">
+    <h2 class="admin__page-section-title"><span class="title">Items Ordered</span></h2>
+    <div class="admin__table-wrapper"><table class="admin__table-primary edit-order-table" id="order-items_grid"><thead><tr><th>Product</th><th>Item Status</th><th class="num">Original Price</th><th class="num">Price</th><th class="num">Qty</th><th class="num">Subtotal</th><th class="num">Tax Amount</th><th class="num">Tax Percent</th><th class="num">Discount Amount</th><th class="num">Row Total</th></tr></thead><tbody>
+    <% for (const i of o.top) { const st = (i.qty_refunded >= i.qty_ordered && i.qty_ordered) ? 'Refunded' : (i.qty_canceled >= i.qty_ordered && i.qty_ordered) ? 'Canceled' : (i.qty_shipped >= i.qty_ordered && i.qty_ordered) ? 'Shipped' : (i.qty_invoiced >= i.qty_ordered && i.qty_ordered) ? 'Invoiced' : 'Ordered'; %>
+      <tr><td class="col-product"><div class="product-title"><% if (i.product_id) { %><a href="/admin/catalog/product/edit/id/<%= i.product_id %>/"><%~ U.htmlName(i.name) %></a><% } else { %><%~ U.htmlName(i.name) %><% } %></div><div class="product-sku-block"><span>SKU:</span> <%= i.sku %></div>
+        <% const op = it.itemOptions(i); if (op.length) { %><dl class="item-options"><% for (const x of op) { %><dt><%= x.label %></dt><dd><%= x.value %></dd><% } %></dl><% } %></td>
+        <td><%= st %></td><td class="num"><%= U.money(i.original_price ?? i.price) %></td><td class="num"><%= U.money(i.price) %></td>
+        <td class="num"><table class="qty-table"><tbody><tr><th>Ordered</th><td><%= U.num(i.qty_ordered) %></td></tr><% if (i.qty_invoiced) { %><tr><th>Invoiced</th><td><%= U.num(i.qty_invoiced) %></td></tr><% } %><% if (i.qty_shipped) { %><tr><th>Shipped</th><td><%= U.num(i.qty_shipped) %></td></tr><% } %><% if (i.qty_refunded) { %><tr><th>Refunded</th><td><%= U.num(i.qty_refunded) %></td></tr><% } %><% if (i.qty_canceled) { %><tr><th>Canceled</th><td><%= U.num(i.qty_canceled) %></td></tr><% } %></tbody></table></td>
+        <td class="num"><%= U.money(i.row_total) %></td><td class="num"><%= U.money(i.tax_amount || 0) %></td><td class="num"><%= U.pct(i.tax_percent) %></td><td class="num"><%= U.money(i.discount_amount || 0) %></td><td class="num"><%= U.money((i.row_total || 0) + (i.tax_amount || 0) - Math.abs(i.discount_amount || 0)) %></td></tr>
+    <% } %>
+    </tbody></table></div>
+  </section>
+  <section class="admin__page-section">
+    <h2 class="admin__page-section-title"><span class="title">Order Total</span></h2>
+    <div class="admin__page-section-content">
+      <div class="admin__page-section-item order-comments-history" id="order_history_block">
+        <h3 class="admin__page-section-item-title"><span class="title">Notes for this Order</span></h3>
+        <form method="post" action="/admin/sales/order/addComment/order_id/<%= o.id %>/" id="order_history_form">
+          <%~ it.csrfInput() %>
+          <div class="admin__form-field"><label for="history_status">Status</label><select id="history_status" name="history[status]"><% for (const s of it.statuses) { %><option value="<%= s.status %>"<%= s.status === o.status ? ' selected' : '' %>><%= s.label %></option><% } %></select></div>
+          <div class="admin__form-field"><label for="history_comment">Comment</label><textarea id="history_comment" name="history[comment]" rows="3" cols="5"></textarea></div>
+          <div class="admin__form-field"><label class="choice"><input type="checkbox" name="history[is_customer_notified]" id="history_notify" value="1"> Notify Customer by Email</label>
+            <label class="choice"><input type="checkbox" name="history[is_visible_on_front]" id="history_visible" value="1"> Visible on Storefront</label></div>
+          <button type="submit" class="action-default" id="submit_comment">Submit Comment</button>
+        </form>
+        <ul class="note-list">
+        <% for (const x of it.history) { %><li class="note-list-item"><span class="note-list-date"><%= U.date.medium(x.created_at) %></span><span class="note-list-time"><%= U.date.datetime(x.created_at).split(', ').slice(-1)[0] %></span> <span class="note-list-status"><%= it.statusLabels[x.status] || x.status %></span> <span class="note-list-customer">Customer <%= x.is_customer_notified ? 'Notified' : 'Not Notified' %></span><% if (x.comment) { %><div class="note-list-comment"><%= x.comment %></div><% } %></li><% } %>
+        </ul>
+      </div>
+      <div class="admin__page-section-item order-totals">
+        <h3 class="admin__page-section-item-title"><span class="title">Order Totals</span></h3>
+        <table class="admin__table-secondary order-totals-table" id="order-totals"><tbody>
+          <tr><th>Subtotal</th><td class="num"><%= U.money(o.subtotal) %></td></tr>
+          <% if (o.discount_amount) { %><tr><th>Discount<%= o.discount_description ? ` (${o.discount_description})` : '' %></th><td class="num"><%= U.money(o.discount_amount) %></td></tr><% } %>
+          <tr><th>Shipping &amp; Handling</th><td class="num"><%= U.money(o.shipping_amount) %></td></tr>
+          <% if (o.tax_amount) { %><tr><th>Tax</th><td class="num"><%= U.money(o.tax_amount) %></td></tr><% } %>
+          <tr class="grand"><th><strong>Grand Total</strong></th><td class="num"><strong><%= U.money(o.grand_total) %></strong></td></tr>
+          <tr><th><strong>Total Paid</strong></th><td class="num"><strong><%= U.money(o.total_paid || 0) %></strong></td></tr>
+          <tr><th><strong>Total Refunded</strong></th><td class="num"><strong><%= U.money(o.total_refunded || 0) %></strong></td></tr>
+          <tr><th><strong>Total Due</strong></th><td class="num"><strong><%= U.money(['canceled', 'closed', 'complete'].includes(o.state) ? 0 : Math.max(0, (o.grand_total || 0) - (o.total_paid || 0))) %></strong></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </section>
+<% } else if (it.tab === 'order_invoices') { %>
+  <section class="admin__page-section"><h2 class="admin__page-section-title">Invoices</h2>
+  <table class="data-grid" id="order_invoices_grid"><thead><tr><th>Invoice</th><th>Invoice Date</th><th>Bill-to Name</th><th>Status</th><th class="num">Amount</th><th>Action</th></tr></thead><tbody>
+  <% if (!it.invoices.length) { %><tr class="data-grid-tr-no-data"><td colspan="6">We couldn't find any records.</td></tr><% } %>
+  <% for (const x of it.invoices) { %><tr><td><a href="/admin/sales/order_invoice/view/invoice_id/<%= x.id %>/"><%= x.increment_id %></a></td><td><%= U.date.datetime(x.created_at) %></td><td><%= it.billing[0] || '' %></td><td><%= { 1: 'Pending', 2: 'Paid', 3: 'Canceled' }[x.state] %></td><td class="num"><%= U.money(x.grand_total) %></td><td><a href="/admin/sales/order_invoice/view/invoice_id/<%= x.id %>/">View</a></td></tr><% } %>
+  </tbody></table></section>
+<% } else if (it.tab === 'order_creditmemos') { %>
+  <section class="admin__page-section"><h2 class="admin__page-section-title">Credit Memos</h2>
+  <table class="data-grid" id="order_creditmemos_grid"><thead><tr><th>Credit Memo</th><th>Created</th><th>Bill-to Name</th><th>Status</th><th class="num">Refunded</th><th>Action</th></tr></thead><tbody>
+  <% if (!it.memos.length) { %><tr class="data-grid-tr-no-data"><td colspan="6">We couldn't find any records.</td></tr><% } %>
+  <% for (const x of it.memos) { %><tr><td><a href="/admin/sales/order_creditmemo/view/creditmemo_id/<%= x.id %>/"><%= x.increment_id %></a></td><td><%= U.date.datetime(x.created_at) %></td><td><%= it.billing[0] || '' %></td><td>Refunded</td><td class="num"><%= U.money(x.grand_total) %></td><td><a href="/admin/sales/order_creditmemo/view/creditmemo_id/<%= x.id %>/">View</a></td></tr><% } %>
+  </tbody></table></section>
+<% } else if (it.tab === 'order_shipments') { %>
+  <section class="admin__page-section"><h2 class="admin__page-section-title">Shipments</h2>
+  <table class="data-grid" id="order_shipments_grid"><thead><tr><th>Shipment</th><th>Ship Date</th><th>Ship-to Name</th><th class="num">Total Quantity</th><th>Tracking Numbers</th><th>Action</th></tr></thead><tbody>
+  <% if (!it.shipments.length) { %><tr class="data-grid-tr-no-data"><td colspan="6">We couldn't find any records.</td></tr><% } %>
+  <% for (const x of it.shipments) { %><tr><td><a href="/admin/admin/order_shipment/view/shipment_id/<%= x.id %>/"><%= x.increment_id %></a></td><td><%= U.date.datetime(x.created_at) %></td><td><%= it.shipping[0] || '' %></td><td class="num"><%= U.num(x.total_qty) %></td><td><%= x.tracks || '' %></td><td><a href="/admin/admin/order_shipment/view/shipment_id/<%= x.id %>/">View</a></td></tr><% } %>
+  </tbody></table></section>
+<% } else { %>
+  <section class="admin__page-section" id="order_history_tab"><h2 class="admin__page-section-title">Comments History</h2>
+  <% if (!it.comments.length) { %><p class="muted">No comments.</p><% } %>
+  <ul class="note-list" id="comments_history">
+  <% for (const x of it.comments) { %><li class="note-list-item"><span class="note-list-date"><%= U.date.datetime(x.at) %></span> <span class="note-list-customer">Customer <%= x.notified ? 'Notified' : 'Not Notified' %></span>
+    <div class="note-list-comment"><%= x.title %></div><% if (x.doc) { %><div class="muted">(<%= x.kind %> #<%= x.doc %>)</div><% } %></li><% } %>
+  </ul></section>
+<% } %>
+</div>
+</div>

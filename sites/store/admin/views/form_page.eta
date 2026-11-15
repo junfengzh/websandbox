@@ -1,0 +1,17 @@
+<% layout('admin/layout') %>
+<%/* generic edit page: it.formId, it.action, it.sections: [{title, fields, html, open}], it.hidden {k:v}, it.sideTabs [[label, href, current]], it.multipart */%>
+<% const body = () => { %>
+<form id="<%= it.formId || 'edit_form' %>" method="post" action="<%= it.action %>"<%= it.multipart ? ' enctype="multipart/form-data"' : '' %> novalidate>
+  <%~ it.csrfInput() %>
+  <% for (const [k, v] of Object.entries(it.hidden || {})) { %><input type="hidden" name="<%= k %>" value="<%= v %>"><% } %>
+  <% for (const s of it.sections || []) { %>
+    <% if (s.collapsible) { %><details class="fieldset-wrapper" id="<%= s.id || '' %>"<%= s.open !== false ? ' open' : '' %>><summary><%= s.title %></summary><div class="fieldset-content"><% } else { %><fieldset class="admin__fieldset" id="<%= s.id || '' %>"><% if (s.title) { %><legend><span><%= s.title %></span></legend><% } %><% } %>
+      <% for (const f of s.fields || []) { %><%~ include('admin/partials/field', { ...it, f: { ...f, value: it.values && Object.prototype.hasOwnProperty.call(it.values, f.name) ? it.values[f.name] : f.value, error: (it.errors || {})[f.name] || f.error } }) %><% } %>
+      <% if (s.html) { %><%~ s.html %><% } %>
+    <% if (s.collapsible) { %></div></details><% } else { %></fieldset><% } %>
+  <% } %>
+  <% if (!it.actions || !it.actions.some((a) => a.form)) { %><div class="form-buttons"><button type="submit" class="action-primary">Save</button></div><% } %>
+</form>
+<% } %>
+<% if (it.sideTabs) { %><div class="with-side-tabs"><nav aria-label="Sections"><ul class="side-tabs"><li class="tabs-title"><%= it.sideTitle || 'Information' %></li><% for (const [l, h, cur] of it.sideTabs) { %><li><a href="<%= h %>"<%= cur ? ' aria-current="page"' : '' %>><%= l %></a></li><% } %></ul></nav><div><% body() %><%~ it.after || '' %></div></div>
+<% } else { %><% body() %><%~ it.after || '' %><% } %>

@@ -1,0 +1,119 @@
+<% const g = it.g; const fid = g.id + '-mass'; const hidden = (ex) => g.hidden(ex).map(([k, v]) => `<input type="hidden" name="${it.h(k)}" value="${it.h(v)}">`).join(''); %>
+<div class="admin__data-grid-outer-wrap" data-grid="<%= g.id %>" data-total="<%= g.total %>" id="<%= g.id %>">
+  <div class="admin__data-grid-header">
+    <div class="admin__data-grid-header-row">
+      <% if (g.keyword) { %>
+      <form class="data-grid-search" method="get" action="<%= g.url %>" role="search">
+        <%~ hidden(['q', 'page']) %>
+        <div class="data-grid-search-control-wrap">
+          <label class="sr-only" for="<%= g.id %>-fulltext">Search by keyword</label>
+          <input id="<%= g.id %>-fulltext" class="admin__control-text data-grid-search-control" type="search" name="q" value="<%= g.q %>" placeholder="<%= g.keywordPlaceholder %>">
+          <button type="submit" class="action-submit" aria-label="Search">Search</button>
+        </div>
+      </form>
+      <% } %>
+      <% if (g.filterFields.length) { %>
+      <details class="dropdown data-grid-filters-action-wrap" id="<%= g.id %>-filters-toggle"<%= it.openFilters ? ' open' : '' %>>
+        <summary class="action-default" data-action="grid-filter-expand">Filters</summary>
+        <div class="dropdown-body admin__data-grid-filters-wrap" style="min-width:min(900px,85vw)">
+          <form method="get" action="<%= g.url %>" class="grid-filter-form" aria-label="Filters">
+            <%~ hidden([...g.filterFields.flatMap((f) => [f.key, f.key + '_from', f.key + '_to']), 'page']) %>
+            <fieldset class="admin__data-grid-filters" style="border:0;padding:0;margin:0">
+            <% for (const f of g.filterFields) { %>
+              <div class="admin__form-field">
+              <% if (f.type === 'text') { %>
+                <label for="<%= g.id %>-f-<%= f.key %>"><%= f.label %></label>
+                <input type="text" id="<%= g.id %>-f-<%= f.key %>" name="<%= f.key %>" value="<%= f.value %>">
+              <% } else if (f.type === 'select') { %>
+                <label for="<%= g.id %>-f-<%= f.key %>"><%= f.label %></label>
+                <select id="<%= g.id %>-f-<%= f.key %>" name="<%= f.key %>"><option value=""></option><% for (const [v, l] of f.options) { %><option value="<%= v %>"<%= String(v) === f.value ? ' selected' : '' %>><%~ it.U.htmlName(l) %></option><% } %></select>
+              <% } else { %>
+                <span class="label" id="<%= g.id %>-f-<%= f.key %>-l"><%= f.label %></span>
+                <div class="range" role="group" aria-labelledby="<%= g.id %>-f-<%= f.key %>-l">
+                  <input type="text" name="<%= f.key %>_from" value="<%= f.from %>" placeholder="from" aria-label="<%= f.label %> from"<%= f.type === 'daterange' ? ' data-date="1"' : '' %>>
+                  <input type="text" name="<%= f.key %>_to" value="<%= f.to %>" placeholder="to" aria-label="<%= f.label %> to"<%= f.type === 'daterange' ? ' data-date="1"' : '' %>>
+                </div>
+              <% } %>
+              </div>
+            <% } %>
+            </fieldset>
+            <div class="admin__data-grid-filters-footer">
+              <a class="action-secondary" href="<%= g.clearHref %>">Cancel</a>
+              <button type="submit" class="action-primary" data-action="grid-filter-apply">Apply Filters</button>
+            </div>
+          </form>
+        </div>
+      </details>
+      <% } %>
+      <details class="dropdown right admin__data-grid-action-columns">
+        <summary class="action-default">Columns</summary>
+        <div class="dropdown-body">
+          <form method="get" action="<%= g.url %>" aria-label="Columns">
+            <%~ hidden(['cols', 'page']) %>
+            <div class="columns-list"><% for (const c of g.columns) { %><label><input type="checkbox" name="cols" value="<%= c.key %>"<%= c.visible ? ' checked' : '' %><%= c.always ? ' disabled' : '' %>> <%= c.label || c.key %></label><% } %></div>
+            <div class="admin__data-grid-filters-footer"><button type="submit" class="action-primary">Apply</button></div>
+          </form>
+        </div>
+      </details>
+      <% for (const b of g.buttons) { %><a class="action-secondary" href="<%= b.href %>"><%= b.label %></a><% } %>
+    </div>
+    <% if (g.active.length) { %>
+    <div class="admin__data-grid-filters-current _show">
+      <strong class="admin__current-filters-title">Active filters:</strong>
+      <ul class="admin__current-filters-list"><% for (const a of g.active) { %><li><span><%= a.label %>: </span><span><%~ it.U.htmlName(String(a.value)) %></span> <a class="action-remove" href="<%= a.removeHref %>" aria-label="Remove <%= a.label %> filter">&times;</a></li><% } %></ul>
+      <a class="action-clear" href="<%= g.clearHref %>">Clear all</a>
+    </div>
+    <% } %>
+  </div>
+  <div class="grid-toolbar admin__data-grid-header-row">
+    <div class="left">
+      <% if (g.massActions) { %>
+      <form id="<%= fid %>" class="grid-mass-form mass-actions" method="post" action="<%= g.massUrl %>">
+        <%~ it.csrfInput() %>
+        <input type="hidden" name="select_all" value="0">
+        <input type="hidden" name="grid_query" value="<%= g.queryString %>">
+        <input type="hidden" name="back_url" value="<%= it.req.url %>">
+        <label class="sr-only" for="<%= g.id %>-mass-action">Actions</label>
+        <select id="<%= g.id %>-mass-action" name="mass_action" class="action-select">
+          <option value="">Actions</option>
+          <% for (const m of g.massActions) { %><option value="<%= m.value %>"<% if (m.confirm) { %> data-confirm="<%= m.confirm %>"<% } %><% if (m.needs) { %> data-needs-value="<%= m.needs %>"<% } %>><%= m.label %></option><% } %>
+        </select>
+        <span data-mass-value hidden><label class="sr-only" for="<%= g.id %>-mass-value">Value</label><input id="<%= g.id %>-mass-value" type="text" name="mass_value" size="10"></span>
+        <button type="submit" class="action-secondary">Submit</button>
+      </form>
+      <label class="sr-only" for="<%= g.id %>-select-mode">Selection</label>
+      <select id="<%= g.id %>-select-mode" data-select-mode class="action-select"><option value="">Select&hellip;</option><option value="all">Select All (<%= g.total %>)</option><option value="none">Deselect All</option><option value="page">Select All on This Page</option><option value="unpage">Deselect All on This Page</option></select>
+      <% } %>
+      <div class="admin__control-support-text"><span data-records-found><%= it.U.num(g.total) %></span> records found<% if (g.massActions) { %> (<span data-selected-count>0</span> selected)<% } %></div>
+    </div>
+    <form class="right admin__data-grid-pager-wrap" method="get" action="<%= g.url %>" aria-label="Pagination">
+      <%~ hidden(['page', 'per_page']) %>
+      <label for="<%= g.id %>-per-page">Per page</label>
+      <select id="<%= g.id %>-per-page" name="per_page" data-autosubmit><% for (const n of g.perPageOptions) { %><option value="<%= n %>"<%= n === g.pager.perPage ? ' selected' : '' %>><%= n %></option><% } %></select>
+      <div class="admin__data-grid-pager">
+        <% if (g.pager.prev) { %><a class="action-previous" href="<%= g.pager.prev %>" rel="prev" aria-label="Previous page">&lsaquo;</a><% } else { %><span class="disabled action-previous" aria-hidden="true">&lsaquo;</span><% } %>
+        <label class="sr-only" for="<%= g.id %>-page">Page</label>
+        <input id="<%= g.id %>-page" type="number" name="page" min="1" max="<%= g.pager.pages %>" value="<%= g.pager.page %>" class="admin__control-text">
+        <span>of <span data-pages><%= g.pager.pages %></span></span>
+        <% if (g.pager.next) { %><a class="action-next" href="<%= g.pager.next %>" rel="next" aria-label="Next page">&rsaquo;</a><% } else { %><span class="disabled action-next" aria-hidden="true">&rsaquo;</span><% } %>
+      </div>
+    </form>
+  </div>
+  <div class="admin__data-grid-wrap" data-role="grid-wrapper">
+    <table class="data-grid" id="<%= g.id %>-table">
+      <thead><tr>
+        <% if (g.massActions) { %><th class="data-grid-multicheck-cell data-grid-checkbox-cell"><label class="sr-only" for="<%= g.id %>-check-page">Select all on this page</label><input type="checkbox" id="<%= g.id %>-check-page" data-select-page></th><% } %>
+        <% for (const c of g.columns.filter((x) => x.visible)) { %><th class="data-grid-th <%= c.cls %><%= c.arrow ? ' sort-' + c.arrow : '' %>" scope="col"<%= c.arrow ? ` aria-sort="${c.arrow === 'asc' ? 'ascending' : 'descending'}"` : '' %>><% if (c.sortable) { %><a href="<%= c.sortHref %>" class="data-grid-cell-content"><%= c.label %></a><% } else { %><span class="data-grid-cell-content"><%= c.label %></span><% } %></th><% } %>
+        <% if (g.rowActions) { %><th class="data-grid-th">Action</th><% } %>
+      </tr></thead>
+      <tbody>
+      <% if (!g.rows.length) { %><tr class="data-grid-tr-no-data"><td colspan="<%= g.shown.length + 2 %>"><%= g.emptyText %></td></tr><% } %>
+      <% for (const r of g.rows) { %><tr class="data-row" data-id="<%= r.id %>">
+        <% if (g.massActions) { %><td class="data-grid-checkbox-cell"><label class="sr-only" for="<%= g.id %>-sel-<%= r.id %>">Select row <%= r.id %></label><input type="checkbox" id="<%= g.id %>-sel-<%= r.id %>" name="selected" value="<%= r.id %>" form="<%= fid %>"></td><% } %>
+        <% for (const c of r.cells) { %><td class="<%= c.cls %>"><div class="data-grid-cell-content"><%~ c.html %></div></td><% } %>
+        <% if (g.rowActions) { %><td class="data-grid-actions-cell"><%~ g.rowActions(r.row) %></td><% } %>
+      </tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</div>

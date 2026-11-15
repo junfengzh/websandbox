@@ -1,0 +1,2 @@
+<% layout('admin/layout') %>
+<% if (it.html) { %><%~ it.html %><% } else { %><p><%= it.message %></p><% } %>

@@ -1,0 +1,53 @@
+<% layout('admin/layout') %>
+<% const U = it.U; const o = it.o; const d = it.d; const h = it.h; const addr = (l) => l.map((x) => h(x)).join('<br>'); %>
+<section class="admin__page-section"><h2 class="admin__page-section-title"><%= it.kindLabel %> #<%= d.increment_id %></h2>
+  <div class="admin__page-section-content">
+    <div><table class="admin__table-secondary"><tbody>
+      <tr><th>Order #</th><td><a href="/admin/sales/order/view/order_id/<%= o.id %>/"><%= o.increment_id %></a></td></tr>
+      <tr><th>Order Date</th><td><%= U.date.datetime(o.created_at) %></td></tr><tr><th>Order Status</th><td><%= o.statusLabel %></td></tr>
+      <tr><th><%= it.kindLabel %> Date</th><td><%= U.date.datetime(d.created_at) %></td></tr>
+      <% if (it.kind === 'invoice') { %><tr><th>Invoice Status</th><td><%= { 1: 'Pending', 2: 'Paid', 3: 'Canceled' }[d.state] %></td></tr><% } %>
+      <tr><th>Customer Name</th><td><%= [o.customer_firstname, o.customer_lastname].filter(Boolean).join(' ') %></td></tr><tr><th>Email</th><td><%= o.customer_email %></td></tr>
+    </tbody></table></div>
+    <div><h3 class="admin__page-section-item-title">Billing Address</h3><address><%~ addr(it.billing) %></address></div>
+    <div><h3 class="admin__page-section-item-title">Shipping Address</h3><address><%~ addr(it.shipping) %></address></div>
+  </div></section>
+<% if (it.kind === 'shipment') { %>
+<section class="admin__page-section" id="shipment_tracking"><h2 class="admin__page-section-title">Shipping and Tracking Information</h2>
+  <div><%= o.shipping_description %> <%= U.money(o.shipping_amount) %></div>
+  <table class="admin__table-primary" id="shipment_tracking_info"><thead><tr><th>Carrier</th><th>Title</th><th>Number</th><th>Action</th></tr></thead><tbody>
+  <% for (const t of it.tracks) { %><tr><td><%= (it.carriers.find((c) => c[0] === t.carrier_code) || [0, t.carrier_code])[1] %></td><td><%= t.title %></td><td><%= t.track_number %></td>
+    <td><form method="post" action="/admin/admin/order_shipment/removeTrack/track_id/<%= t.id %>/" class="inline" data-confirm="Are you sure?"><%~ it.csrfInput() %><button type="submit" class="link">Delete</button></form></td></tr><% } %>
+  </tbody></table>
+  <form method="post" action="/admin/admin/order_shipment/addTrack/shipment_id/<%= d.id %>/" class="inline-fields" aria-label="Add tracking number" style="margin-top:10px">
+    <%~ it.csrfInput() %>
+    <div class="admin__form-field"><label for="tracking_carrier">Carrier</label><select id="tracking_carrier" name="carrier"><% for (const [v, l] of it.carriers) { %><option value="<%= v %>"><%= l %></option><% } %></select></div>
+    <div class="admin__form-field"><label for="tracking_title">Title</label><input id="tracking_title" name="title" type="text"></div>
+    <div class="admin__form-field"><label for="tracking_number">Number</label><input id="tracking_number" name="number" type="text"></div>
+    <button type="submit" class="action-secondary">Add</button>
+  </form>
+</section>
+<% } %>
+<section class="admin__page-section"><h2 class="admin__page-section-title">Items <%= it.kind === 'invoice' ? 'Invoiced' : it.kind === 'shipment' ? 'Shipped' : 'Refunded' %></h2>
+  <table class="admin__table-primary"><thead><tr><th>Product</th><th>SKU</th><% if (it.kind !== 'shipment') { %><th class="num">Price</th><% } %><th class="num">Qty</th><% if (it.kind !== 'shipment') { %><th class="num">Subtotal</th><th class="num">Tax Amount</th><th class="num">Discount Amount</th><th class="num">Row Total</th><% } %></tr></thead><tbody>
+  <% for (const i of it.items) { %><tr><td><%~ U.htmlName(i.name) %></td><td><%= i.sku %></td><% if (it.kind !== 'shipment') { %><td class="num"><%= U.money(i.price) %></td><% } %><td class="num"><%= U.num(i.qty) %></td>
+    <% if (it.kind !== 'shipment') { %><td class="num"><%= U.money(i.row_total) %></td><td class="num"><%= U.money(i.tax_amount || 0) %></td><td class="num"><%= U.money(i.discount_amount || 0) %></td><td class="num"><%= U.money((i.row_total || 0) + (i.tax_amount || 0) - (i.discount_amount || 0)) %></td><% } %></tr><% } %>
+  </tbody></table></section>
+<section class="admin__page-section"><h2 class="admin__page-section-title"><%= it.kindLabel %> Totals</h2>
+  <div class="admin__page-section-content">
+    <div><h3 class="admin__page-section-item-title"><%= it.kindLabel %> History</h3>
+      <form method="post" action="<%= it.commentAction %>"><%~ it.csrfInput() %>
+        <div class="admin__form-field"><label for="doc_comment">Comment Text</label><textarea id="doc_comment" name="comment[comment]" rows="3"></textarea></div>
+        <label class="choice"><input type="checkbox" name="comment[is_customer_notified]" value="1"> Notify Customer by Email</label>
+        <label class="choice"><input type="checkbox" name="comment[is_visible_on_front]" value="1"> Visible on Storefront</label>
+        <div><button type="submit" class="action-default">Submit Comment</button></div></form>
+      <ul class="note-list"><% for (const c of it.comments) { %><li><span class="note-list-date"><%= U.date.datetime(c.created_at) %></span> <span class="note-list-customer">Customer <%= c.is_customer_notified ? 'Notified' : 'Not Notified' %></span><div class="note-list-comment"><%= c.comment %></div></li><% } %></ul></div>
+    <% if (it.kind !== 'shipment') { %><div class="order-totals"><table class="admin__table-secondary"><tbody>
+      <tr><th>Subtotal</th><td class="num"><%= U.money(d.subtotal) %></td></tr>
+      <% if (d.discount_amount) { %><tr><th>Discount</th><td class="num"><%= U.money(d.discount_amount) %></td></tr><% } %>
+      <tr><th>Shipping &amp; Handling</th><td class="num"><%= U.money(d.shipping_amount) %></td></tr>
+      <% if (it.kind === 'creditmemo') { %><tr><th>Adjustment Refund</th><td class="num"><%= U.money(d.adjustment_positive || 0) %></td></tr><tr><th>Adjustment Fee</th><td class="num"><%= U.money(d.adjustment_negative || 0) %></td></tr><% } %>
+      <tr><th>Tax</th><td class="num"><%= U.money(d.tax_amount || 0) %></td></tr>
+      <tr class="grand"><th><strong>Grand Total</strong></th><td class="num"><strong><%= U.money(d.grand_total) %></strong></td></tr>
+    </tbody></table></div><% } else { %><div><p>Total Quantity: <%= U.num(d.total_qty) %></p></div><% } %>
+  </div></section>

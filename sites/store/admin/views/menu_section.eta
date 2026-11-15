@@ -1,0 +1,4 @@
+<% layout('admin/layout') %>
+<div class="menu-section-page">
+<% for (const [g, links] of it.m.groups) { %><section class="admin__page-section"><h2 class="admin__page-section-title"><%= g || it.m.label %></h2><ul><% for (const [l, h] of links) { %><li><a href="<%= h %>"><%= l %></a></li><% } %></ul></section><% } %>
+</div>

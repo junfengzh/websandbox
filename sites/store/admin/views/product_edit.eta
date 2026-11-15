@@ -1,0 +1,153 @@
+<% layout('admin/layout') %>
+<% const U = it.U; const p = it.p; const L = it.lists; const V = it.values; const E = it.errors || {};
+   const F = (f) => include('admin/partials/field', { ...it, f: { ...f, value: Object.prototype.hasOwnProperty.call(V, f.name) ? V[f.name] : f.value, error: E[f.name] } });
+   const isConf = p.type === 'configurable'; const media = (f) => (f && f.startsWith('/') ? f : '/media/' + f); %>
+<% if (it.parents && it.parents.length) { %><div class="message message-notice notice"><div>This product is a configuration of <% for (const x of it.parents) { %><a href="/admin/catalog/product/edit/id/<%= x.id %>/"><%~ U.htmlName(x.name) %></a> (SKU <%= x.sku %>) <% } %>.</div></div><% } %>
+<p class="muted">Type: <strong><%= it.typeLabel %></strong><% if (!it.isNew) { %> &middot; ID <%= p.id %> &middot; Created <%= U.date.datetime(p.created_at) %> &middot; Updated <%= U.date.datetime(p.updated_at) %> &middot; <a href="/admin/review/product/?product_id=<%= p.id %>">Product Reviews (<%= it.reviewsCount %>)</a><% } %></p>
+<form id="product_form" class="product-form" method="post" action="<%= it.action %>" novalidate>
+  <%~ it.csrfInput() %>
+  <input type="hidden" name="product[category_ids_present]" value="1">
+  <input type="hidden" name="product[_attrs]" value="<%= it.attrs.map((a) => a.code).join(',') %>">
+  <fieldset class="admin__fieldset" id="product-details" data-index="product-details">
+    <%~ F({ name: 'product[status]', label: 'Enable Product', type: 'select', options: L.status, scope: 'website' }) %>
+    <%~ F({ name: 'product[attribute_set_id]', label: 'Attribute Set', type: 'select', options: L.sets }) %>
+    <%~ F({ name: 'product[name]', label: 'Product Name', required: true, scope: 'store view', attrs: ' data-urlkey-source="1"' }) %>
+    <%~ F({ name: 'product[sku]', label: 'SKU', required: true, scope: 'global' }) %>
+    <%~ F({ name: 'product[price]', label: 'Price', addon: '$', required: !isConf && p.type !== 'grouped' && p.type !== 'bundle', scope: 'global', note: isConf ? 'The price of a configurable product is the lowest price of its configurations (see Configurations).' : '<a href="#advanced-pricing">Advanced Pricing</a>' }) %>
+    <%~ F({ name: 'product[tax_class_id]', label: 'Tax Class', type: 'select', options: L.tax, scope: 'website' }) %>
+    <%~ F({ name: 'product[quantity_and_stock_status][qty]', label: 'Quantity', scope: 'global', note: '<a href="#advanced-inventory">Advanced Inventory</a>' }) %>
+    <%~ F({ name: 'product[quantity_and_stock_status][is_in_stock]', label: 'Stock Status', type: 'select', options: L.stock, scope: 'global' }) %>
+    <%~ F({ name: 'product[product_has_weight]', label: 'Weight', type: 'select', options: [[1, 'This item has weight'], [0, 'This item has no weight']] }) %>
+    <%~ F({ name: 'product[weight]', label: 'Weight (lbs)', addon: 'lbs', showWhen: 'product[product_has_weight]=1' }) %>
+    <%~ F({ name: 'product[category_ids][]', id: 'product_category_ids', index: 'category_ids', label: 'Categories', type: 'select', multiple: true, options: L.cats, note: 'Hold Ctrl (Cmd on Mac) to select several categories.' }) %>
+    <%~ F({ name: 'product[visibility]', label: 'Visibility', type: 'select', options: L.vis, scope: 'store view' }) %>
+    <%~ F({ name: 'product[news_from_date]', label: 'Set Product as New From', type: 'date', scope: 'website' }) %>
+    <%~ F({ name: 'product[news_to_date]', label: 'Set Product as New To', type: 'date', scope: 'website' }) %>
+    <%~ F({ name: 'product[country_of_manufacture]', label: 'Country of Manufacture', type: 'select', options: L.countries, empty: '', scope: 'website' }) %>
+    <%~ F({ name: 'product[size]', label: 'Size', type: 'select', options: L.sizes, empty: '', note: isConf ? 'Configurable products vary by their configurations.' : '' }) %>
+    <%~ F({ name: 'product[color]', label: 'Color', type: 'select', options: L.colors, empty: '' }) %>
+  </fieldset>
+
+  <details class="fieldset-wrapper" id="advanced-pricing" data-index="advanced_pricing" open><summary>Advanced Pricing</summary><div class="fieldset-content">
+    <%~ F({ name: 'product[special_price]', label: 'Special Price', addon: '$', scope: 'store view' }) %>
+    <%~ F({ name: 'product[special_from_date]', label: 'Special Price From', type: 'date', scope: 'website' }) %>
+    <%~ F({ name: 'product[special_to_date]', label: 'To', type: 'date', scope: 'website' }) %>
+    <%~ F({ name: 'product[cost]', label: 'Cost', addon: '$', scope: 'global' }) %>
+    <%~ F({ name: 'product[msrp]', label: 'Manufacturer\'s Suggested Retail Price', addon: '$' }) %>
+    <div class="admin__field"><div class="admin__field-label"><span>Customer Group Price (tier prices)</span></div><div class="admin__field-control">
+      <table class="admin__table-primary" aria-label="Tier prices"><thead><tr><th>Customer Group</th><th>Quantity</th><th>Price</th><th>Delete</th></tr></thead><tbody>
+      <% for (const t of it.tiers) { %><tr><td><%= t.all_groups ? 'ALL GROUPS' : ((it.groups.find((g) => g.id === t.customer_group_id) || {}).code || t.customer_group_id) %></td><td><%= U.num(t.qty) %></td><td><%= U.money(t.value) %></td><td><label><input type="checkbox" name="product[tier_price][delete][]" value="<%= t.id %>"> Delete</label></td></tr><% } %>
+      <tr><td><label class="sr-only" for="tier_group">Customer group</label><select id="tier_group" name="product[tier_price][new][cust_group]"><option value="all">ALL GROUPS</option><% for (const g of it.groups) { %><option value="<%= g.id %>"><%= g.code %></option><% } %></select></td>
+        <td><label class="sr-only" for="tier_qty">Quantity</label><input id="tier_qty" type="text" name="product[tier_price][new][price_qty]" size="6"></td>
+        <td><label class="sr-only" for="tier_price">Price</label><input id="tier_price" type="text" name="product[tier_price][new][price]" size="8"></td><td class="muted">new</td></tr>
+      </tbody></table></div></div>
+  </div></details>
+
+  <details class="fieldset-wrapper" id="advanced-inventory" data-index="advanced_inventory"><summary>Advanced Inventory</summary><div class="fieldset-content">
+    <%~ F({ name: 'product[stock_data][manage_stock]', label: 'Manage Stock', type: 'select', options: [[1, 'Yes'], [0, 'No']] }) %>
+    <%~ F({ name: 'product[stock_data][min_qty]', label: 'Out-of-Stock Threshold' }) %>
+    <%~ F({ name: 'product[stock_data][min_sale_qty]', label: 'Minimum Qty Allowed in Shopping Cart' }) %>
+    <%~ F({ name: 'product[stock_data][max_sale_qty]', label: 'Maximum Qty Allowed in Shopping Cart' }) %>
+    <%~ F({ name: 'product[stock_data][backorders]', label: 'Backorders', type: 'select', options: L.backorders }) %>
+    <%~ F({ name: 'product[stock_data][notify_stock_qty]', label: 'Notify for Quantity Below' }) %>
+  </div></details>
+
+  <% if (isConf) { %>
+  <details class="fieldset-wrapper" id="configurable" data-index="configurable" open><summary>Configurations</summary><div class="fieldset-content">
+    <p class="muted">Configurable products allow customers to choose options (<%= it.axes.map((a) => a.label || a.attribute_code).join(', ') || 'none' %>). Each configuration is a separate simple product.</p>
+    <table class="admin__table-primary variant-matrix" id="configurable-matrix" aria-label="Current Variations"><thead><tr><th>Image</th><th>Name</th><th>SKU</th><th class="num">Price</th><th class="num">Quantity</th><th class="num">Weight</th><th>Status</th><th>Attributes</th><th>Actions</th></tr></thead><tbody>
+    <% if (!it.variants.length) { %><tr><td colspan="9" class="muted">No configurations yet.</td></tr><% } %>
+    <% for (const c of it.variants) { %><tr data-row="<%= c.id %>"><td><% if (c.thumb) { %><img src="<%= media(c.thumb) %>" alt="" width="40"><% } %></td>
+      <td><a href="/admin/catalog/product/edit/id/<%= c.id %>/"><%~ U.htmlName(c.name) %></a></td><td><%= c.sku %></td><td class="num"><%= U.money(c.price) %></td><td class="num"><%= U.num(c.qty) %></td><td class="num"><%= U.num(c.weight) %></td>
+      <td><%= c.status === 1 ? 'Enabled' : 'Disabled' %></td><td><%= [c.size ? 'Size: ' + c.size : null, c.color ? 'Color: ' + c.color : null].filter(Boolean).join(', ') %></td>
+      <td><a href="/admin/catalog/product/edit/id/<%= c.id %>/">Edit</a> &middot;
+        <button type="submit" class="link" form="variant-action-form" formaction="/admin/catalog/product/variantStatus/id/<%= p.id %>/child/<%= c.id %>/"><%= c.status === 1 ? 'Disable Product' : 'Enable Product' %></button> &middot;
+        <button type="submit" class="link" form="variant-action-form" formaction="/admin/catalog/product/removeVariant/id/<%= p.id %>/child/<%= c.id %>/">Remove Product</button></td></tr><% } %>
+    </tbody></table>
+    <% if (it.axes.length) { %>
+    <h3>Add Configuration</h3>
+    <div class="inline-fields" role="group" aria-label="Add configuration">
+      <% for (const a of it.axes) { const opts = a.attribute_code === 'size' ? L.sizes : a.attribute_code === 'color' ? L.colors : []; %>
+      <div class="admin__form-field"><label for="variant_<%= a.attribute_code %>"><%= a.label || a.attribute_code %></label><select id="variant_<%= a.attribute_code %>" name="variant[<%= a.attribute_code %>]" form="variant-add-form"><option value=""></option><% for (const [v, l] of opts) { %><option value="<%= v %>"><%= l %></option><% } %></select></div>
+      <% } %>
+      <div class="admin__form-field"><label for="variant_price">Price</label><input id="variant_price" name="variant[price]" form="variant-add-form" size="8" placeholder="<%= U.priceInput((it.variants[0] || p).price) %>"></div>
+      <div class="admin__form-field"><label for="variant_qty">Quantity</label><input id="variant_qty" name="variant[qty]" form="variant-add-form" size="6" value="0"></div>
+      <div class="admin__form-field"><label for="variant_weight">Weight</label><input id="variant_weight" name="variant[weight]" form="variant-add-form" size="6"></div>
+      <div class="admin__form-field"><label for="variant_sku">SKU (optional)</label><input id="variant_sku" name="variant[sku]" form="variant-add-form" placeholder="<%= p.sku %>-…"></div>
+      <div class="admin__form-field"><label for="variant_name">Name (optional)</label><input id="variant_name" name="variant[name]" form="variant-add-form" placeholder="<%= U.plainName(p.name) %>-…"></div>
+      <button type="submit" form="variant-add-form" class="action-secondary" id="add-configuration">Add Configuration</button>
+    </div>
+    <% } %>
+  </div></details>
+  <% } %>
+
+  <details class="fieldset-wrapper" id="content" data-index="content"<%= it.isNew ? ' open' : '' %>><summary>Content</summary><div class="fieldset-content">
+    <%~ F({ name: 'product[description]', label: 'Description', type: 'textarea', rows: 10, scope: 'store view', note: 'HTML is allowed.' }) %>
+    <%~ F({ name: 'product[short_description]', label: 'Short Description', type: 'textarea', rows: 4, scope: 'store view' }) %>
+  </div></details>
+
+  <details class="fieldset-wrapper" id="media_gallery" data-index="gallery"><summary>Images And Videos</summary><div class="fieldset-content">
+    <% if (!it.images.length) { %><p class="muted">No images.</p><% } else { %>
+    <table class="admin__table-primary" aria-label="Images"><thead><tr><th>Image</th><th>Alt Text</th><th>Base</th><th>Small</th><th>Thumbnail</th><th>Hide from Product Page</th><th>Remove</th></tr></thead><tbody>
+    <% for (const img of it.images) { const pre = 'product[media_gallery][images][' + img.id + ']'; %><tr>
+      <td><% if (img.file) { %><img src="<%= media(img.file) %>" alt="<%= img.label || '' %>" width="70"><% } else { %><span class="muted">(missing file)</span><% } %></td>
+      <td><label class="sr-only" for="img_label_<%= img.id %>">Alt text</label><input id="img_label_<%= img.id %>" type="text" name="<%= pre %>[label]" value="<%= img.label || '' %>"></td>
+      <td><input type="radio" name="product[image]" value="<%= img.id %>"<%= img.is_base ? ' checked' : '' %> aria-label="Base image"></td>
+      <td><input type="radio" name="product[small_image]" value="<%= img.id %>"<%= img.is_small ? ' checked' : '' %> aria-label="Small image"></td>
+      <td><input type="radio" name="product[thumbnail]" value="<%= img.id %>"<%= img.is_thumbnail ? ' checked' : '' %> aria-label="Thumbnail"></td>
+      <td><input type="hidden" name="<%= pre %>[disabled]" value="0"><input type="checkbox" name="<%= pre %>[disabled]" value="1"<%= img.disabled ? ' checked' : '' %> aria-label="Hide from product page"></td>
+      <td><input type="checkbox" name="<%= pre %>[removed]" value="1" aria-label="Remove image"></td></tr><% } %>
+    </tbody></table><% } %>
+    <% if (!it.isNew) { %><div class="inline-fields" role="group" aria-label="Upload image"><div class="admin__form-field"><label for="image_upload">Add image</label><input id="image_upload" type="file" name="image" accept="image/*" form="image-upload-form"></div><div class="admin__form-field"><label for="image_upload_label">Alt text</label><input id="image_upload_label" type="text" name="label" form="image-upload-form"></div><button type="submit" form="image-upload-form" class="action-secondary">Upload</button></div><% } %>
+  </div></details>
+
+  <details class="fieldset-wrapper" id="search-engine-optimization" data-index="search-engine-optimization"><summary>Search Engine Optimization</summary><div class="fieldset-content">
+    <%~ F({ name: 'product[url_key]', label: 'URL Key', scope: 'store view', attrs: ' data-urlkey-target="1"', note: 'Storefront URL: /&lt;url key&gt;.html' }) %>
+    <%~ F({ name: 'product[meta_title]', label: 'Meta Title', scope: 'store view' }) %>
+    <%~ F({ name: 'product[meta_keyword]', label: 'Meta Keywords', type: 'textarea', rows: 3, scope: 'store view' }) %>
+    <%~ F({ name: 'product[meta_description]', label: 'Meta Description', type: 'textarea', rows: 3, scope: 'store view' }) %>
+  </div></details>
+
+  <details class="fieldset-wrapper" id="related" data-index="related"><summary>Related Products, Up-Sells, and Cross-Sells</summary><div class="fieldset-content">
+  <% for (const [t, label] of it.linkTypes) { const rows = it.links[t]; %>
+    <h3><%= label %> (<%= rows.length %>)</h3>
+    <% if (rows.length) { %><table class="admin__table-primary" aria-label="<%= label %>"><thead><tr><th>ID</th><th>Name</th><th>SKU</th><th class="num">Price</th><th>Status</th><th>Remove</th></tr></thead><tbody>
+    <% for (const x of rows) { %><tr><td><%= x.id %></td><td><a href="/admin/catalog/product/edit/id/<%= x.id %>/"><%~ U.htmlName(x.name) %></a></td><td><%= x.sku %></td><td class="num"><%= U.money(x.price) %></td><td><%= x.status === 1 ? 'Enabled' : 'Disabled' %></td><td><input type="checkbox" name="product[links][<%= t %>][remove][]" value="<%= x.id %>" aria-label="Remove <%= x.sku %>"></td></tr><% } %>
+    </tbody></table><% } %>
+    <%~ F({ name: 'product[links][' + t + '][add]', label: 'Add ' + label, placeholder: 'SKUs or IDs, comma separated', value: '' }) %>
+  <% } %>
+  </div></details>
+
+  <% if (it.options.length) { %>
+  <details class="fieldset-wrapper" id="custom_options" data-index="custom_options"><summary>Customizable Options</summary><div class="fieldset-content">
+    <% for (const o of it.options) { %><h3><%= o.title %> <span class="muted">(<%= o.type %><%= o.is_require ? ', required' : '' %>)</span></h3>
+    <% if (o.values.length) { %><table class="admin__table-primary"><thead><tr><th>Title</th><th>Price</th><th>SKU</th></tr></thead><tbody><% for (const v of o.values) { %><tr><td><%= v.title %></td><td><%= U.money(v.price || 0) %></td><td><%= v.sku || '' %></td></tr><% } %></tbody></table><% } %>
+    <% } %>
+  </div></details>
+  <% } %>
+
+  <details class="fieldset-wrapper" id="websites" data-index="websites"><summary>Product in Websites</summary><div class="fieldset-content">
+    <div class="admin__field"><div class="admin__field-label"><span>Websites</span></div><div class="admin__field-control"><label class="choice"><input type="checkbox" checked disabled> Main Website</label></div></div>
+  </div></details>
+
+  <% if (it.attrs.length) { %>
+  <details class="fieldset-wrapper" id="attributes" data-index="attributes"<%= it.isNew ? '' : ' open' %>><summary>Attributes</summary><div class="fieldset-content">
+    <% for (const a of it.attrs) { %>
+      <% if (a.input === 'boolean') { %><%~ F({ name: 'product[' + a.code + ']', label: a.label, type: 'select', options: [[0, 'No'], [1, 'Yes']] }) %>
+      <% } else if (a.input === 'multiselect') { %><%~ F({ name: 'product[' + a.code + '][]', id: 'product_' + a.code, index: a.code, label: a.label, type: 'select', multiple: true, options: a.options }) %>
+      <% } else if (a.input === 'select') { %><%~ F({ name: 'product[' + a.code + ']', label: a.label, type: 'select', options: a.options, empty: '' }) %>
+      <% } else { %><%~ F({ name: 'product[' + a.code + ']', label: a.label, type: a.input === 'textarea' ? 'textarea' : 'text', rows: 3 }) %><% } %>
+    <% } %>
+  </div></details>
+  <% } %>
+
+  <details class="fieldset-wrapper" id="gift-options" data-index="gift-options"><summary>Gift Options</summary><div class="fieldset-content">
+    <%~ F({ name: 'product[gift_message_available]', label: 'Allow Gift Message', type: 'select', options: [[0, 'No'], [1, 'Yes']] }) %>
+  </div></details>
+  <div class="form-buttons"><button type="submit" class="action-primary">Save</button></div>
+</form>
+<% if (!it.isNew) { %>
+<form id="variant-add-form" method="post" action="/admin/catalog/product/addVariant/id/<%= p.id %>/"><%~ it.csrfInput() %></form>
+<form id="variant-action-form" method="post" action="/admin/catalog/product/edit/id/<%= p.id %>/"><%~ it.csrfInput() %></form>
+<form id="image-upload-form" method="post" enctype="multipart/form-data" action="/admin/catalog/product/upload/id/<%= p.id %>/"><%~ it.csrfInput() %></form>
+<% } %>

@@ -1,0 +1,4 @@
+<% layout('admin/layout') %>
+<% if (it.intro) { %><div class="message message-notice notice"><div><%~ it.intro %></div></div><% } %>
+<% if (it.tabs) { %><ul class="admin__page-nav" role="tablist"><% for (const [l, h, cur] of it.tabs) { %><li><a href="<%= h %>"<%= cur ? ' aria-current="page" class="_active"' : '' %>><%= l %></a></li><% } %></ul><% } %>
+<%~ include('admin/partials/grid', { ...it, g: it.g }) %>

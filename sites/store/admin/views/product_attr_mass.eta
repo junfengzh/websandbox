@@ -1,0 +1,27 @@
+<% layout('admin/layout') %>
+<% const U = it.U; %>
+<div class="message message-notice notice"><div>Updating <strong><%= it.ids.length %></strong> product(s): <%~ it.sample.map((p) => `${U.htmlName(p.name)} (${it.h(p.sku)})`).join('; ') %><%= it.ids.length > it.sample.length ? ' …' : '' %>. Tick <em>Change</em> next to each value you want to apply to all of them.</div></div>
+<form id="attributes-edit-form" method="post" action="/admin/catalog/product_action_attribute/save/">
+  <%~ it.csrfInput() %>
+  <fieldset class="admin__fieldset"><legend>Attributes</legend>
+  <% for (const f of it.fields) { const id = 'attr_' + f.name; %>
+    <div class="admin__field" data-index="<%= f.name %>">
+      <div class="admin__field-label"><label for="<%= id %>"><%= f.label %></label></div>
+      <div class="admin__field-control">
+        <% if (f.type === 'select') { %><select id="<%= id %>" name="attributes[<%= f.name %>]<%= f.multiple ? '[]' : '' %>"<%= f.multiple ? ' multiple size="5"' : '' %>><% if (f.empty !== undefined) { %><option value=""></option><% } %><% for (const [v, l] of f.options) { %><option value="<%= v %>"><%~ U.htmlName(l) %></option><% } %></select>
+        <% } else if (f.type === 'textarea') { %><textarea id="<%= id %>" name="attributes[<%= f.name %>]" rows="3"></textarea>
+        <% } else { %><input id="<%= id %>" type="<%= f.type || 'text' %>" name="attributes[<%= f.name %>]"><% } %>
+        <label class="choice"><input type="checkbox" name="toggle[<%= f.name %>]" value="1"> Change</label>
+      </div>
+    </div>
+  <% } %>
+  </fieldset>
+  <fieldset class="admin__fieldset"><legend>Advanced Inventory</legend>
+    <div class="admin__field"><div class="admin__field-label"><label for="inv_qty">Quantity</label></div><div class="admin__field-control"><input id="inv_qty" type="text" name="inventory[qty]"><label class="choice"><input type="checkbox" name="toggle[qty]" value="1"> Change</label></div></div>
+    <div class="admin__field"><div class="admin__field-label"><label for="inv_stock">Stock Availability</label></div><div class="admin__field-control"><select id="inv_stock" name="inventory[is_in_stock]"><option value="1">In Stock</option><option value="0">Out of Stock</option></select><label class="choice"><input type="checkbox" name="toggle[is_in_stock]" value="1"> Change</label></div></div>
+  </fieldset>
+  <fieldset class="admin__fieldset"><legend>Categories</legend>
+    <div class="admin__field"><div class="admin__field-label"><label for="cat_add">Add Product To Categories</label></div><div class="admin__field-control"><select id="cat_add" name="categories[add][]" multiple size="8"><% for (const [v, l] of it.cats) { %><option value="<%= v %>"><%= l %></option><% } %></select></div></div>
+    <div class="admin__field"><div class="admin__field-label"><label for="cat_remove">Remove Product From Categories</label></div><div class="admin__field-control"><select id="cat_remove" name="categories[remove][]" multiple size="8"><% for (const [v, l] of it.cats) { %><option value="<%= v %>"><%= l %></option><% } %></select></div></div>
+  </fieldset>
+</form>

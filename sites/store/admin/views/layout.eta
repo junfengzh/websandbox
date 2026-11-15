@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="<%= it.csrf() %>">
+<title><%= it.title ? it.title + ' / ' : '' %>Magento Admin</title>
+<link rel="stylesheet" href="/admin/static/admin.css">
+<% if (it.skin && it.skin.css) { %><style><%~ it.skin.css %></style><% } %>
+</head>
+<body class="adminhtml skin-<%= (it.skin && it.skin.name) || 'default' %> theme-<%= (it.skin && it.skin.theme) || 'light' %>">
+<% if (it.user) { %>
+<nav class="admin__menu" id="menu-magento-backend" aria-label="Main menu">
+  <a class="logo" href="/admin/dashboard/" title="Magento Admin Panel"><span class="logo-img" aria-hidden="true">M</span><span class="sr-only">Magento Admin Panel</span></a>
+  <ul id="nav" class="admin__menu-list" role="menubar">
+  <% for (const m of it.A.menu) { const cur = it.A.section === m.id; %>
+    <li class="item-<%= m.id %> level-0<%= cur ? ' _current _active' : '' %>" data-ui-id="menu-<%= m.id %>">
+      <% if (m.href) { %><a href="<%= m.href %>"<%= cur ? ' aria-current="page"' : '' %>><span class="menu-icon" aria-hidden="true"><%= m.label[0] %></span><span><%= m.label %></span></a>
+      <% } else { %><a href="/admin/admin/menu/<%= m.id %>/" class="menu-toggle" data-menu="<%= m.id %>" aria-haspopup="true" aria-expanded="false"><span class="menu-icon" aria-hidden="true"><%= m.label[0] %></span><span><%= m.label %></span></a>
+      <div class="submenu" id="submenu-<%= m.id %>" role="menu" aria-label="<%= m.label %>" hidden>
+        <div class="submenu-head"><strong class="submenu-title"><%= m.label %></strong><button type="button" class="action-close" data-close-menu aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+        <div class="submenu-columns">
+        <% for (const [g, links] of m.groups) { %><div class="submenu-group">
+          <% if (g) { %><strong class="submenu-group-title"><%= g %></strong><% } %>
+          <ul><% for (const [l, h] of links) { %><li class="item-<%= h.replace(/[^a-z0-9]+/gi, '-') %>"><a href="<%= h %>" role="menuitem"><%= l %></a></li><% } %></ul>
+        </div><% } %>
+        </div>
+      </div>
+      <% } %>
+    </li>
+  <% } %>
+  </ul>
+</nav>
+<% } %>
+<div class="page-wrapper<%= it.user ? '' : ' page-login' %>">
+<% if (it.user) { %>
+<header class="page-header">
+  <h1 class="page-title"><%= it.title || 'Dashboard' %></h1>
+  <div class="page-header-actions">
+    <form class="search-global" action="/admin/admin/index/globalSearch/" method="get" role="search">
+      <label class="sr-only" for="search-global">Search globally</label>
+      <input id="search-global" type="search" name="query" placeholder="Search globally" value="<%= (it.req.query && it.req.query.query) || '' %>">
+    </form>
+    <a class="notifications-wrapper" href="/admin/admin/notification/">Notifications</a>
+    <details class="admin-user">
+      <summary class="admin__action-dropdown"><span class="admin-user-account-text"><%= it.user.username %></span></summary>
+      <ul class="admin-user-menu">
+        <li><a href="/admin/admin/system_account/index/">Account Setting</a></li>
+        <li><a href="/" target="_blank" rel="noopener">Customer View</a></li>
+        <li><form method="post" action="/admin/admin/auth/logout/"><%~ it.csrfInput() %><button type="submit" class="link account-signout">Sign Out</button></form></li>
+      </ul>
+    </details>
+  </div>
+</header>
+<% if (it.crumbs && it.crumbs.length) { %><nav class="breadcrumbs" aria-label="Breadcrumb"><ol><% for (const [l, h] of it.crumbs) { %><li><% if (h) { %><a href="<%= h %>"><%= l %></a><% } else { %><span aria-current="page"><%= l %></span><% } %></li><% } %></ol></nav><% } %>
+<% if (it.actions && it.actions.length) { %>
+<div class="page-main-actions" role="toolbar" aria-label="Page actions">
+  <div class="page-actions-buttons">
+  <% for (const a of it.actions) { %>
+    <% if (a.menu) { %><details class="dropdown right"><summary class="action-<%= a.primary ? 'primary' : 'secondary' %>" id="<%= a.id || '' %>"><%= a.label %></summary><div class="dropdown-body"><ul style="list-style:none;margin:0;padding:0"><% for (const [ml, mh] of a.menu) { %><li><a href="<%= mh %>" style="display:block;padding:5px 0"><%= ml %></a></li><% } %></ul></div></details>
+    <% } else if (a.href) { %><a class="action-<%= a.primary ? 'primary' : 'secondary' %><%= a.cls ? ' ' + a.cls : '' %>" id="<%= a.id || '' %>" href="<%= a.href %>"><%= a.label %></a>
+    <% } else if (a.post) { %><form method="post" action="<%= a.post %>" class="inline"<% if (a.confirm) { %> data-confirm="<%= a.confirm %>"<% } %>><%~ it.csrfInput() %><% for (const [k, v] of Object.entries(a.fields || {})) { %><input type="hidden" name="<%= k %>" value="<%= v %>"><% } %><button type="submit" id="<%= a.id || '' %>" class="action-<%= a.primary ? 'primary' : 'secondary' %><%= a.cls ? ' ' + a.cls : '' %>"><%= a.label %></button></form>
+    <% } else if (a.form) { %><button type="submit" form="<%= a.form %>" id="<%= a.id || '' %>" class="action-<%= a.primary ? 'primary' : 'secondary' %><%= a.cls ? ' ' + a.cls : '' %>"<% if (a.name) { %> name="<%= a.name %>" value="<%= a.value %>"<% } %>><%= a.label %></button>
+    <% } %>
+  <% } %>
+  </div>
+</div>
+<% } %>
+<% } %>
+<div class="page-content-messages" id="messages" aria-live="polite">
+<% for (const f of it.flashes) { %><div class="message message-<%= f.type === 'error' ? 'error error' : f.type === 'warning' ? 'warning warning' : f.type === 'info' ? 'notice notice' : 'success success' %>" role="alert"><div><%= f.msg %></div></div><% } %>
+<% if (it.errorsList && it.errorsList.length) { %><% for (const e of it.errorsList) { %><div class="message message-error error" role="alert"><div><%= e %></div></div><% } %><% } %>
+</div>
+<main id="anchor-content" class="page-content">
+<%~ it.body %>
+</main>
+<% if (it.user) { %><footer class="page-footer"><p class="copyright">Store back office &middot; websandbox lite rebuild of the Magento 2 admin</p><p class="magento-version"><a href="/admin/admin/system_store/">Main Website / Default Store View</a></p></footer><% } %>
+</div>
+<script src="/_kit/kit.js" defer></script>
+<script src="/admin/static/admin.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<% layout('admin/layout') %>
+<% const U = it.U; const o = it.o; const h = it.h; const k = it.kind; const addr = (l) => l.map((x) => h(x)).join('<br>');
+   const field = k === 'invoice' ? 'invoice[items]' : k === 'shipment' ? 'shipment[items]' : 'creditmemo[items]'; %>
+<form id="edit_form" method="post" action="<%= it.action %>">
+<%~ it.csrfInput() %>
+<section class="admin__page-section"><h2 class="admin__page-section-title">Order &amp; Account Information</h2>
+  <div class="admin__page-section-content">
+    <div><h3 class="admin__page-section-item-title">Order # <a href="/admin/sales/order/view/order_id/<%= o.id %>/"><%= o.increment_id %></a></h3>
+      <table class="admin__table-secondary"><tbody><tr><th>Order Date</th><td><%= U.date.datetime(o.created_at) %></td></tr><tr><th>Order Status</th><td><%= o.statusLabel %></td></tr></tbody></table></div>
+    <div><h3 class="admin__page-section-item-title">Account Information</h3>
+      <table class="admin__table-secondary"><tbody><tr><th>Customer Name</th><td><%= [o.customer_firstname, o.customer_lastname].filter(Boolean).join(' ') %></td></tr><tr><th>Email</th><td><%= o.customer_email %></td></tr></tbody></table></div>
+  </div></section>
+<section class="admin__page-section"><h2 class="admin__page-section-title">Address Information</h2>
+  <div class="admin__page-section-content"><div><h3 class="admin__page-section-item-title">Billing Address</h3><address><%~ addr(it.billing) %></address></div><div><h3 class="admin__page-section-item-title">Shipping Address</h3><address><%~ addr(it.shipping) %></address></div></div></section>
+<section class="admin__page-section"><h2 class="admin__page-section-title">Payment &amp; Shipping Method</h2>
+  <div class="admin__page-section-content"><div><h3 class="admin__page-section-item-title">Payment Information</h3><div>Check / Money order</div>
+    <% if (k === 'invoice') { %><div class="admin__form-field" style="margin-top:8px"><label for="capture_case">Amount</label><select id="capture_case" name="invoice[capture_case]"><option value="offline">Capture Offline</option><option value="not_capture">Not Capture</option></select></div><% } %></div>
+  <div><h3 class="admin__page-section-item-title">Shipping Information</h3><div><%= o.shipping_description %> <%= U.money(o.shipping_amount) %></div>
+  <% if (k === 'shipment') { %>
+    <h4>Add Tracking Number</h4>
+    <table class="admin__table-primary" id="shipment_tracking_info"><thead><tr><th>Carrier</th><th>Title</th><th>Number</th></tr></thead><tbody>
+    <% for (const n of [0, 1, 2]) { %><tr>
+      <td><label class="sr-only" for="trackingC<%= n %>">Carrier</label><select id="trackingC<%= n %>" name="tracking[<%= n %>][carrier_code]"><% for (const [v, l] of it.carriers) { %><option value="<%= v %>"><%= l %></option><% } %></select></td>
+      <td><label class="sr-only" for="trackingT<%= n %>">Title</label><input id="trackingT<%= n %>" type="text" name="tracking[<%= n %>][title]" placeholder="(carrier name)"></td>
+      <td><label class="sr-only" for="trackingN<%= n %>">Number</label><input id="trackingN<%= n %>" type="text" name="tracking[<%= n %>][number]"></td></tr><% } %>
+    </tbody></table>
+  <% } %></div></div></section>
+<section class="admin__page-section"><h2 class="admin__page-section-title"><%= k === 'invoice' ? 'Items to Invoice' : k === 'shipment' ? 'Items to Ship' : 'Items to Refund' %></h2>
+  <table class="admin__table-primary" id="<%= k %>_items"><thead><tr><th>Product</th><% if (k !== 'shipment') { %><th class="num">Price</th><% } %><th class="num">Qty</th><th class="num"><%= k === 'invoice' ? 'Qty to Invoice' : k === 'shipment' ? 'Qty to Ship' : 'Qty to Refund' %></th><% if (k !== 'shipment') { %><th class="num">Subtotal</th><th class="num">Tax Amount</th><th class="num">Discount Amount</th><% } %></tr></thead><tbody>
+  <% for (const i of it.items) { %><tr><td><%~ U.htmlName(i.name) %><div class="muted">SKU: <%= i.sku %></div><% for (const x of i.options) { %><div class="muted"><%= x.label %>: <%= x.value %></div><% } %></td>
+    <% if (k !== 'shipment') { %><td class="num"><%= U.money(i.price) %></td><% } %>
+    <td class="num">Ordered <%= U.num(i.qty_ordered) %><% if (i.qty_invoiced) { %><br>Invoiced <%= U.num(i.qty_invoiced) %><% } %><% if (i.qty_shipped) { %><br>Shipped <%= U.num(i.qty_shipped) %><% } %><% if (i.qty_refunded) { %><br>Refunded <%= U.num(i.qty_refunded) %><% } %></td>
+    <td class="num"><label class="sr-only" for="qty_<%= i.id %>">Quantity for <%= U.plainName(i.name) %></label><input id="qty_<%= i.id %>" type="number" min="0" max="<%= i.max %>" step="any" name="<%= field %>[<%= i.id %>]<%= k === 'creditmemo' ? '[qty]' : '' %>" value="<%= U.num(i.max) %>" size="4"<%= i.max <= 0 ? ' readonly' : '' %>></td>
+    <% if (k !== 'shipment') { %><td class="num"><%= U.money((i.price || 0) * i.max) %></td><td class="num"><%= U.money((i.tax_amount || 0) * i.max / (i.qty_ordered || 1)) %></td><td class="num"><%= U.money(Math.abs(i.discount_amount || 0) * i.max / (i.qty_ordered || 1)) %></td><% } %></tr><% } %>
+  </tbody></table>
+  <% if (k === 'creditmemo') { %><label class="choice"><input type="checkbox" name="creditmemo[return_to_stock]" value="1"> Return to Stock</label><% } %>
+</section>
+<section class="admin__page-section"><h2 class="admin__page-section-title"><%= k === 'invoice' ? 'Invoice Totals' : k === 'shipment' ? 'Shipment Total' : 'Refund Totals' %></h2>
+  <div class="admin__page-section-content">
+    <div><h3 class="admin__page-section-item-title"><%= k === 'invoice' ? 'Invoice History' : k === 'shipment' ? 'Shipment Comments' : 'Credit Memo Comments' %></h3>
+      <div class="admin__form-field"><label for="comment_text">Comment Text</label><textarea id="comment_text" name="<%= k %>[comment_text]" rows="3"></textarea></div></div>
+    <div class="order-totals">
+    <% if (k !== 'shipment') { %>
+      <table class="admin__table-secondary"><tbody>
+        <tr><th>Subtotal</th><td class="num"><%= U.money(it.totals.subtotal) %></td></tr>
+        <% if (it.totals.discount) { %><tr><th>Discount</th><td class="num">-<%= U.money(it.totals.discount) %></td></tr><% } %>
+        <% if (k === 'invoice') { %><tr><th>Shipping &amp; Handling</th><td class="num"><%= U.money(it.totals.shipping) %></td></tr><% } else { %>
+        <tr><th><label for="shipping_amount">Refund Shipping</label></th><td class="num"><input id="shipping_amount" type="text" name="creditmemo[shipping_amount]" value="<%= U.priceInput(it.totals.shipping) %>" size="7"></td></tr>
+        <tr><th><label for="adjustment_positive">Adjustment Refund</label></th><td class="num"><input id="adjustment_positive" type="text" name="creditmemo[adjustment_positive]" value="0" size="7"></td></tr>
+        <tr><th><label for="adjustment_negative">Adjustment Fee</label></th><td class="num"><input id="adjustment_negative" type="text" name="creditmemo[adjustment_negative]" value="0" size="7"></td></tr><% } %>
+        <tr><th>Tax</th><td class="num"><%= U.money(it.totals.tax) %></td></tr>
+        <tr class="grand"><th><strong>Grand Total</strong></th><td class="num"><strong><%= U.money(it.totals.grand) %></strong></td></tr>
+      </tbody></table>
+    <% } %>
+      <label class="choice"><input type="checkbox" name="<%= k %>[send_email]" value="1"> Email Copy of <%= k === 'invoice' ? 'Invoice' : k === 'shipment' ? 'Shipment' : 'Credit Memo' %></label>
+      <% if (k === 'invoice') { %><br><label class="choice"><input type="checkbox" name="invoice[do_shipment]" value="1" id="invoice_do_shipment"> Create Shipment</label><% } %>
+      <div style="margin-top:12px"><button type="submit" class="action-primary"><%= k === 'invoice' ? 'Submit Invoice' : k === 'shipment' ? 'Submit Shipment' : 'Refund Offline' %></button></div>
+    </div>
+  </div></section>
+</form>

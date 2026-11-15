@@ -1,0 +1,76 @@
+<% layout('admin/layout') %>
+<% const U = it.U; const name = (a, b) => [a, b].filter(Boolean).join(' '); %>
+<div class="dashboard-container">
+  <div class="dashboard-secondary">
+    <section class="dashboard-item dashboard-item-primary" aria-labelledby="ls-title">
+      <div class="dashboard-item-title" id="ls-title">Lifetime Sales</div>
+      <div class="dashboard-item-content"><span class="dashboard-sales-value" id="lifetime-sales"><%= U.money(it.life.total) %></span></div>
+    </section>
+    <section class="dashboard-item" aria-labelledby="ao-title">
+      <div class="dashboard-item-title" id="ao-title">Average Order</div>
+      <div class="dashboard-item-content"><span class="dashboard-sales-value" id="average-order"><%= U.money(it.avg) %></span></div>
+    </section>
+    <section class="dashboard-item" aria-labelledby="lo-title">
+      <div class="dashboard-item-title" id="lo-title">Last Orders</div>
+      <table class="admin__table-primary dashboard-data" id="lastOrdersGrid_table"><thead><tr><th>Customer</th><th class="num">Items</th><th class="num">Total</th></tr></thead><tbody>
+      <% for (const o of it.lastOrders) { %><tr><td><a href="/admin/sales/order/view/order_id/<%= o.id %>/"><%= o.customer || 'Guest' %></a></td><td class="num"><%= o.items %></td><td class="num"><%= U.money(o.grand_total) %></td></tr><% } %>
+      </tbody></table>
+    </section>
+    <section class="dashboard-item" aria-labelledby="lst-title">
+      <div class="dashboard-item-title" id="lst-title">Last Search Terms</div>
+      <table class="admin__table-primary dashboard-data" id="lastSearchGrid_table"><thead><tr><th>Search Term</th><th class="num">Results</th><th class="num">Uses</th></tr></thead><tbody>
+      <% for (const t of it.lastTerms) { %><tr><td><a href="/admin/search/term/edit/id/<%= t.id %>/"><%= t.query_text %></a></td><td class="num"><%= t.num_results %></td><td class="num"><%= t.popularity %></td></tr><% } %>
+      </tbody></table>
+    </section>
+    <section class="dashboard-item" aria-labelledby="tst-title">
+      <div class="dashboard-item-title" id="tst-title">Top Search Terms</div>
+      <table class="admin__table-primary dashboard-data" id="topSearchGrid_table"><thead><tr><th>Search Term</th><th class="num">Results</th><th class="num">Uses</th></tr></thead><tbody>
+      <% for (const t of it.topTerms) { %><tr><td><a href="/admin/search/term/edit/id/<%= t.id %>/"><%= t.query_text %></a></td><td class="num"><%= t.num_results %></td><td class="num"><%= t.popularity %></td></tr><% } %>
+      </tbody></table>
+    </section>
+  </div>
+  <div class="dashboard-main">
+    <section class="dashboard-item" aria-labelledby="chart-title">
+      <div class="dashboard-item-title" id="chart-title">
+        <a href="<%= it.url({ chart: null }) %>"<%= it.chart === 'orders' ? ' aria-current="true"' : '' %>>Orders</a> |
+        <a href="<%= it.url({ chart: 'amounts' }) %>"<%= it.chart === 'amounts' ? ' aria-current="true"' : '' %>>Amounts</a>
+      </div>
+      <form method="get" action="/admin/dashboard/" class="inline-fields">
+        <% if (it.chart === 'amounts') { %><input type="hidden" name="chart" value="amounts"><% } %>
+        <div class="admin__form-field"><label for="order_orders_period">Select Range</label>
+        <select id="order_orders_period" name="period" data-autosubmit><% for (const [k, p] of Object.entries(it.periods)) { %><option value="<%= k %>"<%= k === it.pkey ? ' selected' : '' %>><%= p[0] %></option><% } %></select></div>
+        <noscript><button type="submit">Show</button></noscript>
+      </form>
+      <% if (!it.series.length) { %><p class="muted">No Data Found</p><% } else { %>
+      <div class="chart-bars" role="img" aria-label="<%= it.chart === 'amounts' ? 'Amounts' : 'Orders' %> per period">
+        <% for (const s of it.series) { const v = it.chart === 'amounts' ? s.amount : s.n; %><div class="bar" style="height:<%= Math.max(1, Math.round(100 * v / it.chartMax)) %>%" title="<%= s.b %>: <%= it.chart === 'amounts' ? U.money(v) : v %>"></div><% } %>
+      </div>
+      <div class="chart-labels" aria-hidden="true"><% for (const s of it.series) { %><span><%= s.b.slice(5) %></span><% } %></div>
+      <table class="admin__table-primary"><caption class="sr-only">Chart data</caption><thead><tr><th>Period</th><th class="num">Orders</th><th class="num">Amount</th></tr></thead><tbody><% for (const s of it.series) { %><tr><td><%= s.b %></td><td class="num"><%= s.n %></td><td class="num"><%= U.money(s.amount) %></td></tr><% } %></tbody></table>
+      <% } %>
+      <ul class="dashboard-totals-list">
+        <li class="dashboard-totals-item"><span class="dashboard-totals-label">Revenue</span><strong class="dashboard-totals-value"><%= U.money(it.tot.revenue) %></strong></li>
+        <li class="dashboard-totals-item"><span class="dashboard-totals-label">Tax</span><strong class="dashboard-totals-value"><%= U.money(it.tot.tax) %></strong></li>
+        <li class="dashboard-totals-item"><span class="dashboard-totals-label">Shipping</span><strong class="dashboard-totals-value"><%= U.money(it.tot.shipping) %></strong></li>
+        <li class="dashboard-totals-item"><span class="dashboard-totals-label">Quantity</span><strong class="dashboard-totals-value"><%= U.num(it.tot.qty) %></strong></li>
+      </ul>
+    </section>
+    <ul class="admin__page-nav" role="tablist" aria-label="Dashboard tabs">
+      <li><a href="#tab-bestsellers">Bestsellers</a></li><li><a href="#tab-viewed">Most Viewed Products</a></li><li><a href="#tab-new-customers">New Customers</a></li><li><a href="#tab-customers">Customers</a></li>
+    </ul>
+    <section class="dashboard-item" id="tab-bestsellers" aria-labelledby="bs-title"><div class="dashboard-item-title" id="bs-title">Bestsellers</div>
+      <table class="admin__table-primary" id="productsOrderedGrid_table"><thead><tr><th>Product</th><th class="num">Price</th><th class="num">Quantity</th></tr></thead><tbody>
+      <% for (const b of it.best) { %><tr><td><a href="/admin/catalog/product/edit/id/<%= b.product_id %>/"><%~ U.htmlName(b.name) %></a></td><td class="num"><%= U.money(b.price) %></td><td class="num"><%= U.num(b.qty) %></td></tr><% } %>
+      </tbody></table></section>
+    <section class="dashboard-item" id="tab-viewed" aria-labelledby="mv-title"><div class="dashboard-item-title" id="mv-title">Most Viewed Products</div>
+      <% if (!it.viewed.length) { %><p class="muted">We couldn't find any records.</p><% } else { %><table class="admin__table-primary"><thead><tr><th>Product</th><th class="num">Price</th><th class="num">Views</th></tr></thead><tbody><% for (const v of it.viewed) { %><tr><td><a href="/admin/catalog/product/edit/id/<%= v.product_id %>/"><%~ U.htmlName(v.name) %></a></td><td class="num"><%= U.money(v.price) %></td><td class="num"><%= v.views %></td></tr><% } %></tbody></table><% } %></section>
+    <section class="dashboard-item" id="tab-new-customers" aria-labelledby="nc-title"><div class="dashboard-item-title" id="nc-title">New Customers</div>
+      <table class="admin__table-primary"><thead><tr><th>Customer</th><th class="num">Orders</th><th class="num">Average</th><th class="num">Total</th></tr></thead><tbody>
+      <% for (const c of it.newCustomers) { %><tr><td><a href="/admin/customer/index/edit/id/<%= c.id %>/"><%= name(c.firstname, c.lastname) %></a></td><td class="num"><%= c.orders %></td><td class="num"><%= U.money(c.avg_amount) %></td><td class="num"><%= U.money(c.total) %></td></tr><% } %>
+      </tbody></table></section>
+    <section class="dashboard-item" id="tab-customers" aria-labelledby="cu-title"><div class="dashboard-item-title" id="cu-title">Customers</div>
+      <table class="admin__table-primary"><thead><tr><th>Customer</th><th class="num">Orders</th><th class="num">Average</th><th class="num">Total</th></tr></thead><tbody>
+      <% for (const c of it.topCustomers) { %><tr><td><a href="/admin/customer/index/edit/id/<%= c.id %>/"><%= name(c.firstname, c.lastname) %></a></td><td class="num"><%= c.orders %></td><td class="num"><%= U.money(c.avg_amount) %></td><td class="num"><%= U.money(c.total) %></td></tr><% } %>
+      </tbody></table></section>
+  </div>
+</div>

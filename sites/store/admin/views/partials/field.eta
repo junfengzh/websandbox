@@ -1,0 +1,17 @@
+<%/* admin form field: {name,label,type,value,options:[[v,l]],required,note,error,id,attrs,multiple,rows,html,scope,placeholder,addon,disabled} */%>
+<% const f = it.f; const id = f.id || ('f_' + String(f.name).replace(/[^a-zA-Z0-9]+/g, '_').replace(/_+$/, '')); const t = f.type || 'text'; const v = f.value ?? ''; const sel = (o) => (f.multiple ? [].concat(v).map(String).includes(String(o)) : String(o) === String(v)); %>
+<div class="admin__field<%= f.required ? ' _required' : '' %><%= f.error ? ' _error' : '' %>" data-index="<%= f.index || String(f.name).replace(/^product\[|\]$/g, '').replace(/\]\[/g, '.') %>"<% if (f.showWhen) { %> data-show-when="<%= f.showWhen %>"<% } %>>
+  <div class="admin__field-label"><% if (t === 'checkboxes' || t === 'radios' || t === 'static') { %><span id="<%= id %>_label"><%= f.label %></span><% } else { %><label for="<%= id %>"><%= f.label %></label><% } %><% if (f.scope) { %><div class="admin__field-scope">[<%= f.scope %>]</div><% } %></div>
+  <div class="admin__field-control">
+  <% if (t === 'textarea') { %><textarea id="<%= id %>" name="<%= f.name %>" rows="<%= f.rows || 6 %>"<%= f.required ? ' required' : '' %><%= f.disabled ? ' disabled' : '' %>><%= v %></textarea>
+  <% } else if (t === 'select') { %><select id="<%= id %>" name="<%= f.name %>"<%= f.multiple ? ' multiple size="' + Math.min(10, (f.options || []).length) + '"' : '' %><%= f.required ? ' required' : '' %><%= f.disabled ? ' disabled' : '' %>><% if (f.empty !== undefined) { %><option value=""><%= f.empty %></option><% } %><% for (const o of f.options || []) { const [ov, ol, og] = Array.isArray(o) ? o : [o, o]; %><option value="<%= ov %>"<%= sel(ov) ? ' selected' : '' %>><%~ it.U.htmlName(ol) %></option><% } %></select>
+  <% } else if (t === 'checkbox') { %><input type="hidden" name="<%= f.name %>" value="<%= f.off ?? 0 %>"><label class="choice"><input type="checkbox" id="<%= id %>" name="<%= f.name %>" value="<%= f.on ?? 1 %>"<%= String(v) === String(f.on ?? 1) ? ' checked' : '' %><%= f.disabled ? ' disabled' : '' %>> <%= f.checkLabel || 'Yes' %></label>
+  <% } else if (t === 'checkboxes') { %><div class="checkbox-list" role="group" aria-labelledby="<%= id %>_label"><% for (const o of f.options || []) { const [ov, ol] = Array.isArray(o) ? o : [o, o]; %><label><input type="checkbox" name="<%= f.name %>" value="<%= ov %>"<%= [].concat(v).map(String).includes(String(ov)) ? ' checked' : '' %>> <%~ it.U.htmlName(ol) %></label><% } %></div>
+  <% } else if (t === 'radios') { %><div role="radiogroup" aria-labelledby="<%= id %>_label"><% for (const o of f.options || []) { const [ov, ol] = Array.isArray(o) ? o : [o, o]; %><label class="choice"><input type="radio" name="<%= f.name %>" value="<%= ov %>"<%= sel(ov) ? ' checked' : '' %>> <%= ol %></label><% } %></div>
+  <% } else if (t === 'static') { %><div class="control-value" aria-labelledby="<%= id %>_label"><%~ f.html ?? it.h(v) %></div>
+  <% } else if (t === 'html') { %><%~ f.html %>
+  <% } else { %><% if (f.addon) { %><div class="addon"><span class="addon-label"><%= f.addon %></span><% } %><input type="<%= t %>" id="<%= id %>" name="<%= f.name %>" value="<%= v %>"<%= f.required ? ' required' : '' %><%= f.disabled ? ' disabled' : '' %><%= f.placeholder ? ` placeholder="${it.h(f.placeholder)}"` : '' %><%~ f.attrs || '' %>><% if (f.addon) { %></div><% } %><% } %>
+  <% if (f.error) { %><div class="admin__field-error" role="alert"><%= f.error %></div><% } %>
+  <% if (f.note) { %><div class="admin__field-note"><%~ f.note %></div><% } %>
+  </div>
+</div>

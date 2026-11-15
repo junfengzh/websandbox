@@ -1,0 +1,19 @@
+<% layout('admin/layout') %>
+<div class="category-layout">
+  <nav class="tree-box" aria-label="Category tree">
+    <p><a href="/admin/catalog/category/">Collapse All</a></p>
+    <%~ it.treeHtml %>
+  </nav>
+  <div>
+  <form id="<%= it.formId %>" method="post" action="<%= it.action %>" novalidate>
+    <%~ it.csrfInput() %>
+    <% for (const s of it.sections) { %>
+      <% if (s.collapsible) { %><details class="fieldset-wrapper" id="<%= s.id %>"<%= s.open !== false ? ' open' : '' %>><summary><%= s.title %></summary><div class="fieldset-content"><% } else { %><fieldset class="admin__fieldset"><% } %>
+      <% for (const f of s.fields || []) { %><%~ include('admin/partials/field', { ...it, f: { ...f, value: Object.prototype.hasOwnProperty.call(it.values, f.name) ? it.values[f.name] : f.value, error: (it.errors || {})[f.name] } }) %><% } %>
+      <% if (s.html) { %><%~ s.html %><% } %>
+      <% if (s.collapsible) { %></div></details><% } else { %></fieldset><% } %>
+    <% } %>
+    <div class="form-buttons"><button type="submit" class="action-primary">Save</button></div>
+  </form>
+  </div>
+</div>
