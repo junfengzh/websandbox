@@ -25,7 +25,7 @@
       <a class="btn btn-sm" href="<%= base %>/-/raw/<%= enc(ref) %>/<%= enc(path) %>" target="_blank" rel="noopener">Open raw</a>
       <a class="btn btn-sm" href="<%= base %>/-/raw/<%= enc(ref) %>/<%= enc(path) %>?inline=false">Download</a>
       <% if (it.user && b.text != null && it.refInfo.kind === 'branch') { %>
-        <a class="btn btn-sm btn-confirm" href="<%= base %>/-/edit/<%= enc(ref) %>/<%= enc(path) %>">Edit</a>
+        <a class="btn btn-sm btn-confirm js-edit-blob" href="<%= base %>/-/edit/<%= enc(ref) %>/<%= enc(path) %>">Edit</a>
         <button type="button" class="btn btn-sm btn-danger-secondary" data-open-dialog="#modal-delete-blob">Delete</button>
       <% } %>
     </div>

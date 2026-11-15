@@ -54,6 +54,11 @@
 // - Auth: one session cookie (kit 'wsb_sid'); sign-in /users/sign_in, sign-out POST /users/sign_out,
 //   register /users/sign_up. req.user is a users row; role 'admin' for is_admin users else 'user'.
 //   Anonymous GETs of { config: { login: true } } routes redirect to /users/sign_in?next=...
+// - Jobs: export `plugin.jobs = { 'collab.x': ({payload, db, now}) => ... }` to add background jobs
+//   (prefix job types with 'collab.'); repo's are in repo/jobs.js ('repo.*').
+// - temp.repo_files (project_id, branch, path, content, ...) holds every file a web commit wrote
+//   (graders read edited files with SQL; repo/lib/temp.js). Export `plugin.onOpen(db, tenant)` for
+//   your own temp objects / SQL functions (no writes to main).
 // - Clock: "today" is 2023-04-27 (the data ends 2023-04-26). Use kit.nowSql() for timestamps.
 // - Denormalised counters you write must stay in step (SCHEMA.md): projects.open_issues_count,
 //   open_merge_requests_count, issues/merge_requests.user_notes_count, upvotes/downvotes.
@@ -98,7 +103,14 @@ const site = kit.site({
   },
   skinFor: () => 'default',
   locals: (req) => locals(req),
-  jobs: require('./repo/jobs'),
+  jobs: { ...require('./repo/jobs'), ...((loadCollab() && loadCollab().jobs) || {}) },
+  // per tenant connection: temp.repo_files for graders (repo/lib/temp.js), then collab's
+  // onOpen (plugin.onOpen(db, tenant)) if it exports one. Temp objects only, no writes to main.
+  onOpen: (db, tenant) => {
+    require('./repo/lib/temp').register(db);
+    const c = loadCollab();
+    if (c && typeof c.onOpen === 'function') c.onOpen(db, tenant);
+  },
   views: { notFound: 'error', 403: 'error' },
   routes: async (app, k) => {
     patchViews(site);

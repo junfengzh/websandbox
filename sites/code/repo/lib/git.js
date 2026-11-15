@@ -74,7 +74,8 @@ function serializeTree(entries) {
 function putObject(type, body) {
   const sha = objectSha(type, body);
   if (kit.sql('SELECT 1 FROM git_objects WHERE sha = ?').get(sha)) return sha;
-  const z = body.length > 256 ? zlib.deflateSync(body) : null;
+  // blobs are stored raw (enc 0) so graders can read web-edited files with SQL (CAST(data AS TEXT))
+  const z = type !== 'blob' && body.length > 256 ? zlib.deflateSync(body) : null;
   const useZ = z && z.length < body.length;
   const binary = type === 'blob' && body.subarray(0, 8000).includes(0) ? 1 : 0;
   kit.sql('INSERT INTO git_objects (sha, type, size, enc, omitted, binary, data) VALUES (?, ?, ?, ?, 0, ?, ?)').run(sha, type, body.length, useZ ? 1 : 0, binary, useZ ? z : body);

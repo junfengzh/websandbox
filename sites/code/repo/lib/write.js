@@ -66,7 +66,7 @@ function applyActions(rootTree, actions) {
     if (a.action === 'delete') {
       tree = rewriteTree(tree, parts, (es) => es.filter((e) => e.name !== name));
       const st = lineStats(oldText, '');
-      changes.push({ path: a.path, change: 'D', ...st });
+      changes.push({ path: a.path, change: 'D', content: null, blob: null, ...st });
       continue;
     }
     let content = a.content == null ? '' : String(a.content);
@@ -80,7 +80,7 @@ function applyActions(rootTree, actions) {
       return es;
     });
     const st = lineStats(oldText, content);
-    changes.push({ path: a.path, oldPath: a.action === 'move' ? a.previousPath : null, change: a.action === 'create' ? 'A' : a.action === 'move' ? 'R' : 'M', ...st });
+    changes.push({ path: a.path, oldPath: a.action === 'move' ? a.previousPath : null, change: a.action === 'create' ? 'A' : a.action === 'move' ? 'R' : 'M', content, blob, ...st });
   }
   return { tree, changes };
 }
@@ -123,6 +123,12 @@ function commitFiles(project, user, { branch, startSha, actions, message }) {
       const minPos = kit.sql('SELECT min(pos) FROM branch_commits WHERE project_id = ? AND branch = ?').pluck().get(project.id, branch);
       kit.sql('INSERT INTO branch_commits (project_id, branch, pos, commit_id) VALUES (?, ?, ?, ?)').run(project.id, branch, minPos - 1, c.id);
     }
+  }
+  const rf = kit.sql(`INSERT INTO temp.repo_files (project_id, branch, path, content, blob_sha, commit_sha, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (project_id, branch, path) DO UPDATE SET content = excluded.content, blob_sha = excluded.blob_sha, commit_sha = excluded.commit_sha, updated_at = excluded.updated_at`);
+  for (const ch of changes) {
+    if (ch.oldPath) rf.run(project.id, branch, ch.oldPath, null, null, sha, now);
+    rf.run(project.id, branch, ch.path, ch.content, ch.blob, sha, now);
   }
   if (!project.default_branch) kit.sql('UPDATE projects SET default_branch = ? WHERE id = ?').run(branch, project.id);
   if (branch === (project.default_branch || branch)) kit.sql('UPDATE projects SET commit_count = commit_count + 1 WHERE id = ?').run(project.id);
@@ -186,6 +192,11 @@ function createBranchRef(project, name, from, { commit = null } = {}) {
   if (git.getRef(project.id, 'branch', name)) throw kit.httpError(422, 'Branch already exists');
   const tip = commit || from;
   kit.sql("INSERT INTO refs (project_id, kind, name, sha) VALUES (?, 'branch', ?, ?)").run(project.id, name, tip.sha);
+  if (from) {
+    // web-edited files of the branch we start from (temp.repo_files, for graders)
+    const srcB = kit.sql("SELECT name FROM refs WHERE project_id = ? AND kind = 'branch' AND sha = ? AND name <> ? ORDER BY name = ? DESC LIMIT 1").pluck().get(project.id, from.sha, name, project.default_branch || '');
+    if (srcB) kit.sql('INSERT OR IGNORE INTO temp.repo_files (project_id, branch, path, content, blob_sha, commit_sha, updated_at) SELECT project_id, ?, path, content, blob_sha, commit_sha, updated_at FROM temp.repo_files WHERE project_id = ? AND branch = ?').run(name, project.id, srcB);
+  }
   // source branch with cached rows whose head is `from`
   let src = null;
   if (from) src = kit.sql("SELECT r.name FROM refs r WHERE r.project_id = ? AND r.kind = 'branch' AND r.sha = ? AND r.name <> ? AND EXISTS (SELECT 1 FROM branch_commits b WHERE b.project_id = r.project_id AND b.branch = r.name) ORDER BY r.name = ? DESC LIMIT 1")
@@ -225,6 +236,7 @@ function deleteBranch(project, user, name) {
   kit.sql("DELETE FROM refs WHERE project_id = ? AND kind = 'branch' AND name = ?").run(project.id, name);
   kit.sql('DELETE FROM branch_commits WHERE project_id = ? AND branch = ?').run(project.id, name);
   kit.sql('DELETE FROM contributors WHERE project_id = ? AND branch = ?').run(project.id, name);
+  kit.sql('DELETE FROM temp.repo_files WHERE project_id = ? AND branch = ?').run(project.id, name);
   code.touchProject(project.id);
   code.addEvent({ project_id: project.id, author_id: user.id, action: 'pushed', push_ref: name, push_ref_type: 'branch', push_action: 'removed', push_commit_count: 0, push_commit_from: r.sha });
 }
@@ -309,6 +321,7 @@ function forkProject(parent, user, ns, { name, path, description, visibility }) 
   kit.sql(`INSERT INTO contributors (project_id, branch, author_email, author_name, commits, commits_all, additions, deletions, first_at, last_at)
     SELECT ?, branch, author_email, author_name, commits, commits_all, additions, deletions, first_at, last_at FROM contributors WHERE project_id = ?`).run(p.id, parent.id);
   kit.sql("INSERT INTO protected_branches (project_id, name, allow_force_push, created_at) SELECT ?, name, allow_force_push, ? FROM protected_branches WHERE project_id = ?").run(p.id, kit.nowSql(), parent.id);
+  kit.sql('INSERT INTO temp.repo_files (project_id, branch, path, content, blob_sha, commit_sha, updated_at) SELECT ?, branch, path, content, blob_sha, commit_sha, updated_at FROM temp.repo_files WHERE project_id = ?').run(p.id, parent.id);
   kit.sql('UPDATE projects SET forks_count = forks_count + 1 WHERE id = ?').run(parent.id);
   code.addEvent({ project_id: p.id, author_id: user.id, action: 'created', target_type: null });
   return p;
