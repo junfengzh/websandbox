@@ -227,6 +227,13 @@ class Hierarchy:
                 if k not in have:
                     out.append(({'county': 12, 'state': 8}.get(k, 10), k, nm))
             out.sort(key=lambda x: -x[0])
+            seen2, o2 = set(), []
+            for x in out:
+                if norm(x[2]) in seen2:
+                    continue
+                seen2.add(norm(x[2]))
+                o2.append(x)
+            out = o2
         return dict(parts=out, country=country, cc=reg['country_code'] if reg else None,
                     region=reg['id'] if reg else None, postcode=postcode)
 
@@ -234,7 +241,7 @@ class Hierarchy:
 def importance(rank, extra, area=0.0, pop=None):
     imp = 0.40001 - rank / 75.0
     if extra.get('wikipedia') or extra.get('wikidata'):
-        imp += 0.15
+        imp += 0.25
     if pop:
         try:
             imp += min(0.3, math.log10(max(1.0, float(str(pop).replace(',', '').split(';')[0]))) / 25)

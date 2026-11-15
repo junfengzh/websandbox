@@ -83,6 +83,7 @@ Written by `build/graph.cpp`; all little endian.
 | `grid.bin` | `{ncells, nentries}`, sorted cell keys (0.005° cells, key = row·72000 + col), offsets, edge ids |
 | `<p>.edgew.bin` | per base edge: uint32 `dur_fwd, dur_bwd, weight_fwd, weight_bwd` in deciseconds (`0xFFFFFFFF` = no access) |
 | `<p>.comp.bin` | uint8 per edge: in a component with >= 500 nodes (snapping prefers these) |
+| `<p>.dur.bin` | A* profiles (bike, foot): per base edge uint32 `dur_fwd, dur_bwd` (deciseconds) |
 | `<p>.ch.bin` | `{n, m_fwd, m_bwd}`, then forward-upward CSR (`off[n+1], to, w, pay`) and backward-upward CSR; `pay` bit 31 = shortcut via node `pay & 0x7fffffff`, else `edge*2 + dir` |
 
-Profiles `p` = `car`, `bike`, `foot` (speeds: see build/README.md).
+Profiles `p` = `car` (edgew + CH), `bike` and `foot` (dur, A*); speeds: see build/README.md.

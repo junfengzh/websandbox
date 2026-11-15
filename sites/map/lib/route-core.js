@@ -103,7 +103,10 @@ class RouteEngine {
     this.gridIds = g.subarray(3 + 2 * nc, 3 + 2 * nc + ne);
     this.profiles = {};
     for (const p of profiles) {
-      if (!fs.existsSync(path.join(dir, p + '.ch.bin'))) continue;
+      if (!fs.existsSync(path.join(dir, p + '.ch.bin'))) {
+        if (fs.existsSync(path.join(dir, p + '.dur.bin'))) this.profiles[p] = this._loadAstar(dir, p);
+        continue;
+      }
       const ew = readTyped(path.join(dir, p + '.edgew.bin'), Uint32Array);
       const comp = readTyped(path.join(dir, p + '.comp.bin'), Uint8Array);
       const ch = readTyped(path.join(dir, p + '.ch.bin'), Uint32Array);
@@ -114,6 +117,81 @@ class RouteEngine {
       const bo = take(n + 1), bt = take(mb), bw = take(mb), bp = take(mb);
       this.profiles[p] = { ew, comp, fo, ft, fw, fp, bo, bt, bw, bp, n };
     }
+  }
+
+  // A* profile (no CH): durations only; adjacency built in memory
+  _loadAstar(dir, p) {
+    const dur = readTyped(path.join(dir, p + '.dur.bin'), Uint32Array);
+    const comp = readTyped(path.join(dir, p + '.comp.bin'), Uint8Array);
+    const E = this.E, N = this.nodes.length / 2, U = this.edgesU;
+    const ew = new Uint32Array(4 * E);
+    const deg = new Uint32Array(N + 1);
+    let maxSpeed = 0; // m per decisecond, for an admissible heuristic
+    for (let e = 0; e < E; e++) {
+      const f = dur[2 * e], b = dur[2 * e + 1];
+      ew[4 * e] = f; ew[4 * e + 1] = b; ew[4 * e + 2] = f; ew[4 * e + 3] = b;
+      const len = this.edgesF[6 * e + 5];
+      if (f !== INF) { deg[U[6 * e]]++; if (f > 0) maxSpeed = Math.max(maxSpeed, len / f); }
+      if (b !== INF) { deg[U[6 * e + 1]]++; if (b > 0) maxSpeed = Math.max(maxSpeed, len / b); }
+    }
+    const off = new Uint32Array(N + 1);
+    for (let i = 0; i < N; i++) off[i + 1] = off[i] + deg[i];
+    const pos = off.slice(0, N);
+    const to = new Uint32Array(off[N]), w = new Uint32Array(off[N]), pay = new Uint32Array(off[N]);
+    for (let e = 0; e < E; e++) {
+      const u = U[6 * e], v = U[6 * e + 1];
+      if (dur[2 * e] !== INF) { const j = pos[u]++; to[j] = v; w[j] = dur[2 * e]; pay[j] = 2 * e; }
+      if (dur[2 * e + 1] !== INF) { const j = pos[v]++; to[j] = u; w[j] = dur[2 * e + 1]; pay[j] = 2 * e + 1; }
+    }
+    // ferries with a duration tag can be faster than the profile speed; cap the heuristic speed
+    const speeds = { foot: 5, bike: 15, car: 130 };
+    const vmax = Math.min(maxSpeed, (speeds[p] || 130) / 3.6 / 10 * 1.0001) || 1;
+    return { astar: true, ew, comp, off, to, w, pay, vmax, n: N };
+  }
+
+  _astarSearch(P, src, dst) {
+    const ew = P.ew, U = this.edgesU, NL = this.nodes;
+    const es = src.edge, et = dst.edge;
+    const tu = U[6 * et], tv = U[6 * et + 1];
+    const tx = dst.lon, ty = dst.lat;
+    const h = (n) => hav(NL[2 * n] / 1e7, NL[2 * n + 1] / 1e7, tx, ty) / P.vmax;
+    const dist = new Map(), heap = new Heap(), done = new Set();
+    const relax = (n, d, parent, pay) => {
+      const c = dist.get(n);
+      if (!c || d < c[0]) { dist.set(n, [d, parent, pay]); heap.push(d + h(n), n); }
+    };
+    if (ew[4 * es] !== INF) relax(U[6 * es + 1], (1 - src.frac) * ew[4 * es], -1, 'sf');
+    if (ew[4 * es + 1] !== INF) relax(U[6 * es], src.frac * ew[4 * es + 1], -1, 'sb');
+    const exitF = ew[4 * et] !== INF ? dst.frac * ew[4 * et] : Infinity;        // arrive at tu, go forward
+    const exitB = ew[4 * et + 1] !== INF ? (1 - dst.frac) * ew[4 * et + 1] : Infinity; // arrive at tv, go backward
+    let best = Infinity, bestNode = -1, bestTag = null, direct = null;
+    if (es === et) {
+      if (ew[4 * es] !== INF && dst.frac >= src.frac) { best = (dst.frac - src.frac) * ew[4 * es]; direct = 0; }
+      if (ew[4 * es + 1] !== INF && dst.frac <= src.frac) { const c = (src.frac - dst.frac) * ew[4 * es + 1]; if (c < best) { best = c; direct = 1; } }
+    }
+    let settled = 0;
+    while (heap.size) {
+      if (heap.topKey() >= best) break;
+      const v = heap.pop();
+      if (done.has(v)) continue;
+      done.add(v);
+      settled++;
+      const dv = dist.get(v)[0];
+      if (v === tu && dv + exitF < best) { best = dv + exitF; bestNode = v; bestTag = 'tf'; direct = null; }
+      if (v === tv && dv + exitB < best) { best = dv + exitB; bestNode = v; bestTag = 'tb'; direct = null; }
+      for (let j = P.off[v]; j < P.off[v + 1]; j++) relax(P.to[j], dv + P.w[j], v, P.pay[j]);
+    }
+    if (best === Infinity) return null;
+    const segs = [];
+    if (direct !== null) { segs.push([es, direct, src.frac, dst.frac]); return { best, segs, settled }; }
+    const mid = [];
+    let v = bestNode, x = dist.get(v);
+    while (x[1] >= 0) { mid.push([x[2] >>> 1, x[2] & 1]); v = x[1]; x = dist.get(v); }
+    mid.reverse();
+    if (x[2] === 'sf') segs.push([es, 0, src.frac, 1]); else segs.push([es, 1, src.frac, 0]);
+    for (const [e, d] of mid) segs.push([e, d, d ? 1 : 0, d ? 0 : 1]);
+    if (bestTag === 'tf') segs.push([et, 0, 0, dst.frac]); else segs.push([et, 1, 1, dst.frac]);
+    return { best, segs, settled };
   }
 
   edge(e) {
@@ -283,6 +361,13 @@ class RouteEngine {
     const src = this.snap(from[0], from[1], profile);
     const dst = this.snap(to[0], to[1], profile);
     if (!src || !dst) return { code: 'NoSegment', message: `could not snap ${!src ? 'origin' : 'destination'} to the ${profile} network` };
+    if (P.astar) {
+      const a = this._astarSearch(P, src, dst);
+      if (!a) return { code: 'NoRoute', message: 'no route found' };
+      const res = this._assemble(a.segs, P, profile, src, dst, from, to);
+      res.weight = a.best / 10; res.settled = a.settled; res.ms = Date.now() - t0;
+      return res;
+    }
     const r = this._search(P, src, dst);
     if (r.best === Infinity) return { code: 'NoRoute', message: 'no route found' };
     // assemble [edge, dir, fromFrac, toFrac]

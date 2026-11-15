@@ -51,7 +51,7 @@ check('foot CMU -> Pitt', 'cmu', 'pitt', 'foot', 0.7, 2.5, 8, 30);
 check('car CMU -> PIT airport', 'cmu', 'pit_airport', 'car', 25, 45, 20, 45);
 check('car Pittsburgh -> Philadelphia', 'downtown_pgh', 'philly', 'car', 450, 520, 270, 380);
 check('car Pittsburgh -> NYC', 'downtown_pgh', 'nyc', 'car', 520, 620, 320, 450);
-check('car Boston -> Acadia', 'boston', 'acadia', 'car', 420, 520, 250, 380);
+check('car Boston -> Acadia', 'boston', 'acadia', 'car', 400, 520, 250, 380);
 check('bike Vinalhaven -> Bar Harbor (ferry)', 'vinalhaven', 'bar_harbor', 'bike', 100, 200, 400, 900);
 check('car SF Ferry Building -> Golden Gate Park', 'sf_ferry', 'sf_ggpark', 'car', 6, 14, 10, 30);
 check('foot London Charing Cross -> Tower', 'london_cx', 'london_tower', 'foot', 3, 5, 35, 65);

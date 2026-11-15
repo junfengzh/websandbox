@@ -13,6 +13,7 @@
 //                      uint32 edge ids[nentries]  (cell = 0.005 deg)
 //   <p>.edgew.bin      per base edge: uint32 dur_fwd, dur_bwd, w_fwd, w_bwd  (deciseconds, 0xFFFFFFFF = none)
 //   <p>.comp.bin       uint8 per base edge: 1 if the edge belongs to a large component for profile p
+//   <p>.dur.bin        A* profiles ("foot:astar"): per base edge uint32 dur_fwd, dur_bwd (no CH, no edgew)
 //   <p>.ch.bin         header {uint32 n, m_fwd, m_bwd}, fwd: uint32 off[n+1], to[m], w[m], pay[m];
 //                      bwd: same. pay: bit31 set -> shortcut via node (pay & 0x7fffffff),
 //                      else base edge id * 2 + dir (dir 1 = traversed v->u)
@@ -314,6 +315,8 @@ int main(int argc, char **argv) {
   while (pos < profs.size()) {
     size_t c = profs.find(',', pos); if (c == string::npos) c = profs.size();
     string p = profs.substr(pos, c - pos); pos = c + 1;
+    bool astar = false;  // "foot:astar" -> no CH, durations only (queried with A*)
+    if (p.size() > 6 && p.substr(p.size() - 6) == ":astar") { astar = true; p = p.substr(0, p.size() - 6); }
     double tp = now();
     fprintf(stderr, "profile %s\n", p.c_str());
     vector<u32> ew(4 * (size_t)E, INF);
@@ -334,7 +337,13 @@ int main(int argc, char **argv) {
       if (okf) { ew[4 * e] = dur(sf, extra_f); ew[4 * e + 2] = (u32)round(ew[4 * e] / rate); }
       if (okb) { ew[4 * e + 1] = dur(sb, extra_b); ew[4 * e + 3] = (u32)round(ew[4 * e + 1] / rate); }
     }
-    writef(out + "/" + p + ".edgew.bin", ew);
+    if (astar) {
+      vector<u32> dur(2 * (size_t)E);
+      for (u32 e = 0; e < E; e++) { dur[2 * e] = ew[4 * e]; dur[2 * e + 1] = ew[4 * e + 1]; }
+      writef(out + "/" + p + ".dur.bin", dur);
+    } else {
+      writef(out + "/" + p + ".edgew.bin", ew);
+    }
     // components (weak) for snapping
     vector<u32> par(N); iota(par.begin(), par.end(), 0);
     function<u32(u32)> find = [&](u32 x) { while (par[x] != x) { par[x] = par[par[x]]; x = par[x]; } return x; };
@@ -346,6 +355,7 @@ int main(int argc, char **argv) {
     for (u32 e = 0; e < E; e++) if ((ew[4 * e] != INF || ew[4 * e + 1] != INF) && csz[find(edges[e].u)] >= 500) { big[e] = 1; nbig++; }
     writef(out + "/" + p + ".comp.bin", big);
     fprintf(stderr, "  %u/%u edges in large components\n", nbig, E);
+    if (astar) { fprintf(stderr, "  profile %s (A*, no CH) done in %.0fs\n", p.c_str(), now() - tp); continue; }
     // CH
     CH ch; ch.n = N; ch.out.resize(N); ch.in.resize(N);
     for (u32 e = 0; e < E; e++) {

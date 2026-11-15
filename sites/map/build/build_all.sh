@@ -50,7 +50,7 @@ if has route; then
     echo "[$(ts)] route start"
     mkdir -p "$WORK/route" "$OUT/route"
     "$WORK/route_extract" "$WORK/all.osm.pbf" "$WORK/route" > "$WORK/route.log" 2>&1
-    "$WORK/graph" "$WORK/route" "$OUT/route" car,bike,foot >> "$WORK/route.log" 2>&1
+    "$WORK/graph" "$WORK/route" "$OUT/route" car,bike:astar,foot:astar >> "$WORK/route.log" 2>&1
     echo "[$(ts)] route done: $(du -sh "$OUT/route" | cut -f1)"
   ) &
   pids+=($!)

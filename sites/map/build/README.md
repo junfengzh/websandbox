@@ -50,7 +50,16 @@ Regions (`regions.json`): `us-northeast` (Geofabrik file used as is), `sf`,
 Turn penalties are added to the reported duration of the found path (they do not
 steer the search, which keeps the graph node-based and the CH small).
 
-Why a CH: queries across the whole Northeast (Boston -> Acadia, Pittsburgh ->
-NYC) settle a few hundred nodes and take milliseconds; preprocessing
-(edge-difference ordering with lazy updates, 500-node witness searches) is a few
-minutes per profile. Exact for the given weights.
+Search methods (both exact for the given weights):
+
+- **car: contraction hierarchy.** Car speeds vary 10-110 km/h, so a geometric
+  A* bound is weak; the CH answers Boston -> Acadia or Pittsburgh -> NYC after
+  settling a few hundred nodes, in milliseconds. Preprocessing (edge-difference
+  ordering with lazy updates, 500-node witness searches) took ~12 min for the
+  car graph (8.6M nodes) on the loaded build box.
+- **bike, foot: A\*** on the base graph (adjacency built in memory at load) with
+  the straight-line distance at the profile's top speed (15 / 5 km/h) as the
+  heuristic. Speeds are nearly constant, so the bound is tight: a 160 km bike
+  trip with a ferry settles ~27k nodes (~0.4 s), typical city walks < 0.1 s.
+  Results are identical to the CH (checked on sample pairs) and this saves
+  ~1.6 GB of CH files (`graph ... car,bike:astar,foot:astar`).
