@@ -55,6 +55,7 @@ function resolveOptions(rt, o = {}) {
     uploads: path.resolve(o.uploads || (fs.existsSync('/dev/shm') ? `/dev/shm/wsb-${cfg.name}-${port}` : path.join(data, 'uploads'))),
     media: o.media ? path.resolve(o.media) : path.join(data, 'media'),
     cacheMB: +o.cacheMb || dbc.cacheMB || 32,
+    mmapMB: o.mmapMb != null ? +o.mmapMb : dbc.mmapMB || 0,
     fresh: !!o.fresh,
     siteIndex: o.siteIndex ?? cfg.siteIndex ?? SITE_INDEX[cfg.name],
     token: o.controlToken || process.env.WSB_CONTROL_TOKEN || null,
@@ -292,7 +293,7 @@ async function start(rt, opts = {}) {
   await app.ready();
   for (const i of o.owned) {
     rt.tenants.set(i, new Tenant(rt, i, {
-      mode: o.mode, base: o.base, file: path.join(o.tenantDir, `t${i}.db`), uploadDir: path.join(o.uploads, String(i)), cacheMB: o.cacheMB, fresh: o.fresh,
+      mode: o.mode, base: o.base, file: path.join(o.tenantDir, `t${i}.db`), uploadDir: path.join(o.uploads, String(i)), cacheMB: o.cacheMB, mmapMB: o.mmapMB, fresh: o.fresh,
     }));
   }
   await Promise.all([...rt.tenants.values()].map((t) => t.ready));
@@ -359,6 +360,7 @@ const ARGS = {
   uploads: { type: 'string' },
   media: { type: 'string' },
   'cache-mb': { type: 'string' },
+  'mmap-mb': { type: 'string' },
   'site-index': { type: 'string' },
   'control-token': { type: 'string' },
   'allow-browser-control': { type: 'boolean' },
@@ -383,19 +385,23 @@ async function main(rt, argv = process.argv.slice(2)) {
     const fork = (w) => cluster.fork({ WSB_WORKER_ID: String(w) }).on('exit', (code) => {
       if (!stopping) { console.error(`[${rt.cfg.name}] worker ${w} exited (${code}); restarting`); fork(w); }
     });
-    for (let w = 0; w < workers; w++) fork(w);
-    const stop = () => { stopping = true; for (const w of Object.values(cluster.workers)) w.kill(); setTimeout(() => process.exit(0), 2000).unref(); };
+    const stop = () => {
+      stopping = true;
+      for (const w of Object.values(cluster.workers)) w.process.kill('SIGTERM');
+      setTimeout(() => { for (const w of Object.values(cluster.workers)) w.process.kill('SIGKILL'); process.exit(0); }, 3000);
+    };
     process.on('SIGTERM', stop); process.on('SIGINT', stop);
+    for (let w = 0; w < workers; w++) fork(w);
     console.log(`[${rt.cfg.name}] primary ${process.pid}: ${workers} workers, ${o.tenants} tenants`);
     return;
   }
-  if (workers > 1) o.workerId = +process.env.WSB_WORKER_ID;
+  if (workers > 1) { o.workerId = +process.env.WSB_WORKER_ID; process.on('disconnect', () => process.exit(0)); } // primary gone
   const t0 = Date.now();
   const s = await start(rt, o);
   const l = s.listeners;
   console.log(`[${rt.cfg.name}] pid ${process.pid}${workers > 1 ? ` worker ${o.workerId}` : ''}: ${s.tenants.size} tenants ready in ${Date.now() - t0} ms; ` +
     (l.length <= 3 ? l.map((x) => `${x.host}:${x.port}`).join(' ') : `${l[0].host}:${l[0].port} ... ${l[l.length - 1].host}:${l[l.length - 1].port}`));
-  const stop = () => s.close().finally(() => process.exit(0));
+  const stop = () => { setTimeout(() => process.exit(0), 1500).unref(); s.close().finally(() => process.exit(0)); };
   process.on('SIGTERM', stop); process.on('SIGINT', stop);
   return s;
 }

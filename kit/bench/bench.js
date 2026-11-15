@@ -38,24 +38,32 @@ const rssOf = (pid) => {
   return [pid, ...kids].reduce((s, p) => { try { return s + +/VmRSS:\s+(\d+)/.exec(fs.readFileSync(`/proc/${p}/status`, 'utf8'))[1] / 1024; } catch { return s; } }, 0);
 };
 
+// CPU seconds (user+sys) of a process and its children
+const cpuOf = (pid) => {
+  const kids = (() => { try { return execFileSync('pgrep', ['-P', String(pid)]).toString().trim().split('\n').filter(Boolean).map(Number); } catch { return []; } })();
+  return [pid, ...kids].reduce((s, p) => { try { const f = fs.readFileSync(`/proc/${p}/stat`, 'utf8').split(') ')[1].split(' '); return s + (+f[11] + +f[12]) / 100; } catch { return s; } }, 0);
+};
+
 async function startServer(dir, tenants, workers, extra = []) {
   const t0 = Date.now();
   const p = spawn(process.execPath, [SERVER, '--tenants', String(tenants), '--port', String(PORT), '--bind', 'rl', '--data', dir, '--workers', String(workers),
     '--uploads', path.join(dir, 'uploads'), '--cache-mb', a['cache-mb'], ...extra], { stdio: ['ignore', 'pipe', 'inherit'] });
   p.stdout.on('data', () => {});
-  // ready when the last tenant answers health
-  for (;;) {
-    if (p.exitCode != null) throw new Error('server exited');
-    try {
-      const r = await fetch(`http://127.10.${tenants - 1}.9:${PORT}/__rl/health`);
-      if (r.ok) break;
-    } catch {}
-    await sleep(100);
+  live.add(p);
+  // ready when every tenant answers health
+  for (let i = 0; i < tenants; i++) {
+    for (;;) {
+      if (p.exitCode != null) throw new Error('server exited');
+      try { if ((await fetch(`http://127.10.${i}.9:${PORT}/__rl/health`)).ok) break; } catch {}
+      await sleep(100);
+    }
   }
-  for (let i = 0; i < tenants; i++) await fetch(`http://127.10.${i}.9:${PORT}/__rl/health`);
   return { p, startMs: Date.now() - t0 };
 }
-const stop = async (p) => { p.kill('SIGTERM'); for (let i = 0; i < 50 && p.exitCode == null; i++) await sleep(100); if (p.exitCode == null) p.kill('SIGKILL'); };
+const live = new Set();
+process.on('exit', () => { for (const p of live) try { p.kill('SIGTERM'); } catch {} });
+const stop = async (p) => {
+  live.delete(p); p.kill('SIGTERM'); for (let i = 0; i < 50 && p.exitCode == null; i++) await sleep(100); if (p.exitCode == null) p.kill('SIGKILL'); };
 
 function load(o) {
   return new Promise((res, rej) => {
@@ -84,13 +92,15 @@ async function multi() {
     const cold = !fs.existsSync(path.join(dir, 'tenants', `t${T - 1}.db`));
     s = await startServer(dir, T, W);
     const rssIdle = rssOf(s.p.pid);
+    const cpu0 = cpuOf(s.p.pid);
     const r = await load({ clients: +(a.clients || T), seconds: +a.seconds, maxId: +a.notes, think: +a['think-ms'] });
     const rss = rssOf(s.p.pid);
+    const cpuMsPerReq = +(((cpuOf(s.p.pid) - cpu0) * 1000) / r.requests).toFixed(2);
     // reset timing measured from outside, after the run (dirty tenants)
     const ext = [];
     for (let i = 0; i < T; i++) { const t0 = performance.now(); const j = await (await fetch(`http://127.10.${i}.9:${PORT}/__rl/reset`, { method: 'POST' })).json(); ext.push({ http: performance.now() - t0, server: j.ms }); }
     await stop(s.p);
-    log({ step: 'multi', tenants: T, workers: W, startMs: s.startMs, coldCopy: cold, rssIdleMB: +rssIdle.toFixed(0), rssLoadedMB: +rss.toFixed(0),
+    log({ step: 'multi', tenants: T, workers: W, thinkMs: +a['think-ms'], cpuMsPerReq, startMs: s.startMs, coldCopy: cold, rssIdleMB: +rssIdle.toFixed(0), rssLoadedMB: +rss.toFixed(0),
       perTenantMB: +((rss - rss1) / (T - 1)).toFixed(1), resetAfterRun: { serverMsMax: +Math.max(...ext.map((x) => x.server)).toFixed(2), httpMsMax: +Math.max(...ext.map((x) => x.http)).toFixed(2) },
       walMBmax: +Math.max(0, ...walSizes(dir)).toFixed(1), load: r });
   }

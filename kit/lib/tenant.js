@@ -56,7 +56,7 @@ class Tenant {
   }
 
   async open() {
-    const { mode, base, file, cacheMB = 32 } = this.o;
+    const { mode, base, file, cacheMB = 32, mmapMB = 0 } = this.o;
     if (mode === 'copy') {
       this.copied = await ensureCopy(base, file, this.o.fresh);
       this.db = new Database(file, { fileMustExist: true });
@@ -69,6 +69,7 @@ class Tenant {
     this.stmts = new Map();
     db.pragma(`cache_size = -${Math.round(cacheMB * 1024)}`);
     db.pragma('temp_store = MEMORY');
+    if (mmapMB) db.pragma(`mmap_size = ${Math.round(mmapMB * 2 ** 20)}`);
     db.function('now', { deterministic: false }, () => this.nowSql());
     db.function('today', { deterministic: false }, () => this.nowSql().slice(0, 10));
     db.exec(KIT_SCHEMA); // temp tables: committed empty, so ROLLBACK empties them

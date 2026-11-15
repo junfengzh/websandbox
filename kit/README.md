@@ -84,7 +84,7 @@ node sites/<site>/server.js --tenants N --port P --data $WSB_DATA_ROOT/<site> [o
   --bind rl           tenant i on 127.10.<i>.<k>:P (+ 127.0.0.1:P, tenant via X-WSB-Tenant)  -- RL stack (P=80)
   --bind HOST         one listener; tenant from the 127.10.<i>.x local address or X-WSB-Tenant
   --workers W         W processes, worker w owns tenants i % W == w (needs --bind rl or ports)
-  --db-mode copy|shared   --db-file base.db   --tenant-dir DATA/tenants   --cache-mb 32
+  --db-mode copy|shared   --db-file base.db   --tenant-dir DATA/tenants   --cache-mb 32 (SQLite page cache per tenant)   --mmap-mb 0
   --uploads DIR       per-tenant upload dirs DIR/<i> (default /dev/shm/wsb-<site>-<port>; emptied by reset)
   --media DIR         shared read-only media served at /media/ (default DATA/media)
   --control-token T   require header X-WSB-Control: T on /__rl/* (or env WSB_CONTROL_TOKEN)
