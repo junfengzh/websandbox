@@ -9,22 +9,25 @@ set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../../.." && pwd)
-SRC=${SRC:-$WSB_SRC/forum.sqfs}
-SCR=${SCR:-$WSB_SCRATCH}
-MNT=$WSB_MNT/forum
-WORK=$SCR/work/forum
-OUT=$SCR/data/forum
+# Paths (docs/CONVENTIONS.md): WSB_SRC raw sources (forum.sqfs; required for `mount`; or SRC = the
+# image file itself), WSB_WORK intermediates (default <repo>/work), WSB_MNT mount points (default
+# $WSB_WORK/mnt), WSB_DATA_ROOT outputs (default <repo>/data).
+SRC=${SRC:-${WSB_SRC:+$WSB_SRC/forum.sqfs}}
+WORK_ROOT=${WSB_WORK:-$REPO/work}
+MNT=${WSB_MNT:-$WORK_ROOT/mnt}/forum
+WORK=$WORK_ROOT/forum
+OUT=${WSB_DATA_ROOT:-$REPO/data}/forum
 PG_IMAGE=postgres:14-alpine       # source: PG_VERSION 14, Alpine (musl) build, C collation
 PG=wsb-forum-pg
 JOBS=${JOBS:-7}
-TASKS=${TASKS:-$REPO/../3rd-party/webarena/config_files/test.raw.json}
+TASKS=${TASKS:-${WEBARENA_TASKS:-$REPO/../3rd-party/webarena/config_files/test.raw.json}}
 PY="python3 -I"
 
 mkdir -p "$WORK" "$OUT"
 
 step_mount() {
   mkdir -p "$MNT"
-  mountpoint -q "$MNT" || sudo mount -o loop,ro "$SRC" "$MNT"
+  mountpoint -q "$MNT" || sudo mount -o loop,ro "${SRC:?set WSB_SRC to the directory with the WebArena source images}" "$MNT"
 }
 
 step_pg() {  # copy the 4.8 GB datadir to local disk (docker can't bind-mount NFS/squashfs paths reliably) and start PG

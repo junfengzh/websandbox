@@ -3,7 +3,7 @@
 // (build/graph.cpp output), so the event loop of the site server never blocks.
 //
 //   const { createRouter } = require('./route');
-//   const router = await createRouter({ dir: '$WSB_DATA_ROOT/map/route' });
+//   const router = await createRouter({ dir: '<data root>/map/route' });
 //   const r = await router.route({ from: [lon, lat], to: [lon, lat], profile: 'car' });
 //   // r: { code: 'Ok', distance (m), duration (s), geometry (GeoJSON LineString), steps: [...], waypoints, bbox }
 //   router.close();
@@ -14,7 +14,7 @@ const path = require('path');
 const { Worker } = require('worker_threads');
 
 const DEFAULT_DIR = process.env.WSB_MAP_DATA ? path.join(process.env.WSB_MAP_DATA, 'route')
-  : '$WSB_DATA_ROOT/map/route';
+  : path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'map/route');
 const ALIASES = { car: 'car', driving: 'car', drive: 'car', bike: 'bike', bicycle: 'bike', cycling: 'bike',
   foot: 'foot', walking: 'foot', walk: 'foot', pedestrian: 'foot' };
 

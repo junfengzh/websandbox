@@ -17,7 +17,7 @@ import os
 import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = '$WEBARENA_TASKS'
+SRC = os.environ.get('WEBARENA_TASKS', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '3rd-party', 'webarena', 'config_files', 'test.raw.json'))
 
 GITLAB_USER = 'byteblaze'
 FORUM_USER = 'MarvelsGrantMan136'

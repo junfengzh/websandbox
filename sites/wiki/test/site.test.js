@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const DATA = process.env.WSB_WIKI_DATA || '$WSB_DATA_ROOT/wiki';
+const DATA = process.env.WSB_WIKI_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'wiki');
 const have = fs.existsSync(path.join(DATA, 'base.db'));
 const opt = { skip: !have && 'wiki data not built' };
 const site = require('../server.js');

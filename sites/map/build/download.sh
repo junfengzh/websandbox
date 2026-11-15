@@ -3,10 +3,11 @@
 # planetiler's auxiliary sources, fonts, sprites, MapLibre style). Idempotent:
 # files that already exist with the right size are skipped.
 #
-#   SRC=$WSB_SRC  WORK=$WSB_WORK/map  ./download.sh
+#   WSB_SRC=/path/to/sources  ./download.sh      (or SRC=... WORK=...; WORK default $WSB_WORK/map)
 set -euo pipefail
-SRC=${SRC:-$WSB_SRC}
-WORK=${WORK:-$WSB_WORK/map}
+REPO=$(cd "$(dirname "$0")/../../.." && pwd)
+SRC=${SRC:-${WSB_SRC:?set WSB_SRC (or SRC) to the raw-extracts directory}}
+WORK=${WORK:-${WSB_WORK:-$REPO/work}/map}
 mkdir -p "$SRC" "$WORK/dl" "$WORK/sources"
 
 fetch() { # url dest

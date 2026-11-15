@@ -11,7 +11,7 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const { Decompressor } = require('zstd-napi');
 
-const dir = process.argv[2] || '$WSB_DATA_ROOT/wiki';
+const dir = process.argv[2] || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'wiki');
 const db = new Database(path.join(dir, 'base.db'), { readonly: true });
 const dict = db.prepare('select dict from zdict where id=1').get().dict;
 const dz = new Decompressor();

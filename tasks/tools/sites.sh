@@ -17,7 +17,8 @@
 # 80; shopping .2 + shopping_admin .3, forum .4, gitlab .5, wiki .6, map .7, the RL hostMap
 # scheme), and each site's 127.0.0.1 control listener on BASE + k*STRIDE (--loopback-port).
 # Ports < 1024 need privileges (CAP_NET_BIND_SERVICE or net.ipv4.ip_unprivileged_port_start).
-# State (pids, logs) in $WSB_TMP/wsb-sites/<BASE>/. `up` waits for /__rl/health of every
+# Data: --data-root DIR | $WSB_DATA_ROOT (default <repo>/data), one <site>/ dir each.
+# State (pids, logs) in $WSB_SITES_STATE (default ${WSB_TMP:-${TMPDIR:-/tmp}}/wsb-sites/<BASE>/). `up` waits for /__rl/health of every
 # site (tenant 0), so the sites are usable when it returns; `down` kills by pid.
 set -euo pipefail
 
@@ -27,7 +28,7 @@ declare -A IDX=([store]=0 [forum]=1 [code]=2 [wiki]=3 [map]=4)
 
 cmd=${1:-help}; shift || true
 tenants=1 base=7700 stride=10 only="" bind=ports port=80 workers=1 token="" fresh="" timeout=300 tenant=0 all=""
-data_root=${WSB_DATA_ROOT:-$WSB_DATA_ROOT}
+data_root=${WSB_DATA_ROOT:-$ROOT/data}
 while [ $# -gt 0 ]; do
   case "$1" in
     --tenants) tenants=$2; shift 2 ;;
@@ -49,7 +50,7 @@ while [ $# -gt 0 ]; do
 done
 if [ -n "$only" ]; then IFS=, read -r -a SITES <<<"$only"; else SITES=("${ALL[@]}"); fi
 for s in "${SITES[@]}"; do [ -n "${IDX[$s]+x}" ] || { echo "sites.sh: unknown site $s (store forum code wiki map)" >&2; exit 2; }; done
-STATE=${WSB_SITES_STATE:-${WSB_TMP:-/tmp}/wsb-sites/$base}
+STATE=${WSB_SITES_STATE:-${WSB_TMP:-${TMPDIR:-/tmp}}/wsb-sites/$base}
 
 ctl_port() { echo $((base + ${IDX[$1]} * stride)); }           # tenant 0's port (ports) / control listener (rl)
 mode() { cat "$STATE/bind" 2>/dev/null || echo "$bind"; }

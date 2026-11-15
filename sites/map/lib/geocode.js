@@ -2,7 +2,7 @@
 // Geocoder for the map site (Nominatim-like) on the SQLite DB built by build/build_geocode.py.
 //
 //   const { Geocoder } = require('./geocode');
-//   const g = new Geocoder('$WSB_DATA_ROOT/map/geocode.db');
+//   const g = new Geocoder('<data root>/map/geocode.db');
 //   g.search('starbucks craig street', { center: [lon, lat], limit: 10 });
 //   g.search('restaurants near Carnegie Mellon University');
 //   g.search('401 Shady Ave, Pittsburgh');
@@ -21,7 +21,7 @@ const { tokens, norm, prefixCanon, STOP } = require('./textnorm');
 const CATS = require('./categories.json').phrases;
 
 const DEFAULT_DB = process.env.WSB_MAP_DATA ? path.join(process.env.WSB_MAP_DATA, 'geocode.db')
-  : '$WSB_DATA_ROOT/map/geocode.db';
+  : path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'map/geocode.db');
 const OSM_TYPE = { N: 'node', W: 'way', R: 'relation', P: 'postcode' };
 
 // phrase (normalised) -> [[class, type], ...]

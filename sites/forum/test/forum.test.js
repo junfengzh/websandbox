@@ -9,8 +9,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { Client, rl, q } = require('../../../kit/test/helpers');
 
-const DATA = process.env.FORUM_DATA || '$WSB_DATA_ROOT/forum';
-const TMP = (process.env.WSB_TMP || require('os').tmpdir());
+const DATA = process.env.FORUM_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'forum');
+const TMP = (process.env.WSB_TMP || os.tmpdir());
 const ME = 'MarvelsGrantMan136'; const ME_ID = 13915; const PW = 'test1234';
 
 let s, A, B, uploads;

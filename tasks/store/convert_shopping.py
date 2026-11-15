@@ -22,8 +22,8 @@ import re
 import sqlite3
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = '$WEBARENA_TASKS'
-DB = '$WSB_DATA_ROOT/store/base.db'
+SRC = os.environ.get('WEBARENA_TASKS', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '3rd-party', 'webarena', 'config_files', 'test.raw.json'))
+DB = os.path.join(os.environ.get('WSB_DATA_ROOT', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'data')), 'store', 'base.db')
 EMMA = 'emma.lopez@gmail.com'
 ME = 70  # customers.id of emma.lopez@gmail.com (shop customer 27, merged)
 TODAY = '2023-06-12'  # store clock; every imported order is older, every rollout order newer

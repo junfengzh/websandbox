@@ -7,7 +7,7 @@ const Database = require(path.join(ROOT, 'kit', 'node_modules', 'better-sqlite3'
 const { Decompressor } = require(path.join(ROOT, 'sites', 'wiki', 'node_modules', 'zstd-napi'));
 const { parse } = require(path.join(__dirname, 'node_modules', 'node-html-parser'));
 
-const DB_PATH = process.env.WIKI_DB || '$WSB_DATA_ROOT/wiki/base.db';
+const DB_PATH = process.env.WIKI_DB || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'wiki/base.db');
 let _db = null; let _dz = null;
 function openDb() {
   if (!_db) _db = new Database(DB_PATH, { readonly: true, fileMustExist: true });

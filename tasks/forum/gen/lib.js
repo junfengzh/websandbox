@@ -5,7 +5,7 @@
 const path = require('path');
 const Database = require(path.join(__dirname, '../../../kit/node_modules/better-sqlite3'));
 
-const DATA = process.env.WSB_FORUM_DATA || '$WSB_DATA_ROOT/forum';
+const DATA = process.env.WSB_FORUM_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'forum');
 // Rows created by the agent are newer than the data (newest source row 2023-06-12; site clock 2023-07-11).
 const AFTER = '2023-06-13';
 const DELETED_USER = 10000; // '[deleted]'

@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const DATA = process.env.STORE_DATA || '$WSB_DATA_ROOT/store';
+const DATA = process.env.STORE_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../../..', 'data'), 'store');
 const CHROME = process.env.CHROME || '/usr/bin/google-chrome';
 const TMP = (process.env.WSB_TMP || os.tmpdir());
 function loadPuppeteer() {

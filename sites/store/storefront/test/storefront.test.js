@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const DATA = process.env.STORE_DATA || '$WSB_DATA_ROOT/store';
+const DATA = process.env.STORE_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../../..', 'data'), 'store');
 const EMMA = 'emma.lopez@gmail.com';
 function emmaPassword() {
   if (process.env.STORE_TEST_PASSWORD) return process.env.STORE_TEST_PASSWORD;

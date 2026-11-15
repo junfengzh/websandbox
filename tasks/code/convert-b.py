@@ -16,7 +16,7 @@ import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = '$WEBARENA_TASKS'
+SRC = os.environ.get('WEBARENA_TASKS', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '3rd-party', 'webarena', 'config_files', 'test.raw.json'))
 EXCLUDED = {289, 290, 291, 292, 293, 294, 298, 299, 300, 303, 308, 310, 312, 316, 320, 321, 322, 323, 324,
             325, 327, 328, 329, 330}
 ME = 'byteblaze'  # WebArena's gitlab storage_state user

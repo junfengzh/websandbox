@@ -13,8 +13,8 @@ const crypto = require('node:crypto');
 const zlib = require('node:zlib');
 const { Client, rl, q } = require('../../../kit/test/helpers');
 
-const DATA = process.env.CODE_DATA || '$WSB_DATA_ROOT/code';
-const TMP = (process.env.WSB_TMP || require('os').tmpdir());
+const DATA = process.env.CODE_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'code');
+const TMP = (process.env.WSB_TMP || os.tmpdir());
 const HAVE = fs.existsSync(path.join(DATA, 'base.db'));
 const P = 'byteblaze/gimmiethat.space';
 

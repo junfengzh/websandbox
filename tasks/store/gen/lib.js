@@ -8,7 +8,7 @@ const Database = require(require.resolve('better-sqlite3', { paths: [path.join(R
 const U = require(path.join(ROOT, 'sites', 'store', 'admin', 'lib', 'util.js'));
 const S = require(path.join(ROOT, 'sites', 'store', 'shared.js'));
 
-const DATA = process.env.WSB_STORE_DATA || '$WSB_DATA_ROOT/store';
+const DATA = process.env.WSB_STORE_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'store');
 const TODAY = '2023-06-12'; // store clock (sites/store/server.js); rollout writes are newer
 const NOW = '2023-06-12 16:00:00';
 

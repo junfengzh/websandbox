@@ -6,11 +6,15 @@
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-SRC=${SRC:-$WSB_SRC}
-SCR=${SCR:-$WSB_SCRATCH}
-MNT=$WSB_MNT/code
-WORK=$SCR/work/code
-OUT=$SCR/data/code
+REPO=$(cd "$HERE/../../.." && pwd)
+# Paths (docs/CONVENTIONS.md): WSB_SRC raw sources (gitlab.sqfs; required for `mount`),
+# WSB_WORK intermediates (default <repo>/work), WSB_MNT mount points (default $WSB_WORK/mnt),
+# WSB_DATA_ROOT outputs (default <repo>/data).
+SRC=${WSB_SRC:-${SRC:-}}
+WORK_ROOT=${WSB_WORK:-$REPO/work}
+MNT=${WSB_MNT:-$WORK_ROOT/mnt}/code
+WORK=$WORK_ROOT/code
+OUT=${WSB_DATA_ROOT:-$REPO/data}/code
 VENV=$WORK/venv
 PG_IMAGE=postgres:13.8          # GitLab 15.7.5 Omnibus runs PostgreSQL 13.8 (PG_VERSION 13)
 PG_PORT=7432
@@ -30,7 +34,7 @@ venv() {
 
 step_mount() {
   mkdir -p "$MNT"
-  mountpoint -q "$MNT" || sudo mount -o loop,ro "$SRC/gitlab.sqfs" "$MNT"
+  mountpoint -q "$MNT" || sudo mount -o loop,ro "${SRC:?set WSB_SRC to the directory with the WebArena source images}/gitlab.sqfs" "$MNT"
 }
 
 step_pgcopy() {   # docker cannot bind-mount NFS/squashfs: copy the datadir (12 GB) to local disk

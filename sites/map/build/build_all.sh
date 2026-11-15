@@ -4,12 +4,15 @@
 #   ./build_all.sh            # everything
 #   STEPS="geocode route" ./build_all.sh
 #
-# Env: SRC (raw extracts), WORK (intermediates), OUT (outputs), JAVA (Java >= 21 for planetiler).
+# Env: SRC (raw extracts; default $WSB_SRC, required), WORK (intermediates; default $WSB_WORK/map,
+# WSB_WORK default <repo>/work), OUT (outputs; default $WSB_DATA_ROOT/map, WSB_DATA_ROOT default
+# <repo>/data), JAVA (Java >= 21 for planetiler).
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
-SRC=${SRC:-$WSB_SRC}
-WORK=${WORK:-$WSB_WORK/map}
-OUT=${OUT:-$WSB_DATA_ROOT/map}
+REPO=$(cd "$HERE/../../.." && pwd)
+SRC=${SRC:-${WSB_SRC:?set WSB_SRC (or SRC) to the raw-extracts directory}}
+WORK=${WORK:-${WSB_WORK:-$REPO/work}/map}
+OUT=${OUT:-${WSB_DATA_ROOT:-$REPO/data}/map}
 JAVA=${JAVA:-/usr/lib/jvm/java-21-openjdk-amd64/bin/java}
 STEPS=${STEPS:-"download prepare compile assets tiles route geocode"}
 export SRC WORK

@@ -6,7 +6,7 @@ const path = require('node:path');
 const zlib = require('node:zlib');
 const Database = require(path.join(__dirname, '..', '..', '..', 'kit', 'node_modules', 'better-sqlite3'));
 
-const DB_PATH = process.env.CODE_DB || '$WSB_DATA_ROOT/code/base.db';
+const DB_PATH = process.env.CODE_DB || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'code/base.db');
 const TODAY = '2023-04-27'; // site clock "today" (UTC); data ends 2023-04-26
 
 function openDb() {

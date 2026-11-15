@@ -13,7 +13,7 @@ const P = require(path.join(MAP, 'lib/present'));
 const { tokens, norm, STOP } = require(path.join(MAP, 'lib/textnorm'));
 const CATS = require(path.join(MAP, 'lib/categories.json')).phrases;
 
-const DATA = process.env.WSB_MAP_DATA || '$WSB_DATA_ROOT/map';
+const DATA = process.env.WSB_MAP_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'map');
 const MAX_SLOW_KM = +process.env.WSB_MAP_MAX_SLOW_KM || 250; // as lib/engines.js
 const CMU = [P.DEFAULT_VIEW.lon, P.DEFAULT_VIEW.lat]; // ranking centre of a plain page load
 

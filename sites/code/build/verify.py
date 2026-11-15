@@ -335,7 +335,7 @@ def main():
     ap.add_argument('--db', required=True)
     ap.add_argument('--pg', required=True)
     ap.add_argument('--repos', required=True)
-    ap.add_argument('--tasks', default='$WEBARENA_TASKS')
+    ap.add_argument('--tasks', default=os.environ.get('WEBARENA_TASKS', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', '3rd-party', 'webarena', 'config_files', 'test.raw.json')))
     a = ap.parse_args()
     v = V(a)
     v.counts()

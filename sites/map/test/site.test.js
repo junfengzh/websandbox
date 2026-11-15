@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const DATA = process.env.WSB_MAP_DATA || '$WSB_DATA_ROOT/map';
+const DATA = process.env.WSB_MAP_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'map');
 const have = fs.existsSync(path.join(DATA, 'geocode.db')) && fs.existsSync(path.join(DATA, 'route'));
 const opt = { skip: !have && 'map data not built' };
 const site = require('../server.js');

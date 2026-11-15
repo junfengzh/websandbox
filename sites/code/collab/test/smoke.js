@@ -12,7 +12,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const puppeteer = require(require.resolve('puppeteer-core', { paths: [path.join(__dirname, '../..')] }));
 
-const DATA = process.env.CODE_DATA || '$WSB_DATA_ROOT/code';
+const DATA = process.env.CODE_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../../..', 'data'), 'code');
 function password() {
   if (process.env.CODE_PASSWORD) return process.env.CODE_PASSWORD;
   const f = path.join(__dirname, '../../../../../3rd-party/webarena/browser_env/env_config.py');
@@ -22,7 +22,7 @@ function password() {
 }
 
 (async () => {
-  const tmp = fs.mkdtempSync(path.join((process.env.WSB_TMP || require('os').tmpdir()), 'collab-smoke-'));
+  const tmp = fs.mkdtempSync(path.join((process.env.WSB_TMP || os.tmpdir()), 'collab-smoke-'));
   const site = require('../../server.js');
   const srv = await site.start({ tenants: 1, port: 0, data: DATA, bind: 'ports', uploads: path.join(tmp, 'up'), jobTickMs: 50 });
   const base = srv.url(0);
@@ -145,7 +145,7 @@ function password() {
     console.log(`smoke: ${steps.length} steps passed`);
   } catch (e) {
     console.error('SMOKE FAILED:', e.message);
-    try { const pg = (await browser.pages()).pop(); console.error('at', pg.url()); await pg.screenshot({ path: path.join((process.env.WSB_TMP || require('os').tmpdir()), 'collab-smoke-fail.png') }); } catch { /* ignore */ }
+    try { const pg = (await browser.pages()).pop(); console.error('at', pg.url()); await pg.screenshot({ path: path.join((process.env.WSB_TMP || os.tmpdir()), 'collab-smoke-fail.png') }); } catch { /* ignore */ }
     process.exitCode = 1;
   } finally {
     await browser.close();

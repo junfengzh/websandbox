@@ -9,7 +9,7 @@ const { parseArgs } = require('node:util');
 const path = require('node:path');
 const Database = require(path.join(__dirname, '../../../kit/node_modules/better-sqlite3'));
 
-const { values: a } = parseArgs({ options: { base: { type: 'string', default: 'http://127.0.0.1:7500' }, tenants: { type: 'string', default: '2' }, concurrency: { type: 'string', default: '8' }, n: { type: 'string', default: '300' }, data: { type: 'string', default: process.env.WSB_WIKI_DATA || '$WSB_DATA_ROOT/wiki' } } });
+const { values: a } = parseArgs({ options: { base: { type: 'string', default: 'http://127.0.0.1:7500' }, tenants: { type: 'string', default: '2' }, concurrency: { type: 'string', default: '8' }, n: { type: 'string', default: '300' }, data: { type: 'string', default: process.env.WSB_WIKI_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../..', 'data'), 'wiki') } } });
 const u = new URL(a.base);
 const bases = Array.from({ length: +a.tenants }, (_, i) => `${u.protocol}//${u.hostname}:${+u.port + i}`);
 const lat = {};

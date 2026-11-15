@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const DATA = process.env.CODE_DATA || '$WSB_DATA_ROOT/code';
+const DATA = process.env.CODE_DATA || path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../../..', 'data'), 'code');
 const SITE = process.env.COLLAB_HARNESS ? path.join(__dirname, '../dev/harness.js') : path.join(__dirname, '../../server.js');
 function password() {
   if (process.env.CODE_PASSWORD) return process.env.CODE_PASSWORD;
@@ -54,7 +54,7 @@ const one = async (sql, params) => { const r = await q(sql, params); return r[0]
 
 test.before(async () => {
   const site = require(SITE);
-  srv = await site.start({ tenants: 1, port: 0, data: DATA, bind: 'ports', uploads: fs.mkdtempSync(path.join((process.env.WSB_TMP || require('os').tmpdir()), 'collab-up-')), jobTickMs: 50 });
+  srv = await site.start({ tenants: 1, port: 0, data: DATA, bind: 'ports', uploads: fs.mkdtempSync(path.join((process.env.WSB_TMP || os.tmpdir()), 'collab-up-')), jobTickMs: 50 });
   base = srv.url(0);
   await fetch(base + '/__rl/clock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ frozen: true }) });
   c = new Client(base); anon = new Client(base);

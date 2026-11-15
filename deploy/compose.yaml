@@ -1,19 +1,22 @@
-# websandbox demo container (deploy/README.md). Also works with plain `docker compose up -d`.
+# Self-hosted websandbox demo (deploy/README.md): `docker compose up -d --build` in this directory.
+# The image only holds the bootstrap; code (GitHub, WSB_REF) and data (Hugging Face, WSB_HF_REV)
+# are fetched at every start, so a restart refreshes both.
 services:
   websandbox:
-    image: websandbox:latest
-    pull_policy: always
+    build: .
+    image: websandbox:latest              # built locally from deploy/Dockerfile
     restart: unless-stopped
     init: true
     environment:
       WSB_REF: main                       # git branch / tag / commit of github.com/junfengzh/websandbox
       WSB_HF_REV: main                    # revision of the HF dataset junfengzhou/websandbox
-      WSB_DOMAIN: websandbox.pystem.com   # public host; sites under /shop/ /forum/ /code/ /wiki/ /map/
+      WSB_DOMAIN: websandbox.example.com  # your public host name; sites under /shop/ /forum/ /code/ /wiki/ /map/
       WSB_RESET_MINUTES: "60"
+      HTTPS_ONLY: "1"                     # behind a TLS proxy: redirect http -> https + HSTS ("0" to serve plain HTTP)
     ports:
       - "8080:8080"
     volumes:
-      - ./srv:/srv    # repo/ (+ node_modules), data/ (~29 GB), state/ (control token, site logs)
+      - ./srv:/srv                        # repo/ (+ node_modules), data/ (~29 GB), state/ (control token, site logs)
     shm_size: 512m                        # per-tenant upload dirs (/dev/shm/wsb-*), emptied by every reset
     mem_limit: 7g
     stop_grace_period: 20s

@@ -3,7 +3,7 @@
 
   python3 -I prepare.py [--only us-northeast,sf]
 
-Outputs (WORK = $WSB_WORK/map):
+Outputs (WORK, default $WSB_WORK/map):
   WORK/regions/<id>.osm.pbf   region cut (osmium extract, smart strategy)
   WORK/all.osm.pbf            all regions merged (input of every later step)
   WORK/all.poly               multi-section .poly of the region outlines (planetiler --polygon)
@@ -11,8 +11,9 @@ Outputs (WORK = $WSB_WORK/map):
 import argparse, json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.environ.get('SRC', '$WSB_SRC')
-WORK = os.environ.get('WORK', '$WSB_WORK/map')
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
+SRC = os.environ.get('SRC') or os.environ['WSB_SRC']
+WORK = os.environ.get('WORK') or os.path.join(os.environ.get('WSB_WORK', os.path.join(REPO, 'work')), 'map')
 
 
 def run(cmd):

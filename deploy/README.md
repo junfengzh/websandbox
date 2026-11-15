@@ -1,8 +1,37 @@
-# Public demo deployment
+# Demo deployment
 
-All five sites in one container behind one port and one host, **https://websandbox.pystem.com**:
-landing page at `/`, sites under path prefixes `/shop/` (store; back office `/shop/admin`),
-`/forum/`, `/code/`, `/wiki/`, `/map/`. Runs as one Docker container behind a TLS reverse proxy.
+The public demo is **https://websandbox.pystem.com**: all five sites in one container behind one
+port and one host -- landing page at `/`, sites under path prefixes `/shop/` (store; back office
+`/shop/admin`), `/forum/`, `/code/`, `/wiki/`, `/map/`, every site reset hourly.
+
+The files in this directory let you run your own copy the same way: `Dockerfile` (a small
+bootstrap image), `compose.yaml`, and the start scripts the container runs from the repo.
+
+## Run your own
+
+```bash
+git clone https://github.com/junfengzh/websandbox.git && cd websandbox/deploy
+# edit compose.yaml: WSB_DOMAIN (your host name), the ./srv volume path, the published port
+docker compose up -d --build     # first start downloads ~21 GB from Hugging Face (see the log)
+docker compose logs -f           # bootstrap / data sync / router log
+curl -s http://localhost:8080/__status
+```
+
+Needs ~30 GB of disk for the volume and ~7 GB of RAM. Put any reverse proxy that terminates TLS
+(nginx, Caddy, Traefik, ...) in front of the published port: one proxy host for your domain,
+forwarding to the container port with `X-Forwarded-Proto` / `X-Forwarded-For` (or `X-Real-IP`)
+set. Uploads are capped at 5 MB by the router, so the proxy's body limit only needs to allow that.
+
+### HTTPS only
+
+`HTTPS_ONLY=1` (the default in `compose.yaml`) is meant for a deployment behind a TLS proxy. The
+router then redirects every request the proxy marks `X-Forwarded-Proto: http` -- and any plain
+request for `WSB_DOMAIN` that arrives without that header -- to the same `https://` URL (301 for
+GET/HEAD, 308 otherwise, so methods and bodies are kept), and sends
+`Strict-Transport-Security: max-age=31536000` (`WSB_HSTS` overrides the value) on HTTPS
+responses. Requests without `X-Forwarded-Proto` for any other host -- direct access to the
+container port on your network, health checks -- are served as before. Set `HTTPS_ONLY=0` when
+you serve the demo over plain HTTP.
 
 ## What happens at every container start
 
@@ -46,39 +75,29 @@ still escapes its prefix is 307-redirected back under the prefix of its Referer 
 `/wiki/wiki/<Article>`), so its Location headers are always prefixed. CSP stays the sites'
 same-origin policy.
 
-Volume `./srv`: `repo/`, `data/`,
-`state/` (`control-token`, `sites/*.log`).
+Volume (`./srv` in `compose.yaml`, mounted at `/srv`): `repo/`, `data/`, `state/` (`control-token`,
+`sites/*.log`).
 
 ## Refresh / redeploy
 
-```bash
-ssh <docker host>
-docker compose up -d --force-recreate     # restart: latest GitHub WSB_REF + HF data, ~1 min when nothing changed
-docker compose logs -f     # bootstrap / sync / router log
-tail ./srv/state/sites/*.log   # per-site server logs (sudo may be needed)
-curl -s http://localhost:8080/__status    # also: grep escaped: in the docker log
-```
-
-Pin a code or data version: change `WSB_REF` (branch, tag or commit sha) or `WSB_HF_REV` in the
-app's compose (`compose.yaml`), then redeploy.
-
-Rebuild the image (only when `Dockerfile` or `bootstrap.sh` change):
+A restart refreshes code and data: the container fetches `WSB_REF` from GitHub and the
+`WSB_HF_REV` data from Hugging Face at every start (~1 minute when nothing changed).
 
 ```bash
-docker build -t websandbox:latest deploy
-docker compose pull && docker compose up -d
+docker compose up -d --force-recreate   # restart: latest WSB_REF + HF data
+docker compose logs -f                   # bootstrap / sync / router log
+tail ./srv/state/sites/*.log             # per-site server logs
+curl -s http://localhost:8080/__status   # also: grep escaped: in the log
 ```
 
+Pin a code or data version: set `WSB_REF` (branch, tag or commit sha) or `WSB_HF_REV` in
+`compose.yaml`, then redeploy. The checkout is a shallow fetch of `WSB_REF` followed by a forced
+checkout, so it also follows a rewritten (force-pushed) history.
 
-Create it from scratch: `docker compose up -d` in `deploy/`.
-
-## Reverse proxy
-
-One proxy host: domain `websandbox.pystem.com`, scheme `http`, forward to the container's
-port, Websockets support on, Block common exploits on; SSL: request a new Let's Encrypt
-certificate (HTTP-01), Force SSL, HTTP/2 support. Uploads are capped at 5 MB by the router.
+Rebuild the image only when `Dockerfile` or `bootstrap.sh` change:
+`docker compose build --pull && docker compose up -d`.
 
 ## Memory
 
-1 tenant per site, 1 worker each: see "RAM" in the deploy report / `docker stats`; the map's
-routing graph (~2 GB) dominates. `mem_limit: 7g` in `compose.yaml`.
+1 tenant per site, 1 worker each (`docker stats`); the map's routing graph (~2 GB) dominates.
+`mem_limit: 7g` in `compose.yaml`.

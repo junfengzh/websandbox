@@ -10,6 +10,10 @@
 // __rl (also percent-encoded) is refused, X-WSB-* request headers are dropped, and the control
 // token is used only by the router's own reset/health calls. Abuse limits: per-IP token
 // buckets (all requests, writes, large uploads), in-flight cap, request body cap.
+// HTTPS_ONLY=1 (behind a TLS proxy): requests the proxy marks X-Forwarded-Proto: http, and plain
+// requests for the public host without that header, are redirected to https:// (301 GET/HEAD, 308
+// otherwise); HTTPS responses carry Strict-Transport-Security. Requests without X-Forwarded-Proto
+// for any other host (direct access to the container port, health checks) are served as is.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -25,6 +29,8 @@ const MAX_BODY = (+env.WSB_MAX_BODY_MB || 5) * 2 ** 20;
 const MAX_REWRITE = 32 * 2 ** 20;                 // larger text responses are streamed unchanged
 const BIG_BODY = 256 * 1024;                      // bodies above this count against the upload bucket
 const UPSTREAM_TIMEOUT = 60e3;
+const HTTPS_ONLY = /^(1|true|yes|on)$/i.test(env.HTTPS_ONLY || '');
+const HSTS = env.WSB_HSTS || 'max-age=31536000';
 
 // site key -> path prefix, sites.sh index (port BASE + 10k), label; ownsPrefix: the site has
 // its own paths under /<prefix>/ (the wiki's /wiki/<Article>)
@@ -181,6 +187,16 @@ function proxy(site, req, res, ip, host) {
 const server = http.createServer((req, res) => {
   counters.req++;
   const host = String(req.headers.host || DOMAIN);
+  if (HTTPS_ONLY) {
+    const xfp = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim().toLowerCase();
+    const name = host.replace(/:\d+$/, '').toLowerCase();
+    const isPublic = name === DOMAIN || name.endsWith('.' + DOMAIN);
+    if (xfp === 'http' || (!xfp && isPublic)) {
+      const to = `https://${isPublic || xfp ? name : DOMAIN}${req.url.startsWith('/') ? req.url : '/'}`;
+      return send(res, req.method === 'GET' || req.method === 'HEAD' ? 301 : 308, '', undefined, { location: to });
+    }
+    if (xfp === 'https') res.setHeader('strict-transport-security', HSTS);
+  }
   const ip = clientIp(req);
   if (blockedPath(req.url)) { counters.blocked++; return send(res, 404, 'Not found.\n'); }
   if (!take(ip, 'all')) { counters.limited++; return send(res, 429, 'Too many requests; slow down.\n', undefined, { 'retry-after': '10' }); }
@@ -222,7 +238,7 @@ server.on('clientError', (e, sock) => { try { sock.end('HTTP/1.1 400 Bad Request
 server.on('upgrade', (req, sock) => sock.destroy());                    // the sites use no websockets
 
 server.listen(PORT, '0.0.0.0', async () => {
-  log(`listening on :${PORT}; / -> landing, ${SITES.map((s) => `${s.prefix}/ -> ${s.key}:${s.port}`).join(' ')}; reset every ${RESET_MIN} min; commit ${state.commit}`);
+  log(`listening on :${PORT}${HTTPS_ONLY ? ' (HTTPS only)' : ''}; / -> landing, ${SITES.map((s) => `${s.prefix}/ -> ${s.key}:${s.port}`).join(' ')}; reset every ${RESET_MIN} min; commit ${state.commit}`);
   await checkHealth();
   setInterval(checkHealth, 30e3);
   scheduleReset();

@@ -5,13 +5,13 @@ Rules for everyone (human or agent) building websandbox. Read with
 
 ## Repo
 
-- `websandbox`, branch `main`, remote `git@github.com:junfengzh/websandbox.git` (public).
-- Several builders work in this **same working tree** at the same time. Stage
+- `github.com/junfengzh/websandbox`, branch `main`.
+- Several builders may work in the **same working tree** at the same time. Stage
   **explicit paths you own** (never `git add -A` / `git add .` / `commit -a`),
-  commit, `git push`. No pull is needed (everyone commits to the same local
-  repo); if a push is rejected, `git pull --rebase --autostash`. Others'
-  uncommitted files in `git status` are normal -- leave them alone.
-- Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+  commit, `git push`; if a push is rejected, `git pull --rebase --autostash`.
+  Others' uncommitted files in `git status` are normal -- leave them alone.
+- Commit messages: a short `area: what changed` subject, a body when it helps;
+  agent-made commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Never commit data (DBs, images, dumps) -- `.gitignore` covers the usual
   suffixes. Never commit secrets, cookies or API keys; never print them.
 - Ownership: `kit/` (kit builder), `sites/<site>/` (that site's builder),
@@ -20,28 +20,32 @@ Rules for everyone (human or agent) building websandbox. Read with
 
 ## Machine and paths
 
-- Build box: 8 cores, 70 GB RAM. Node 20 (code must run on Node >= 20).
-  `sudo` and `docker` are available. Java 17 is available (planetiler).
-- Raw sources (read-only, NFS):
-  - `$WSB_SRC/*.sqfs` -- WebArena site rootfs images
-    (`shopping`, `shopping_admin`, `forum`, `gitlab`) with `*.config.json`
-    (entrypoint/env of the original container).
-  - `$WEBARENA_SRC/` -- the original WebArena docker tars and
-    `wikipedia_en_all_maxi_2022-05.zim` (95 GB).
-  - `$WSB_SRC/us-northeast-latest.osm.pbf` (Geofabrik).
-- Docker cannot bind-mount NFS. Mount a squashfs with
-  `sudo mount -o loop,ro <file> $WSB_MNT/<site>`, and
-  copy any database data directory you need to start a DB from to
-  `$WSB_WORK/<site>/` (local disk) first.
-- Work dir: `$WSB_WORK/<site>/` (intermediates, dumps).
-- Outputs: `$WSB_DATA_ROOT/<site>/base.db` and
-  `$WSB_DATA_ROOT/<site>/media/`. The lead publishes data
-  to the HF dataset `junfengzhou/websandbox`; builders do not upload.
-- Disk: the scratch disk has ~110 GB free shared by everyone. Delete intermediates
-  you no longer need; never leave a raw DB copy >20 GB lying around once
-  exported. Check `df -h $WSB_SCRATCH` before big copies.
-- Temp files: `$WSB_TMP/` or the session's job tmp dir, never `/tmp`
-  shared names and never hidden folders in the repo.
+- Node >= 20 (all code), Python 3, `sudo` and `docker` for the builds, Java 21
+  for the map tiles (planetiler). A full rebuild of every site wants ~8 cores,
+  ~64 GB RAM and a few hundred GB of local disk; running the sites needs far less.
+- Paths are environment variables, so nothing depends on one machine:
+
+  | Variable | What | Default |
+  |---|---|---|
+  | `WSB_DATA_ROOT` | built site data, `<site>/base.db` + `<site>/media/` (what the servers, tests and generators read) | `<repo>/data` |
+  | `WSB_WORK` | build intermediates and dumps, `<site>/` each | `<repo>/work` |
+  | `WSB_MNT` | mount points of the source images | `$WSB_WORK/mnt` |
+  | `WSB_SRC` | raw sources (read-only): WebArena site rootfs images `shopping.sqfs`, `shopping_admin.sqfs`, `forum.sqfs`, `gitlab.sqfs` (+ `*.config.json`), OSM extracts | required by the build steps that read it |
+  | `WIKI_ZIM` | `wikipedia_en_all_maxi_2022-05.zim` from the WebArena release | required by the wiki build |
+  | `WEBARENA_TASKS` | WebArena `config_files/test.raw.json` | `<repo>/../3rd-party/webarena/config_files/test.raw.json` |
+  | `WSB_TMP` | temp files of tests and tools (Chrome profiles, state files) | the OS temp dir |
+
+  Site-specific overrides still work (`CODE_DATA`, `FORUM_DATA`, `STORE_DATA`,
+  `WSB_MAP_DATA`, `WSB_WIKI_DATA`, ...); they take precedence over `WSB_DATA_ROOT`.
+- Docker cannot bind-mount every network filesystem. Mount a squashfs with
+  `sudo mount -o loop,ro <file> $WSB_MNT/<site>`, and copy any database data
+  directory you need to start a DB from to `$WSB_WORK/<site>/` (local disk) first.
+- The lead publishes data to the HF dataset `junfengzhou/websandbox`; builders
+  do not upload.
+- Delete intermediates you no longer need; never leave a raw DB copy >20 GB
+  lying around once exported. Check free disk before big copies.
+- Temp files: `$WSB_TMP` or your job's own tmp dir -- never shared fixed names
+  under `/tmp` and never hidden folders in the repo.
 - Python that reads extracted (untrusted) data runs with `python3 -I`.
 - Kill anything you start (DB containers, servers) when done. Do not use
   `pkill -f <pattern>` where the pattern also appears in your own command
@@ -63,16 +67,15 @@ Rules for everyone (human or agent) building websandbox. Read with
 | map | 7600-7699 | `wsb-map-*` |
 | cross-site tasks | 7700-7799 | -- |
 
-If you run the original WebArena sites, use them for reference (read-only browsing;
-do not log in and change state there): shopping `http://<webarena-host>:7770`,
-admin `http://<webarena-host>:7780/admin`, gitlab `http://<webarena-host>:8024`,
-forum `http://<webarena-host>:9999`, wiki `http://<webarena-host>:8888`. Some may be
-down; they are not required.
+If you run the original WebArena sites (their docker images), use them for
+reference with read-only browsing only (do not log in and change state there):
+shopping `:7770`, admin `:7780/admin`, gitlab `:8024`, forum `:9999`, wiki
+`:8888`. They are not required.
 
 ## WebArena tasks
 
-- Source: `$WEBARENA_TASKS`
-  (812 tasks; do not modify `3rd-party/`).
+- Source: `$WEBARENA_TASKS` (WebArena's `config_files/test.raw.json`, 812 tasks;
+  do not modify the WebArena checkout).
 - Converted tasks: `tasks/<site>/webarena.jsonl`, one JSON object per line:
   `task_id` (original WebArena id), `site`, `intent`, `intent_template`,
   `intent_template_id`, `start_url` (lite URL, host placeholders below),
@@ -109,9 +112,9 @@ down; they are not required.
   per task), not just running the SQL.
 - Browser for UI checks/verification: headless `/usr/bin/google-chrome`
   driven by `puppeteer-core` (install it as a devDependency of your site, or
-  under `$WSB_TMP/`). Use your own `--user-data-dir` and a free
-  `--remote-debugging-port` in your port range; never reuse a
-  Chrome you did not start. Kill your Chrome by PID when done.
+  under `$WSB_TMP`). Use your own `--user-data-dir` and a free
+  `--remote-debugging-port` in your port range; never reuse a Chrome you did
+  not start. Kill your Chrome by PID when done.
 
 ## Licences and attribution
 

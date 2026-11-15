@@ -17,7 +17,7 @@ import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = '$WEBARENA_TASKS'
+SRC = os.environ.get('WEBARENA_TASKS', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '3rd-party', 'webarena', 'config_files', 'test.raw.json'))
 H = '__SHOPPING_ADMIN__'
 # Rows that existed before the rollout end before the store clock (2023-06-12 16:00 UTC); rows the
 # agent creates get ids above these maxima (base.db, checked at conversion time).

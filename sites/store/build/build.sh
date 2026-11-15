@@ -6,10 +6,15 @@
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-SRC=${SRC:-$WSB_SRC}
-SCR=${SCR:-$WSB_SCRATCH}
-WORK=$SCR/work/store
-OUT=$SCR/data/store
+REPO=$(cd "$HERE/../../.." && pwd)
+# Paths (docs/CONVENTIONS.md): WSB_SRC raw sources (shopping*.sqfs; required for the mount steps),
+# WSB_WORK intermediates (default <repo>/work), WSB_MNT mount points (default $WSB_WORK/mnt),
+# WSB_DATA_ROOT outputs (default <repo>/data).
+SRC=${WSB_SRC:-${SRC:-}}
+WORK_ROOT=${WSB_WORK:-$REPO/work}
+MNTROOT=${WSB_MNT:-$WORK_ROOT/mnt}
+WORK=$WORK_ROOT/store
+OUT=${WSB_DATA_ROOT:-$REPO/data}/store
 VENV=$WORK/venv
 PY="$VENV/bin/python -I"
 MARIADB_IMAGE=mariadb:10.6.12      # both images run MariaDB 10.6.12 (mysql_upgrade_info)
@@ -27,7 +32,7 @@ venv() {
 }
 
 mnt() {  # mnt <name> <sqfs>
-  local m=$WSB_MNT/store_$1
+  local m=$MNTROOT/store_$1
   mkdir -p "$m"
   mountpoint -q "$m" || sudo mount -o loop,ro "$2" "$m"
 }
@@ -35,7 +40,7 @@ mnt() {  # mnt <name> <sqfs>
 start_db() {  # start_db <name> <port>
   local d=$WORK/${1}_mysql
   if [ ! -d "$d" ]; then
-    sudo cp -a "$WSB_MNT/store_$1/var/lib/mysql" "$d"
+    sudo cp -a "$MNTROOT/store_$1/var/lib/mysql" "$d"
     sudo rm -f "$d"/*.pid
     sudo chown -R 999:999 "$d"
   fi
@@ -53,20 +58,20 @@ export_db() {  # export_db <name> <port>
 
 step() {
   case $1 in
-    mount-admin)  mnt admin "$SRC/shopping_admin.sqfs" ;;
+    mount-admin)  mnt admin "${SRC:?set WSB_SRC to the directory with the WebArena source images}/shopping_admin.sqfs" ;;
     export-admin) venv; start_db admin 7301; export_db admin 7301 ;;
-    mount-shop)   mnt shop "$SRC/shopping.sqfs" ;;
+    mount-shop)   mnt shop "${SRC:?set WSB_SRC to the directory with the WebArena source images}/shopping.sqfs" ;;
     export-shop)  venv; start_db shop 7302; export_db shop 7302 ;;
     transform)
-      cp "$WSB_MNT/store_admin/usr/share/zoneinfo/iso3166.tab" "$WORK/iso3166.tab"
+      cp "$MNTROOT/store_admin/usr/share/zoneinfo/iso3166.tab" "$WORK/iso3166.tab"
       $PY "$HERE/transform.py" --admin "$WORK/raw_admin.db" --shop "$WORK/raw_shop.db" \
         --out "$OUT/base.db.new" --iso3166 "$WORK/iso3166.tab" \
         --accounts "$ACCOUNTS"
       mv "$OUT/base.db.new" "$OUT/base.db" ;;
     images)
       $PY "$HERE/images.py" --db "$OUT/base.db" --media "$OUT/media" --jobs "$JOBS" \
-        --src admin="$WSB_MNT/store_admin/var/www/magento2/pub/media" \
-        --src shop="$WSB_MNT/store_shop/var/www/magento2/pub/media" ;;
+        --src admin="$MNTROOT/store_admin/var/www/magento2/pub/media" \
+        --src shop="$MNTROOT/store_shop/var/www/magento2/pub/media" ;;
     luma-images)
       # Luma images from Magento's sample data (AFL-3.0/OSL-3.0); sparse clone, only read (never executed)
       SAMPLE=$WORK/sample-data/repo
@@ -88,7 +93,7 @@ step() {
     cleanup)
       for n in admin shop; do
         docker rm -f "wsb-store-$n-db" >/dev/null 2>&1 || true
-        mountpoint -q "$WSB_MNT/store_$n" && sudo umount "$WSB_MNT/store_$n" || true
+        mountpoint -q "$MNTROOT/store_$n" && sudo umount "$MNTROOT/store_$n" || true
         sudo rm -rf "$WORK/${n}_mysql"
       done ;;
     *) echo "unknown step $1" >&2; exit 2 ;;

@@ -28,7 +28,7 @@ const { values: a } = parseArgs({ options: {
 const ROOT = path.join(__dirname, '..', '..');
 const BASE = +a.base, PORT = +a.port, NT = +a.tenants, NR = +a.rollouts, STRIDE = +a.stride;
 const [TMIN, TMAX] = a.think.includes('-') ? a.think.split('-').map(Number) : [+a.think, +a.think];
-const STATE = a.state || path.join((process.env.WSB_TMP || require('os').tmpdir()), 'wsb-sites', String(BASE));
+const STATE = a.state || path.join((process.env.WSB_TMP || os.tmpdir()), 'wsb-sites', String(BASE));
 
 let seed = +a.seed;
 const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
@@ -268,7 +268,7 @@ if (CHILD != null) {
   }, 5000);
   if (NP > 1) {
     const { spawn } = require('node:child_process');
-    const dir = fs.mkdtempSync(path.join((process.env.WSB_TMP || require('os').tmpdir()), 'wsb-bench-'));
+    const dir = fs.mkdtempSync(path.join((process.env.WSB_TMP || os.tmpdir()), 'wsb-bench-'));
     const outs = await Promise.all([...Array(NP).keys()].map((j) => new Promise((res, rej) => {
       const f = path.join(dir, `c${j}.json`);
       const args = process.argv.slice(2).filter((x, i, xs) => x !== '--out' && xs[i - 1] !== '--out');

@@ -13,7 +13,7 @@ const path = require('path');
 const { parseArgs } = require('util');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const RAW = '$WEBARENA_TASKS';
+const RAW = (process.env.WEBARENA_TASKS || path.join(__dirname, '../..', '..', '3rd-party/webarena/config_files/test.raw.json'));
 const { values: A } = parseArgs({ options: { site: { type: 'string', default: 'http://127.0.0.1:7620' }, out: { type: 'string', default: path.join(__dirname, 'webarena.jsonl') } } });
 
 // Default view = CMU, as on the WebArena map; explicit in the start URL so search ranking (which

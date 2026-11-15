@@ -12,8 +12,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { parseArgs } = require('node:util');
 
-const { values: o } = parseArgs({ options: { port: { type: 'string', default: '7302' }, data: { type: 'string', default: '$WSB_DATA_ROOT/store' }, shots: { type: 'string' }, chrome: { type: 'string', default: '/usr/bin/google-chrome' } } });
-const ppDir = process.env.PUPPETEER_CORE_DIR || path.join((process.env.WSB_TMP || require('os').tmpdir()), 'store', 'node_modules');
+const { values: o } = parseArgs({ options: { port: { type: 'string', default: '7302' }, data: { type: 'string', default: path.join(process.env.WSB_DATA_ROOT || path.join(__dirname, '../../../..', 'data'), 'store') }, shots: { type: 'string' }, chrome: { type: 'string', default: '/usr/bin/google-chrome' } } });
+const ppDir = process.env.PUPPETEER_CORE_DIR || path.join((process.env.WSB_TMP || os.tmpdir()), 'store', 'node_modules');
 const puppeteer = require(require.resolve('puppeteer-core', { paths: [ppDir] }));
 function password() {
   if (process.env.STORE_TEST_PASSWORD) return process.env.STORE_TEST_PASSWORD;
@@ -25,7 +25,7 @@ function password() {
 const ok = (cond, msg) => { if (!cond) throw new Error(`FAIL: ${msg}`); console.log(`ok - ${msg}`); };
 
 (async () => {
-  const tmp = fs.mkdtempSync(path.join((process.env.WSB_TMP || require('os').tmpdir()), 'wsb-store-smoke-'));
+  const tmp = fs.mkdtempSync(path.join((process.env.WSB_TMP || os.tmpdir()), 'wsb-store-smoke-'));
   const site = require('../../server.js');
   const s = await site.start({ tenants: 1, port: +o.port, data: o.data, bind: 'ports', uploads: path.join(tmp, 'uploads') });
   const base = s.url(0);

@@ -50,7 +50,7 @@ for (let i = 0; i < argv.length; i++) {
   } else pos.push(a);
 }
 const PORT = +(flags.port || process.env.WSB_BROWSE_PORT || 7280);
-const DIR = path.join((process.env.WSB_TMP || require('os').tmpdir()), 'wsb-browse');
+const DIR = path.join((process.env.WSB_TMP || os.tmpdir()), 'wsb-browse');
 const STATE = flags.state || process.env.WSB_BROWSE_STATE || path.join(DIR, `${PORT}.json`);
 const CHROME = flags.chrome || process.env.WSB_CHROME || '/usr/bin/google-chrome';
 const TIMEOUT = +(flags.timeout || 15000);

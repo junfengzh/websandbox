@@ -8,7 +8,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { Worker, isMainThread, parentPort, workerData } = require('node:worker_threads');
 
-const CACHE_DIR = process.env.WIKI_GEN_CACHE || '$WSB_WORK/wiki/gen-cache';
+const CACHE_DIR = process.env.WIKI_GEN_CACHE || path.join(process.env.WSB_WORK || path.join(__dirname, '../../..', 'work'), 'wiki/gen-cache');
 const MAX_LINES = 25; const MAX_ROWS = 80;
 
 function work({ lo, hi }) {
