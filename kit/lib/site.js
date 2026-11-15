@@ -15,6 +15,7 @@ const search = require('./search');
 const { httpError, isLoopback } = require('./context');
 
 const KIT_PUBLIC = path.join(__dirname, '..', 'public');
+const CSP = "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; form-action 'self'";
 const SITE_INDEX = { shopping: 2, shopping_admin: 3, forum: 4, gitlab: 5, wiki: 6, map: 7 };
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 // Browser-originated (agent page JS): Chrome sends Origin on every POST, Sec-Fetch-Site on
@@ -169,6 +170,9 @@ function buildApp(rt, o) {
     }
     req.tenant = t;
     reply.locals = {};
+    // Sites are self-contained: the browser may load nothing from other hosts, even when
+    // imported content (READMEs, product descriptions) embeds absolute image URLs.
+    reply.header('content-security-policy', cfg.csp || CSP);
     await t.ready;
   });
 
