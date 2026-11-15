@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>websandbox map demo</title>
+<link rel="stylesheet" href="/vendor/maplibre-gl.css">
+<style>
+  html, body { margin: 0; height: 100%; font: 14px system-ui, sans-serif; }
+  #map { position: absolute; inset: 0 0 0 340px; }
+  #side { position: absolute; top: 0; left: 0; bottom: 0; width: 340px; overflow: auto; padding: 10px; box-sizing: border-box; background: #fafafa; border-right: 1px solid #ddd; }
+  input, select, button { font: inherit; }
+  input[type=text] { width: 100%; box-sizing: border-box; padding: 6px; margin: 2px 0; }
+  .r { padding: 6px 4px; border-bottom: 1px solid #eee; cursor: pointer; }
+  .r:hover { background: #eef; }
+  .muted { color: #666; font-size: 12px; }
+  ol { padding-left: 20px; }
+</style>
+</head>
+<body>
+<div id="side">
+  <form id="sf"><input type="text" id="q" placeholder="Search places (e.g. Carnegie Mellon University)" autocomplete="off"></form>
+  <div id="results"></div>
+  <hr>
+  <div><b>Directions</b></div>
+  <input type="text" id="from" placeholder="From"><input type="text" id="to" placeholder="To">
+  <select id="profile"><option value="car">Car</option><option value="bike">Bicycle</option><option value="foot">Foot</option></select>
+  <button id="go">Go</button>
+  <div id="route"></div>
+  <hr>
+  <div id="click" class="muted">Click the map to reverse-geocode.</div>
+</div>
+<div id="map"></div>
+<script src="/vendor/maplibre-gl.js"></script>
+<script>
+const map = new maplibregl.Map({ container: 'map', style: '/style.json', center: [-79.9436, 40.4443], zoom: 13, hash: true });
+map.addControl(new maplibregl.NavigationControl());
+map.addControl(new maplibregl.ScaleControl());
+const $ = (id) => document.getElementById(id);
+let marker = null;
+const fmtD = (m) => m < 1000 ? Math.round(m) + 'm' : (m / 1000).toFixed(1) + 'km';
+const fmtT = (s) => { const m = Math.round(s / 60); return m < 60 ? m + ' min' : Math.floor(m / 60) + 'h ' + (m % 60) + 'min'; };
+async function search(q) {
+  const c = map.getCenter();
+  const r = await (await fetch(`/api/search?q=${encodeURIComponent(q)}&lat=${c.lat}&lon=${c.lng}`)).json();
+  return r;
+}
+$('sf').onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await search($('q').value);
+  $('results').innerHTML = r.map((x, i) => `<div class="r" data-i="${i}"><b>${x.name || x.type}</b> <span class="muted">${x.class}/${x.type}</span><br><span class="muted">${x.display_name}</span></div>`).join('') || '<div class="muted">No results</div>';
+  document.querySelectorAll('.r').forEach((el) => el.onclick = () => {
+    const x = r[+el.dataset.i];
+    if (marker) marker.remove();
+    marker = new maplibregl.Marker().setLngLat([x.lon, x.lat]).addTo(map);
+    map.flyTo({ center: [x.lon, x.lat], zoom: 17 });
+  });
+};
+map.on('click', async (e) => {
+  const r = await (await fetch(`/api/reverse?lat=${e.lngLat.lat}&lon=${e.lngLat.lng}&zoom=${Math.round(map.getZoom())}`)).json();
+  $('click').textContent = r ? `${r.display_name} (${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)})` : 'nothing here';
+});
+$('go').onclick = async () => {
+  const [a] = await search($('from').value), [b] = await search($('to').value);
+  if (!a || !b) { $('route').textContent = 'place not found'; return; }
+  $('from').value = a.display_name; $('to').value = b.display_name;
+  const r = await (await fetch(`/api/route?from=${a.lon},${a.lat}&to=${b.lon},${b.lat}&profile=${$('profile').value}`)).json();
+  if (r.code !== 'Ok') { $('route').textContent = r.message || r.error; return; }
+  $('route').innerHTML = `<p><b>${fmtD(r.distance)}, ${fmtT(r.duration)}</b></p><ol>` + r.steps.map((s) => `<li>${s.instruction} <span class="muted">${fmtD(s.distance)}</span></li>`).join('') + '</ol>';
+  const src = { type: 'Feature', geometry: r.geometry };
+  if (map.getSource('route')) map.getSource('route').setData(src);
+  else {
+    map.addSource('route', { type: 'geojson', data: src });
+    map.addLayer({ id: 'route', type: 'line', source: 'route', paint: { 'line-color': '#1a73e8', 'line-width': 5, 'line-opacity': 0.8 } });
+  }
+  map.fitBounds([[r.bbox[0], r.bbox[1]], [r.bbox[2], r.bbox[3]]], { padding: 40 });
+};
+</script>
+</body>
+</html>

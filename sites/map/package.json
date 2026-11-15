@@ -1,0 +1,18 @@
+{
+  "name": "@websandbox/map",
+  "version": "0.1.0",
+  "private": true,
+  "description": "websandbox map site: vector tiles, geocoder (SQLite FTS5 + R*Tree) and CH routing engines",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "demo": "node demo/server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "maplibre-gl": "^4.7.1"
+  }
+}

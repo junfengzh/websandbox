@@ -1,0 +1,193 @@
+{
+  "_comment": "Canonical short form -> long forms. Index and query tokens are mapped to the short form (build/textnorm.py, lib/textnorm.js).",
+  "abbrev": {
+    "st": [
+      "street",
+      "saint",
+      "str"
+    ],
+    "ave": [
+      "avenue",
+      "av",
+      "aven"
+    ],
+    "rd": [
+      "road"
+    ],
+    "blvd": [
+      "boulevard",
+      "boul"
+    ],
+    "dr": [
+      "drive"
+    ],
+    "ln": [
+      "lane"
+    ],
+    "ct": [
+      "court"
+    ],
+    "pl": [
+      "place"
+    ],
+    "sq": [
+      "square"
+    ],
+    "ter": [
+      "terrace",
+      "terr"
+    ],
+    "pkwy": [
+      "parkway",
+      "pky"
+    ],
+    "hwy": [
+      "highway"
+    ],
+    "expy": [
+      "expressway"
+    ],
+    "tpke": [
+      "turnpike"
+    ],
+    "fwy": [
+      "freeway"
+    ],
+    "cir": [
+      "circle"
+    ],
+    "aly": [
+      "alley"
+    ],
+    "way": [],
+    "plz": [
+      "plaza"
+    ],
+    "br": [
+      "bridge"
+    ],
+    "mt": [
+      "mount",
+      "mountain"
+    ],
+    "ft": [
+      "fort"
+    ],
+    "pt": [
+      "point"
+    ],
+    "hts": [
+      "heights"
+    ],
+    "n": [
+      "north"
+    ],
+    "s": [
+      "south"
+    ],
+    "e": [
+      "east"
+    ],
+    "w": [
+      "west"
+    ],
+    "ne": [
+      "northeast"
+    ],
+    "nw": [
+      "northwest"
+    ],
+    "se": [
+      "southeast"
+    ],
+    "sw": [
+      "southwest"
+    ],
+    "univ": [
+      "university",
+      "uni"
+    ],
+    "coll": [
+      "college"
+    ],
+    "intl": [
+      "international"
+    ],
+    "natl": [
+      "national"
+    ],
+    "ctr": [
+      "center",
+      "centre",
+      "cntr"
+    ],
+    "hosp": [
+      "hospital"
+    ],
+    "lib": [
+      "library"
+    ],
+    "sta": [
+      "station"
+    ],
+    "twp": [
+      "township"
+    ],
+    "co": [
+      "county",
+      "company"
+    ],
+    "dept": [
+      "department"
+    ],
+    "assn": [
+      "association"
+    ],
+    "inst": [
+      "institute"
+    ],
+    "1st": [
+      "first"
+    ],
+    "2nd": [
+      "second"
+    ],
+    "3rd": [
+      "third"
+    ],
+    "4th": [
+      "fourth"
+    ],
+    "5th": [
+      "fifth"
+    ],
+    "6th": [
+      "sixth"
+    ],
+    "7th": [
+      "seventh"
+    ],
+    "8th": [
+      "eighth"
+    ],
+    "9th": [
+      "ninth"
+    ],
+    "10th": [
+      "tenth"
+    ]
+  },
+  "stopwords": [
+    "the",
+    "of",
+    "on",
+    "at",
+    "in",
+    "near",
+    "a",
+    "an",
+    "by",
+    "to",
+    "for"
+  ]
+}

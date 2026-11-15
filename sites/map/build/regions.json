@@ -1,0 +1,110 @@
+{
+  "regions": [
+    {
+      "id": "us-northeast",
+      "name": "US Northeast",
+      "src": "us-northeast-latest.osm.pbf",
+      "poly": "regions/us-northeast.poly",
+      "country": "United States",
+      "country_code": "us",
+      "center": [
+        -79.9436,
+        40.4443
+      ],
+      "zoom": 13,
+      "as_is": true,
+      "default_parts": []
+    },
+    {
+      "id": "sf",
+      "name": "San Francisco",
+      "src": "bbbike-SanFrancisco.osm.pbf",
+      "bbox": [
+        -122.54,
+        37.54,
+        -122.32,
+        37.93
+      ],
+      "country": "United States",
+      "country_code": "us",
+      "center": [
+        -122.4194,
+        37.7749
+      ],
+      "zoom": 13,
+      "default_parts": [
+        [
+          "county",
+          "San Francisco"
+        ],
+        [
+          "state",
+          "California"
+        ]
+      ]
+    },
+    {
+      "id": "london",
+      "name": "Greater London",
+      "src": "greater-london-latest.osm.pbf",
+      "poly": "regions/greater-london.poly",
+      "country": "United Kingdom",
+      "country_code": "gb",
+      "center": [
+        -0.1276,
+        51.5072
+      ],
+      "zoom": 13,
+      "default_parts": [
+        [
+          "state",
+          "England"
+        ]
+      ]
+    },
+    {
+      "id": "singapore",
+      "name": "Singapore",
+      "src": "bbbike-Singapore.osm.pbf",
+      "bbox": [
+        103.6033,
+        1.2385,
+        104.028,
+        1.4804
+      ],
+      "country": "Singapore",
+      "country_code": "sg",
+      "center": [
+        103.8198,
+        1.3521
+      ],
+      "zoom": 13,
+      "default_parts": []
+    },
+    {
+      "id": "mackinac",
+      "name": "Mackinac Straits (Michigan)",
+      "src": "overpass-mackinac.osm.pbf",
+      "bbox": [
+        -84.8,
+        45.76,
+        -84.66,
+        45.89
+      ],
+      "country": "United States",
+      "country_code": "us",
+      "center": [
+        -84.7277,
+        45.8174
+      ],
+      "zoom": 12,
+      "default_parts": [
+        [
+          "state",
+          "Michigan"
+        ]
+      ],
+      "note": "Overpass API extract (Mackinac Bridge, WebArena task 425)"
+    }
+  ]
+}
