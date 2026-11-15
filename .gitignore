@@ -11,3 +11,5 @@ data/
 *.pbf
 media/
 .env
+__pycache__/
+*.pyc

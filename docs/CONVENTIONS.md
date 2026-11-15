@@ -6,9 +6,11 @@ Rules for everyone (human or agent) building websandbox. Read with
 ## Repo
 
 - `websandbox`, branch `main`, remote `git@github.com:junfengzh/websandbox.git` (public).
-- Several builders work in this repo at the same time. Stage **explicit paths
-  you own** (never `git add -A` / `git add .`), then `git pull --rebase` and
-  `git push`. Small, frequent commits.
+- Several builders work in this **same working tree** at the same time. Stage
+  **explicit paths you own** (never `git add -A` / `git add .` / `commit -a`),
+  commit, `git push`. No pull is needed (everyone commits to the same local
+  repo); if a push is rejected, `git pull --rebase --autostash`. Others'
+  uncommitted files in `git status` are normal -- leave them alone.
 - Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Never commit data (DBs, images, dumps) -- `.gitignore` covers the usual
   suffixes. Never commit secrets, cookies or API keys; never print them.
@@ -85,6 +87,11 @@ down; they are not required.
   "Manual run" = really doing the task through the site's UI in a browser
   (chrome-devtools MCP tools if available, else Playwright/puppeteer scripted
   per task), not just running the SQL.
+- Browser for UI checks/verification: headless `/usr/bin/google-chrome`
+  driven by `puppeteer-core` (install it as a devDependency of your site, or
+  under `$WSB_TMP/`). Use your own `--user-data-dir` and a free
+  `--remote-debugging-port` in your port range; never reuse a
+  Chrome you did not start. Kill your Chrome by PID when done.
 
 ## Licences and attribution
 
