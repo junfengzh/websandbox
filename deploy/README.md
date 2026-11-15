@@ -53,6 +53,7 @@ docker build -t websandbox:latest deploy
 docker compose pull && docker compose up -d
 ```
 
+
 Create it from scratch: `docker compose up -d` in `deploy/`.
 
 ## Reverse proxy
