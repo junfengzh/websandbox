@@ -1,0 +1,13 @@
+node_modules/
+# site data is published to the Hugging Face dataset, never committed
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.mbtiles
+*.tar.zst
+*.zim
+*.pbf
+media/
+.env
