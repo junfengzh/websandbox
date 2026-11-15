@@ -1,0 +1,8 @@
+{
+  "name": "websandbox-task-tools",
+  "private": true,
+  "description": "Task conversion/verification tools: browse.js (step-by-step headless Chrome driver), grade.js (grade a task line against a running tenant).",
+  "devDependencies": {
+    "puppeteer-core": "24.43.1"
+  }
+}
