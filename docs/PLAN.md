@@ -7,7 +7,7 @@ a site, many more tasks than WebArena ships, and site variety for **generic**
 web skills (search, browse, filter, forms, multi-step edits on shopping /
 social / CRM / dev / reference / map sites), not overfitting to specific apps.
 
-Status: plan (2026-11-15), decisions from review applied. Nothing built yet.
+Status: building (started 2026-11-15). Build conventions: [CONVENTIONS.md](CONVENTIONS.md).
 Code: github.com/junfengzh/websandbox (public). Data: huggingface.co/datasets/junfengzhou/websandbox (public, with licence and attribution).
 
 Decisions:
@@ -70,7 +70,7 @@ site and the site queue disappears.
 
 ### 3.1 Server kit (`kit/`)
 
-- **Node 22, Fastify, better-sqlite3**, server-rendered HTML (Eta or Nunjucks
+- **Node (>= 20), Fastify, better-sqlite3**, server-rendered HTML (Eta or Nunjucks
   templates) with small client JS for the parts real apps do with XHR (grid
   filtering, voting, cart, autocomplete, map). Node is closer to how real sites
   are built, and better-sqlite3's synchronous API makes the per-tenant
@@ -267,7 +267,8 @@ Features:
 - category pages; "what links here"; redirects;
 - talk pages (optional, gives write tasks).
 
-Data: the WebArena Kiwix ZIM. Select 3-4 GB of it:
+Data: the WebArena ZIM (`wikipedia_en_all_maxi_2022-05`, 95 GB; a copy is
+on the build machine's NFS). Select 3-4 GB of it:
 - every article the 23 WebArena Wikipedia tasks need (national parks,
   universities, cities, people);
 - then the most-linked articles until the budget is reached;
@@ -427,9 +428,10 @@ repo) after all sites and their tasks are verified.
   skins, real data, and the optional periodic real-WebArena check (§3.4).
 - **Data licensing:** WebArena data derives from public sources (Amazon
   reviews, Reddit, public GitLab repos, Wikipedia CC BY-SA, OSM ODbL with
-  attribution). Internal RL use only; keep attribution files with the data.
-- **PII:** usernames and texts are public-source but personal; keep the
-  databases private (same policy as the SFT data).
+  attribution). Published with the sources' licences and attribution files.
+- **PII:** usernames and texts are public-source (WebArena's own public
+  data). The dataset is public by the owner's decision, with licence and
+  attribution files; no data beyond what WebArena already published.
 - **Long transactions:** one open transaction per tenant for the whole
   rollout. Fine for SQLite with WAL, but jobs must use the tenant connection,
   never a second writer.
