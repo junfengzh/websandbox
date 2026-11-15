@@ -268,3 +268,11 @@ starts with the first tenant; routing requests wait for it.
 - Gaps: no user accounts/notes (read-only site); search ranking depends on the map view centre
   (header from the page script, default CMU), not on the URL; foot/bike > 250 km refused; the
   "Nearby" list on place pages is straight-line; no GPX/export, layers switcher or map keys.
+
+## Cross-site tasks (2026-11-15, tasks/cross)
+
+- Geocoder fix for task 760: "Allentown, PA" now finds the city (Lehigh County) instead of the
+  Allentown neighbourhood of Pittsburgh near the CMU view (a qualified settlement name -- exact first
+  comma segment on a boundary/place row -- gets 1/3 of the view-proximity bonus). Bare "Allentown"
+  is unchanged; `build/check_places.js` top hits are otherwise identical (fixture q -> "Allentown, PA").
+  Restart map servers started before 9d3578c to pick it up. The 19 map cross tasks: docs/NOTES-cross.md.
