@@ -12,7 +12,7 @@ Builder notes for the store site (`sites/store/`). Schema:
 | DB engine | MariaDB 10.6.12 | MariaDB 10.6.12 |
 | MySQL data dir | 3.7 GB | 233 MB |
 | `catalog_product_entity_text` | 1.72 GB (descriptions: scraped Amazon HTML, avg 13.8 KB, 1.44 GB in total) | small |
-| product images | 195,383 originals, 5.66 GB (+37 GB Magento resize cache, not used) | 45 referenced, **1 exists** (Luma sample images were never installed) |
+| product images | 195,383 originals, 5.66 GB (+37 GB Magento resize cache, not used) | 45 referenced, **1 exists** (Luma sample images were never installed; added later from Magento's sample data, see notes) |
 | products | 104,368 simple (with 68,584 custom "radio" options: Color/Size/...) | 2,040 (147 configurable, 1,891 simple, 1 bundle, 1 grouped) |
 | categories | 303 | 40 |
 | reviews | 308,939 (all approved) | 351 (346 approved, 5 pending) |
@@ -125,9 +125,9 @@ Builder notes for the store site (`sites/store/`). Schema:
 
 ## Open issues / gaps
 
-- **No Luma product images**: the admin image never had the sample images
-  (1 of 45 referenced files exists). Luma products render without images
-  unless someone adds placeholders.
+- ~~No Luma product images~~: the admin image never had the sample images
+  (1 of 45 referenced files exists); fixed by the `luma-images` build step
+  (Magento sample data), see below.
 - Shop descriptions of the default store view were `This is the description
   placeholder for the product` at store 0; the store-1 (storefront) HTML is
   what is kept (what the storefront showed).
@@ -149,12 +149,24 @@ Builder notes for the store site (`sites/store/`). Schema:
 Server and routes: `sites/store/server.js` (storefront + `/admin` mount, contract at the
 top), `sites/store/storefront/`, [../sites/store/ROUTES.md](../sites/store/ROUTES.md).
 
-- **Luma product images: not recoverable.** The WebArena admin docker tar
+- **Luma product images: not recoverable from WebArena** (superseded below). The WebArena admin docker tar
   (`shopping_admin_final_0719.tar`, Magento root `/var/www/magento2`) holds only ~100
   md5-named product images (layers `ed902127...`, `3206c30c...`) and no Luma sample files
   (`m/b/mb01-blue-0.jpg` etc.); the shopping tar has none under `m/` either, and the live
   reference admin (:7780) returns a 1692-byte placeholder for every Luma path. Luma products
   render with a "No image" placeholder; base.db/media are unchanged (no image step edit).
+- **Luma product images added from Magento's sample data** (2026-11-15). The official
+  sample data (github.com/magento/magento2-sample-data, AFL-3.0/OSL-3.0; see
+  `sites/store/SOURCES.md`) has the Luma originals (725 files under
+  `pub/media/catalog/product/`) and the import fixtures (sku -> base/small/thumbnail/additional
+  images). Build step `luma-images` (`sites/store/build/luma_images.py`, idempotent) sparse-clones
+  it to `work/store/sample-data/repo`, matches by SKU, converts with `images.convert` (same WebP
+  settings) and updates base.db in place: 52 existing gallery rows got a file, 3,364 rows were
+  inserted (orig_path set, positions after existing ones, fixture roles where none held);
+  717 WebP files, 11 MB. **Coverage: 2,040 of 2,040 Luma products have an image** (147
+  configurables, 1,891 simples incl. color-specific child images, the bundle and the grouped
+  product). verify.py: 0 failures. Tenant DBs created before this hold their own
+  `product_images` ids; reset tenants so new base ids cannot collide.
 - **Clock**: `2023-06-12 16:00 UTC` ("Today is 6/12/2023" in the shop tasks). Dates show in
   America/New_York like Magento (order history `6/12/23`, order page "June 12, 2023").
 - **Prices**: final price = special price when lower and in its date window; configurables

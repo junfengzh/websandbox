@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Rebuild the store's base.db + media/ from the WebArena Magento squashfs images.
 # Usage: sites/store/build/build.sh [step...]
-#   steps: mount-admin export-admin mount-shop export-shop transform images verify cleanup
+#   steps: mount-admin export-admin mount-shop export-shop transform images luma-images finalize verify cleanup
 #   (default: all, in that order). See README.md.
 set -euo pipefail
 
@@ -67,6 +67,17 @@ step() {
       $PY "$HERE/images.py" --db "$OUT/base.db" --media "$OUT/media" --jobs "$JOBS" \
         --src admin="$WSB_MNT/store_admin/var/www/magento2/pub/media" \
         --src shop="$WSB_MNT/store_shop/var/www/magento2/pub/media" ;;
+    luma-images)
+      # Luma images from Magento's sample data (AFL-3.0/OSL-3.0); sparse clone, only read (never executed)
+      SAMPLE=$WORK/sample-data/repo
+      if [ ! -d "$SAMPLE/.git" ]; then
+        mkdir -p "$WORK/sample-data"
+        git -c core.hooksPath=/dev/null clone --depth 1 --filter=blob:none --sparse \
+          https://github.com/magento/magento2-sample-data.git "$SAMPLE"
+        git -C "$SAMPLE" -c core.hooksPath=/dev/null sparse-checkout set --no-cone \
+          '/app/code/Magento/*/fixtures/*' '/pub/media/catalog/product/*' '/LICENSE*'
+      fi
+      $PY "$HERE/luma_images.py" --db "$OUT/base.db" --media "$OUT/media" --sample "$SAMPLE" --jobs "$JOBS" ;;
     verify)
       $PY "$HERE/verify.py" --db "$OUT/base.db" --admin "$WORK/raw_admin.db" --shop "$WORK/raw_shop.db" \
         --media "$OUT/media" ;;
@@ -85,5 +96,5 @@ step() {
 }
 
 steps=("$@")
-[ ${#steps[@]} -eq 0 ] && steps=(mount-admin export-admin mount-shop export-shop transform images finalize verify cleanup)
+[ ${#steps[@]} -eq 0 ] && steps=(mount-admin export-admin mount-shop export-shop transform images luma-images finalize verify cleanup)
 for s in "${steps[@]}"; do echo "== $s"; step "$s"; done

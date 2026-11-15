@@ -2,12 +2,13 @@
 
 `base.db` and `media/` of the websandbox store are extracted from the two
 Magento 2 stores that WebArena ships as docker images. Nothing else is added
-except the country names (below).
+except the country names and the Luma product images (below).
 
 | Part | Source | Licence |
 |---|---|---|
 | One Stop Market catalog, customers, orders, reviews (`source='shop'`) | WebArena `shopping` image (`shopping_final_0712.tar`; rootfs squashfs `shopping.sqfs`), Magento 2.4 database `magentodb` and `pub/media` | WebArena: Apache-2.0. The WebArena authors built the catalog from public Amazon product metadata and reviews (the Amazon review data of McAuley et al., UCSD); product texts, review texts and images remain under their original terms. |
 | Luma apparel catalog, customers, orders, reviews, CMS pages, rules (`source='admin'`) | WebArena `shopping_admin` image (`shopping_admin_final_0719.tar`; `shopping_admin.sqfs`) | Magento 2 sample data (Luma): OSL-3.0 / AFL-3.0 (Magento Open Source sample data); WebArena additions (customers, orders, reviews): Apache-2.0 |
+| Luma product images (`media/product/admin/`, `product_images` rows of `source='admin'`; WebP re-encodes, long side <= 600 px) | Magento 2 sample data, https://github.com/magento/magento2-sample-data (`pub/media/catalog/product/` + the image columns of the import fixtures; commit recorded in `build_info` key `images.luma_sample_data`) -- WebArena's admin image never installed these files | Magento sample data: AFL-3.0 / OSL-3.0, Copyright Magento, Inc. (Adobe) |
 | Country names (`countries.name`) | `iso3166.tab` of the tz database, from the same image | public domain |
 
 Customers, e-mail addresses, phone numbers and street addresses in both stores
@@ -20,3 +21,5 @@ review texts come from the public Amazon review data.
 > Web Environment for Building Autonomous Agents", https://webarena.dev,
 > Apache-2.0), which includes Magento 2 Luma sample data (OSL-3.0/AFL-3.0) and
 > product metadata and reviews from the Amazon review data (McAuley et al.).
+> Luma product images: Magento 2 sample data
+> (https://github.com/magento/magento2-sample-data, AFL-3.0/OSL-3.0).
