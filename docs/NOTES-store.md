@@ -25,14 +25,21 @@ Builder notes for the store site (`sites/store/`). Schema:
 
 ## Output
 
-- `data/store/base.db`: **1.42 GB** (target was 2-3 GB; this is all the data).
-  Largest parts: products 366 MB (of which descriptions 251 MB), FTS 577 MB
-  (word index + its content copy), reviews 155 MB, trigram index 55 MB,
-  product_attributes + indexes 75 MB. Shop descriptions shrank from 1.44 GB to
-  251 MB with `htmlclean.py` (attributes/scripts/images/empty wrappers removed;
-  visible text and table structure kept).
-- `data/store/media/`: WebP, long side 600 px, q80 (size in the table below once
-  the image step has finished).
+- `data/store/base.db`: **1.15 GB** (target was 2-3 GB; this is all the data).
+  Largest parts: products 372 MB (of which descriptions 251 MB), FTS word
+  index 330 MB + trigram 40 MB (external-content, no text copy), reviews
+  155 MB, product_attributes + indexes ~75 MB. Shop descriptions shrank from
+  1.44 GB to 251 MB with `htmlclean.py` (attributes/scripts/images/empty
+  wrappers removed; visible text and table structure kept). Rollback-journal
+  mode, ANALYZEd, VACUUMed, integrity_check ok.
+- `data/store/media/`: **4.5 GB**, 194,635 WebP files (long side <= 600 px,
+  q80, libwebp method 2): 194,592 shop product images (4.34 GB, avg 22 KB,
+  avg 475x488 px; 0 unreadable), 1 Luma product image, Luma category/CMS
+  banners, the One Stop Market logo. Took 55 min with 6 processes on the
+  shared box.
+- Kept intermediates: `work/store/raw_admin.db` (5 MB), `raw_shop.db`
+  (1.8 GB; lets `transform` re-run without MariaDB). MariaDB containers,
+  data-dir copies and mounts are removed.
 - Row counts: products 106,408 (shop 104,368 + admin 2,040); categories 342
   (incl. new "Luma Apparel" department, id 404); reviews 309,290; review votes
   304,051; customers 72; customer addresses 71; orders 497; order items 2,174;
@@ -40,8 +47,9 @@ Builder notes for the store site (`sites/store/`). Schema:
   `spec_*` attributes from the Amazon product-details tables); product options
   68,584 / values 425,384; URL rewrites 104,902; id_map 414,124.
 - `verify.py`: all row counts match the sources, 0 dangling references, unique
-  url keys / url paths / order numbers / e-mails, FTS row counts = products,
-  30 task spot checks pass.
+  url keys / url paths / order numbers / e-mails, FTS integrity-check ok,
+  every image file present, all password hashes kit-verifiable, 30 task spot
+  checks pass (123 checks in total).
 
 ## Decisions
 
@@ -86,10 +94,17 @@ Builder notes for the store site (`sites/store/`). Schema:
    `<identifier>-shop` (ids 11-14), e.g. `home-shop` "One Stop Market". The
    storefront home is page 2 `home` (title "Home Page", empty content in
    Luma); the storefront should render its own product showcase there.
-8. Search: FTS5 word index (porter, prefix 2/3) over name, brand, category
-   names, SKU, HTML-stripped description, weights 10/5/3/2/1, plus a trigram
-   index on name + SKU; triggers keep both in sync inside the tenant
-   transaction.
+8. Search: external-content FTS5 over `products` (porter, prefix 2/3) on
+   name, brand, category_names, SKU, description (weights 10/5/3/2/1), plus a
+   trigram index on name + SKU; triggers keep both in sync inside the tenant
+   transaction (kit convention).
+9. Passwords: kit.auth cannot verify Magento's `hash:salt:3_32_2_67108864`.
+   Accounts whose hash matches the public WebArena demo password (70 of 72
+   customers incl. emma.lopez, and admin) get a cheap kit `scrypt$` hash
+   (deterministic salt); the other 2 customers keep their argon2id hash
+   re-encoded as a PHC string (verifiable, ~100 ms). The candidate passwords
+   are read from WebArena's `browser_env/env_config.py`, not stored in this
+   repo; the original hash is kept in `magento_password_hash`.
 
 ## Effects on task conversion
 
@@ -121,5 +136,10 @@ Builder notes for the store site (`sites/store/`). Schema:
   create them).
 - `fraud` / `holded` statuses exist as definitions only (task 676 "suspected
   fraud" has no matching orders in either source).
-- Image step runs ~1,300 images/min on the shared, saturated box (~2.5 h for
-  195k); it is resumable (existing WebP files are reused).
+- The image step is CPU-bound (~1,000-3,500 images/min depending on box
+  load); it is resumable (existing WebP files are reused).
+- Search relevance is untuned (e.g. "usb wifi" ranks a TV box first);
+  tune per §3.5 with the search tasks (274-278, 324-328) when the storefront
+  exists. Magento's own search showed different result sets; tasks whose
+  answers came from Magento search results (e.g. 124 price range of
+  "wireless earphone") must be re-derived.
