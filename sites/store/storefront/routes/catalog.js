@@ -3,6 +3,7 @@
 const C = require('../lib/catalog');
 const S = require('../../shared');
 const cart = require('../lib/cart');
+const pindex = require('../lib/pindex');
 
 module.exports = async function catalogRoutes(app, kit) {
   const db = () => kit.db();
@@ -13,16 +14,45 @@ module.exports = async function catalogRoutes(app, kit) {
     if (/^shopping-admin\b/i.test(host)) return reply.redirect('/admin');
     const page = kit.db().prepare("SELECT * FROM cms_pages WHERE identifier = 'home-shop' AND is_active = 1").get();
     // "Product Showcases" widget: 24 products, 12 per page (?pbaocw=2), as on the original home page
-    const showIds = db().prepare(`SELECT id FROM products p WHERE p.status = 1 AND p.visibility IN ${C.VIS_CATALOG} AND p.source = 'shop' ORDER BY p.id LIMIT 24`).pluck().all();
     const pg = Math.min(Math.max(parseInt(req.query.pbaocw, 10) || 1, 1), 2);
-    const showcase = C.cards(db(), showIds.slice((pg - 1) * 12, pg * 12));
-    const t = C.tree(db());
-    const departments = C.activeChildren(t.root, true).map((c) => ({ c, url: C.catUrl(c), img: db().prepare(`SELECT i.file FROM product_categories pc JOIN products p ON p.id = pc.product_id JOIN product_images i ON i.product_id = p.id AND i.file IS NOT NULL
-        WHERE pc.category_id = ? AND p.status = 1 AND p.visibility IN (2,4) ORDER BY pc.position, p.id LIMIT 1`).pluck().get(c.id) }));
-    const deals = C.cards(db(), db().prepare(`SELECT id FROM products p WHERE p.status = 1 AND p.visibility IN (2,4) AND p.special_price IS NOT NULL AND p.special_price < p.price
-        AND (p.special_from IS NULL OR substr(p.special_from, 1, 10) <= today()) AND (p.special_to IS NULL OR substr(p.special_to, 1, 10) >= today()) ORDER BY p.id LIMIT 6`).pluck().all());
+    const h = homeData();
+    const showcase = C.cards(db(), h.showIds.slice((pg - 1) * 12, pg * 12));
+    const deals = C.cards(db(), h.dealIds);
+    const departments = h.departments;
     return reply.render('home', { title: (page && page.title) || 'One Stop Market', pageTitle: false, showcase, showPage: pg, departments, deals, bodyClass: 'cms-home' });
   });
+
+  // Home page data: cached per process and day while the tenant has no catalog changes.
+  let HOME = null;
+  function homeData() {
+    const today = C.today();
+    const d = pindex.dirty(kit.tenant());
+    const clean = !d.all && !d.p.size && !d.c.size;
+    if (clean && HOME && HOME.today === today) return HOME;
+    const v = clean ? pindex.baseView(db()) : pindex.view(db(), kit.tenant());
+    const base = pindex.base();
+    const visible = (r) => r && r.status === 1 && (r.visibility === 2 || r.visibility === 4);
+    const showIds = []; const dealIds = [];
+    const all = [...base.P.keys()].sort((a, b) => a - b);
+    for (const id of all) {
+      const r = v.get(id);
+      if (!visible(r)) continue;
+      if (showIds.length < 24 && r.source === 'shop') showIds.push(id);
+      if (dealIds.length < 6 && r.special_price != null && r.price != null && S.finalPrice(r, today) < r.price) dealIds.push(id);
+      if (showIds.length >= 24 && dealIds.length >= 6) break;
+    }
+    const t = C.tree(db());
+    const img = db().prepare('SELECT file FROM product_images WHERE product_id = ? AND file IS NOT NULL ORDER BY position LIMIT 1').pluck();
+    const departments = C.activeChildren(t.root, true).map((c) => {
+      let file = null;
+      const m = v.members(c.id).sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+      for (const [pid] of m.slice(0, 20)) { if (!visible(v.get(pid))) continue; file = img.get(pid); if (file) break; }
+      return { c, url: C.catUrl(c), img: file };
+    });
+    const out = { today, showIds, dealIds, departments };
+    if (clean) HOME = out;
+    return out;
+  }
 
   // ---------------------------------------------------------------- category
   function renderCategory(req, reply, c) {
@@ -149,7 +179,7 @@ module.exports = async function catalogRoutes(app, kit) {
     if (v.price_from !== '') { where.push(`${C.PRICE} >= ?`); params.push(+v.price_from); }
     if (v.price_to !== '') { where.push(`${C.PRICE} <= ?`); params.push(+v.price_to); }
     if (params.length === 0) { req.flash('error', 'Enter a search term and try again.'); return reply.redirect('/catalogsearch/advanced/'); }
-    const rows = db().prepare(`SELECT p.id, ${C.PRICE} AS price, p.name, p.brand, p.id AS rank FROM products p WHERE ${where.join(' AND ')} LIMIT 5000`).all(...params);
+    const rows = C.rowsFor(db(), db().prepare(`SELECT p.id FROM products p WHERE ${where.join(' AND ')} LIMIT 5000`).pluck().all(...params));
     const list = C.listing(req, { search: { rows } });
     return reply.render('search', { title: 'Catalog Advanced Search', heading: 'Catalog Advanced Search', q: '', list, advanced: v, crumbs: [['Home', '/'], ['Advanced Search', '/catalogsearch/advanced/'], ['Results']], bodyClass: 'catalogsearch-advanced-result' });
   });

@@ -90,7 +90,8 @@ const orderStatusLabel = (db, status) => {
   return r || (status ? status[0].toUpperCase() + status.slice(1) : '');
 };
 
-function onOpen() {}
+// per tenant, before its first BEGIN: listing index + change-tracking temp triggers
+function onOpen(db, tenant) { require('./storefront/lib/pindex').attach(db, tenant); }
 
 module.exports = {
   ADMIN_COOKIE, TZ,

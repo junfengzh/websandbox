@@ -4,6 +4,7 @@
 // with Magento's URL parameters, product search (FTS5).
 const kit = require('../../../../kit');
 const S = require('../../shared');
+const pindex = require('./pindex');
 
 const ROOT_CATEGORY = 2; // Default Category
 const VIS_CATALOG = '(2,4)';
@@ -112,13 +113,11 @@ function attributeFacetDefs(db) {
 function listing(req, { category = null, search = null, base }) {
   const db = kit.db();
   const q = req.query;
-  let rows;
-  if (search) rows = search.rows;
-  else {
-    const ids = category.is_anchor && category.children.length ? subtreeIds(category) : [category.id];
-    rows = db.prepare(`SELECT p.id, ${PRICE} AS price, p.name, p.brand, min(pc.position) AS pos FROM product_categories pc JOIN products p ON p.id = pc.product_id
-      WHERE pc.category_id IN (SELECT value FROM json_each(?)) AND p.status = 1 AND p.visibility IN ${VIS_CATALOG} GROUP BY p.id`).all(JSON.stringify(ids));
-  }
+  const PROF = process.env.STORE_PROF ? [] : null; const T0 = performance.now(); const mark = (l) => PROF && PROF.push(`${l}=${(performance.now() - T0).toFixed(0)}`);
+  const v = pindex.view(db, kit.tenant());
+  const src = search ? { rows: search.rows, memo: search.memo || null } : categoryRows(db, kit.tenant(), category, v);
+  let rows = src.rows;
+  mark('rows');
   const active = [];
   const removeHref = (k) => kit.urlWith(req, { [k]: null, p: null, page: null });
   // category filter (cat=<id>)
@@ -126,28 +125,29 @@ function listing(req, { category = null, search = null, base }) {
   let catFilter = null;
   if (q.cat && t.byId.get(+q.cat)) {
     catFilter = t.byId.get(+q.cat);
-    const inCat = new Set(db.prepare(`SELECT product_id FROM product_categories WHERE category_id IN (SELECT value FROM json_each(?))`).pluck().all(JSON.stringify(subtreeIds(catFilter))));
-    rows = rows.filter((r) => inCat.has(r.id));
+    const sub = new Set(subtreeIds(catFilter));
+    rows = rows.filter((r) => r.cats && r.cats.some((c) => sub.has(c)));
     active.push({ name: 'cat', label: 'Category', value: S.plainName(catFilter.name), removeHref: removeHref('cat') });
   }
   // attribute filters (Luma): ?color=49&size=167&material=...
   const defs = attributeFacetDefs(db);
   for (const d of defs) {
-    const v = q[d.code];
-    if (v == null || v === '') continue;
-    const opt = +v;
+    const val = q[d.code];
+    if (val == null || val === '') continue;
+    const opt = +val;
     let ids;
     if (d.typed_column && ['color', 'size'].includes(d.typed_column)) {
       const col = `${d.typed_column}_option_id`;
-      ids = db.prepare(`SELECT p.id FROM products p WHERE p.${col} = ? UNION SELECT v.parent_id FROM product_variants v JOIN products c ON c.id = v.child_id WHERE c.${col} = ?`).pluck().all(opt, opt);
+      const has = (id) => { const r = v.get(id); if (!r) return false; if (r[col] === opt) return true; return r.type === 'configurable' && v.children(id).some((c) => { const k = v.get(c); return k && k[col] === opt; }); };
+      ids = rows.filter((r) => has(r.id)).map((r) => r.id);
     } else if (d.input === 'boolean') {
-      ids = db.prepare('SELECT product_id FROM product_attributes WHERE attribute_code = ? AND value = ?').pluck().all(d.code, String(v === '1' ? 1 : 0));
+      ids = db.prepare('SELECT product_id FROM product_attributes WHERE attribute_code = ? AND value = ?').pluck().all(d.code, String(val === '1' ? 1 : 0));
     } else {
       ids = db.prepare('SELECT product_id FROM product_attributes WHERE attribute_code = ? AND option_id = ?').pluck().all(d.code, opt);
     }
     const set = new Set(ids);
     rows = rows.filter((r) => set.has(r.id));
-    const label = d.input === 'boolean' ? (v === '1' ? 'Yes' : 'No') : db.prepare('SELECT label FROM attribute_options WHERE id = ?').pluck().get(opt) || v;
+    const label = d.input === 'boolean' ? (val === '1' ? 'Yes' : 'No') : db.prepare('SELECT label FROM attribute_options WHERE id = ?').pluck().get(opt) || val;
     active.push({ name: d.code, label: d.label, value: label, removeHref: removeHref(d.code) });
   }
   // brand filter (?brand=Sony; repeated or comma list)
@@ -164,27 +164,32 @@ function listing(req, { category = null, search = null, base }) {
     active.push({ name: 'price', label: 'Price', value: priceLabel(pr), removeHref: removeHref('price') });
   }
 
+  mark('filters');
   // ---- facets over the filtered rows (an applied facet is hidden, as in Magento)
+  const memo = active.length ? null : src.memo;
+  const facets = memo && memo.facets ? memo.facets : computeFacets();
+  if (memo) memo.facets = facets;
+  function computeFacets() {
   const facets = [];
   if (!catFilter) {
     const parent = search ? t.root : category;
     const kids = activeChildren(parent, false);
     if (kids.length && rows.length) {
       const counts = new Map();
-      const st = db.prepare(`SELECT category_id, count(*) n FROM product_categories WHERE product_id IN (SELECT value FROM json_each(?)) AND category_id IN (SELECT value FROM json_each(?)) GROUP BY category_id`);
-      for (const r of st.all(JSON.stringify(rows.map((x) => x.id)), JSON.stringify(kids.map((k) => k.id)))) counts.set(r.category_id, r.n);
-      const items = kids.map((k) => ({ label: S.plainName(k.name), value: k.id, count: counts.get(k.id) || 0, href: search ? kit.urlWith(req, { cat: k.id, p: null }) : kit.urlWith(req, { p: null }, catUrl(k)) })).filter((x) => x.count > 0);
+      const want = new Set(kids.map((k) => k.id));
+      for (const r of rows) if (r.cats) for (const c of r.cats) if (want.has(c)) counts.set(c, (counts.get(c) || 0) + 1);
+      const items = kids.map((k) => ({ label: S.plainName(k.name), value: k.id, count: counts.get(k.id) || 0, hq: search ? { cat: k.id } : {}, hp: search ? null : catUrl(k) })).filter((x) => x.count > 0);
       if (items.length) facets.push({ code: 'cat', label: 'Category', items });
     }
   }
   if (!pr) {
-    const items = priceRanges(rows.map((r) => r.price)).map((x) => ({ ...x, href: kit.urlWith(req, { price: x.value, p: null }) }));
+    const items = priceRanges(rows.map((r) => r.price)).map((x) => ({ ...x, hq: { price: x.value } }));
     if (items.length) facets.push({ code: 'price', label: 'Price', items });
   }
   if (!brands.length) {
     const counts = new Map();
     for (const r of rows) if (r.brand) counts.set(r.brand, (counts.get(r.brand) || 0) + 1);
-    const items = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 30).map(([b, n]) => ({ label: b, value: b, count: n, href: kit.urlWith(req, { brand: b, p: null }) }));
+    const items = [...counts.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).slice(0, 30).map(([b, n]) => ({ label: b, value: b, count: n, hq: { brand: b } }));
     if (items.length > 1 || (items.length === 1 && items[0].count < rows.length)) facets.push({ code: 'brand', label: 'Brand', items, more: counts.size > 30 ? counts.size - 30 : 0 });
   }
   const luma = rows.filter((r) => r.id < 10000).map((r) => r.id);
@@ -205,26 +210,36 @@ function listing(req, { category = null, search = null, base }) {
         res = db.prepare(`SELECT o.id AS value, o.label, count(DISTINCT pa.product_id) AS count FROM product_attributes pa JOIN attribute_options o ON o.id = pa.option_id
           WHERE pa.attribute_code = ? AND pa.product_id IN (SELECT value FROM json_each(?)) GROUP BY o.id ORDER BY o.position, o.label`).all(d.code, lj);
       }
-      if (res.length) facets.push({ code: d.code, label: d.label, swatch: d.code === 'color', items: res.map((x) => ({ ...x, href: kit.urlWith(req, { [d.code]: x.value, p: null }) })) });
+      if (res.length) facets.push({ code: d.code, label: d.label, swatch: d.code === 'color', items: res.map((x) => ({ ...x, hq: { [d.code]: x.value } })) });
     }
   }
-
+  return facets;
+  }
+  const facetsOut = facets.map((f) => ({ ...f, items: f.items.map((x) => ({ ...x, href: kit.urlWith(req, { ...x.hq, p: null }, x.hp || undefined) })) }));
+  mark('facets');
   // ---- sort (product_list_order=position|name|price|relevance, product_list_dir=asc|desc)
   const sorts = search ? SORTS_SEARCH : SORTS_CATEGORY;
   let order = sorts.some(([k]) => k === q.product_list_order) ? q.product_list_order : sorts[0][0];
   let dir = q.product_list_dir === 'desc' ? 'desc' : q.product_list_dir === 'asc' ? 'asc' : order === 'relevance' ? 'desc' : 'asc';
   const sgn = dir === 'desc' ? -1 : 1;
   const tie = (a, b) => a.id - b.id;
-  if (order === 'price') {
-    rows.sort((a, b) => (a.price == null) - (b.price == null) || sgn * ((a.price ?? 0) - (b.price ?? 0)) || tie(a, b));
-  } else if (order === 'name') {
-    for (const r of rows) r._n ??= S.plainName(r.name).toLowerCase();
-    rows.sort((a, b) => sgn * (a._n < b._n ? -1 : a._n > b._n ? 1 : 0) || tie(a, b));
-  } else if (order === 'relevance') {
-    rows.sort((a, b) => -sgn * (a.rank - b.rank) || tie(a, b)); // bm25: lower = better; desc = best first
-  } else {
-    rows.sort((a, b) => sgn * ((a.pos ?? 0) - (b.pos ?? 0)) || tie(a, b));
+  const sortKey = `${order}_${dir}`;
+  const sortMemo = active.length ? null : src.memo;
+  if (sortMemo && sortMemo.sorted && sortMemo.sorted[sortKey]) rows = sortMemo.sorted[sortKey];
+  else {
+    rows = rows.slice(); // never sort a cached array in place
+    if (order === 'price') {
+      rows.sort((a, b) => (a.price == null) - (b.price == null) || sgn * ((a.price ?? 0) - (b.price ?? 0)) || tie(a, b));
+    } else if (order === 'name') {
+      rows.sort((a, b) => sgn * (a.lname < b.lname ? -1 : a.lname > b.lname ? 1 : 0) || tie(a, b));
+    } else if (order === 'relevance') {
+      rows.sort((a, b) => -sgn * (a.rank - b.rank) || tie(a, b)); // bm25: lower = better; desc = best first
+    } else {
+      rows.sort((a, b) => sgn * ((a.pos ?? 0) - (b.pos ?? 0)) || tie(a, b));
+    }
+    if (sortMemo) (sortMemo.sorted ||= {})[sortKey] = rows;
   }
+  mark('sort');
   // ---- page (p=2, product_list_limit=24, product_list_mode=list)
   const mode = q.product_list_mode === 'list' ? 'list' : 'grid';
   const limits = LIMITS[mode];
@@ -238,8 +253,9 @@ function listing(req, { category = null, search = null, base }) {
     href: (n) => kit.urlWith(req, { p: n > 1 ? n : null, page: null }),
     links: pageLinks(page, pages),
   };
+  const products = cards(db, ids); mark('cards'); if (PROF) console.log('[listing]', PROF.join(' '));
   return {
-    products: cards(db, ids), pager, facets, active, mode, limit, limits, order, dir, sorts,
+    products, pager, facets: facetsOut, active, mode, limit, limits, order, dir, sorts,
     clearAll: kit.urlWith(req, Object.fromEntries(['cat', 'brand', 'price', 'p', ...defs.map((d) => d.code)].map((k) => [k, null]))),
     sortHref: (o) => kit.urlWith(req, { product_list_order: o, product_list_dir: null, p: null }),
     dirHref: kit.urlWith(req, { product_list_dir: dir === 'asc' ? 'desc' : 'asc', product_list_order: order, p: null }),
@@ -256,14 +272,24 @@ function pageLinks(page, pages) {
 
 // ---------------------------------------------------------------- search
 const W = { name: 10, brand: 5, category_names: 3, sku: 2, description: 1 };
+const SEARCH_CACHE = new Map();
 function searchRows(db, qText) {
   const q = String(qText || '').trim();
   if (!q) return { rows: [], q, match: null };
+  const d = pindex.dirty(kit.tenant());
+  const cacheable = !d.all && !d.p.size && !d.v.size;
+  const key = `${q.toLowerCase()}|${kit.nowSql().slice(0, 10)}`;
+  if (cacheable && SEARCH_CACHE.has(key)) { const hit = SEARCH_CACHE.get(key); SEARCH_CACHE.delete(key); SEARCH_CACHE.set(key, hit); return hit; }
+  const res = searchRowsUncached(db, q);
+  if (cacheable) { res.memo = { sorted: {} }; SEARCH_CACHE.set(key, res); if (SEARCH_CACHE.size > 300) SEARCH_CACHE.delete(SEARCH_CACHE.keys().next().value); }
+  return res;
+}
+function searchRowsUncached(db, q) {
+  const v = pindex.view(db, kit.tenant());
   const s = kit.search.prepare(db, 'product_search', q, { weights: W, prefix: 'none' });
   let rows = [];
   let mode = 'and';
-  const run = (match, rank) => db.prepare(`SELECT p.id, ${PRICE} AS price, p.name, p.brand, ${rank} AS rank FROM product_search JOIN products p ON p.id = product_search.rowid
-      WHERE product_search MATCH ? AND p.status = 1 AND p.visibility IN ${VIS_SEARCH}`).all(match);
+  const run = (match, rank) => makeRows(v, db.prepare(`SELECT rowid, 0, ${rank} FROM product_search WHERE product_search MATCH ?`).raw().all(match), VIS_SRCH);
   if (s.match) rows = run(s.match, s.rank);
   if (!rows.length && s.match) {
     // nothing with every word: prefix on the last word, then any word (OR), then substring (trigram)
@@ -272,14 +298,80 @@ function searchRows(db, qText) {
     if (!rows.length && s.terms.length > 1) { rows = run(kit.search.match(q, { op: 'OR', prefix: 'none' }), s.rank); mode = 'or'; }
   }
   if (!rows.length && q.length >= 3) {
-    const tri = `"${q.replace(/"/g, '""')}"`;
     try {
-      rows = db.prepare(`SELECT p.id, ${PRICE} AS price, p.name, p.brand, 0 AS rank FROM product_search_tri JOIN products p ON p.id = product_search_tri.rowid
-        WHERE product_search_tri MATCH ? AND p.status = 1 AND p.visibility IN ${VIS_SEARCH} LIMIT 2000`).all(tri);
+      rows = makeRows(v, db.prepare('SELECT rowid, 0, 0 FROM product_search_tri WHERE product_search_tri MATCH ? LIMIT 5000').raw().all(`"${q.replace(/"/g, '""')}"`), VIS_SRCH);
       mode = 'substring';
     } catch { rows = []; }
   }
   return { rows, q, mode, match: s.match };
+}
+
+// Rows of a category listing (anchor: the whole subtree). Base rows are cached per process
+// and day; a tenant's changed products are patched in, a changed membership recomputes.
+const CAT_CACHE = new Map();
+function categoryRows(db, tenant, category, v) {
+  const ids = category.is_anchor && category.children.length ? subtreeIds(category) : [category.id];
+  const members = (vw) => {
+    const pos = new Map();
+    for (const cid of ids) for (const [pid, ps] of vw.members(cid)) { const cur = pos.get(pid); if (cur === undefined || ps < cur) pos.set(pid, ps); }
+    return pos;
+  };
+  const d = pindex.dirty(tenant);
+  if (d.all || ids.some((c) => d.c.has(c))) return { rows: makeRows(v, [...members(v).entries()].map(([id, ps]) => [id, ps, 0]), VIS_CAT), memo: null };
+  const today = kit.nowSql().slice(0, 10);
+  const base = baseCategoryEntry(db, ids, today);
+  if (!d.p.size && !d.v.size) return { rows: base.rows, memo: base };
+  // patch: drop changed products (and configurables whose children changed), re-add them from the tenant view
+  const changed = new Set(d.p);
+  for (const pid of d.v) changed.add(pid);
+  for (const pid of d.p) { const r = v.get(pid); if (r && r.type !== 'configurable') for (const [pa] of db.prepare('SELECT parent_id FROM product_variants WHERE child_id = ?').raw().all(pid)) changed.add(pa); }
+  const out = base.rows.filter((r) => !changed.has(r.id));
+  const sub = new Set(ids);
+  const add = [];
+  for (const pid of changed) { const r = v.get(pid); if (r && r.cats && r.cats.some((c) => sub.has(c))) add.push([pid, base.pos.get(pid) ?? 0, 0]); }
+  return { rows: out.concat(makeRows(v, add, VIS_CAT, today)), memo: null };
+}
+
+function baseCategoryEntry(db, ids, today) {
+  const key = `${ids.join(',')}|${today}`;
+  let base = CAT_CACHE.get(key);
+  if (!base) {
+    const bv = pindex.baseView(db);
+    const pos = new Map();
+    for (const cid of ids) for (const [pid, ps] of bv.members(cid)) { const cur = pos.get(pid); if (cur === undefined || ps < cur) pos.set(pid, ps); }
+    base = { rows: makeRows(bv, [...pos.entries()].map(([id, ps]) => [id, ps, 0]), VIS_CAT, today), pos, sorted: {} };
+    if (CAT_CACHE.size > 1000) CAT_CACHE.clear();
+    CAT_CACHE.set(key, base);
+  }
+  return base;
+}
+// Warm the base category cache in the background (one category per tick), biggest first.
+let warming = false;
+function prewarm(db, todayFn) {
+  if (warming) return; warming = true;
+  const t = tree(db);
+  const cats = [...t.byId.values()].filter((c) => c.level >= 2 && c.is_active).sort((a, b) => a.level - b.level || a.position - b.position);
+  let i = 0;
+  const step = () => {
+    if (i >= cats.length || !db.open) return;
+    const c = cats[i++];
+    try { baseCategoryEntry(db, c.is_anchor && c.children.length ? subtreeIds(c) : [c.id], todayFn()); } catch { return; }
+    setTimeout(step, 30).unref();
+  };
+  setTimeout(step, 200).unref();
+}
+
+// [[id, pos, rank]] -> listing rows of visible, enabled products
+const VIS_CAT = new Set([2, 4]);
+const VIS_SRCH = new Set([3, 4]);
+function makeRows(v, triples, vis, today = kit.nowSql().slice(0, 10)) {
+  const out = [];
+  for (const [id, pos, rank] of triples) {
+    const r = v.get(id);
+    if (!r || r.status !== 1 || !vis.has(r.visibility)) continue;
+    out.push({ id, price: pindex.price(v, r, today), name: r.name, lname: r.lname, brand: r.brand, pos, rank, cats: r.cats });
+  }
+  return out;
 }
 
 // Search-term statistics (search_terms, shown in the admin "Search Terms" report).
@@ -306,4 +398,6 @@ function suggest(db, qText, n = 8) {
   return { terms, products };
 }
 
-module.exports = { ROOT_CATEGORY, PRICE, tree, catUrl, activeChildren, ancestors, subtreeIds, productUrl, cards, decorate, listing, priceRanges, parsePrice, searchRows, logSearch, suggest, today, VIS_CATALOG, VIS_SEARCH };
+const rowsFor = (db, ids, vis = VIS_SRCH) => makeRows(pindex.view(db, kit.tenant()), ids.map((id, i) => [id, i, i]), vis);
+
+module.exports = { prewarm, rowsFor, ROOT_CATEGORY, PRICE, tree, catUrl, activeChildren, ancestors, subtreeIds, productUrl, cards, decorate, listing, priceRanges, parsePrice, searchRows, logSearch, suggest, today, VIS_CATALOG, VIS_SEARCH };

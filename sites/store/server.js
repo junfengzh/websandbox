@@ -89,7 +89,7 @@ const site = kit.site({
   skinFor: () => 'default',
   locals: (req) => store.locals(req),
   jobs: require('./storefront/jobs'),
-  onOpen: (db) => store.onOpen(db),
+  onOpen: (db, tenant) => store.onOpen(db, tenant),
   views: { notFound: 'error', 403: 'error' },
   routes: async (app, k) => {
     patchViews(site);
