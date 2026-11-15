@@ -15,7 +15,8 @@
 const clean = (s) => {
   let a = String(s ?? '').trim();
   if ((a.startsWith("'") && a.endsWith("'")) || (a.startsWith('"') && a.endsWith('"'))) a = a.slice(1, -1);
-  return a.toLowerCase();
+  // also fold accents, so "Stephane" matches "Stéphane"
+  return a.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 };
 
 const firstCol = (rows) => rows.map((r) => (Array.isArray(r) ? r[0] : r && typeof r === 'object' ? Object.values(r)[0] : r));

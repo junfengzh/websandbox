@@ -99,6 +99,7 @@ test('grader: answers, URLs, state', async () => {
   assert.ok(grader.mustInclude('The total is $55.00 for 2 items', ['55.00', '2 |OR| two']));
   assert.ok(grader.mustInclude('total 55', ['55.00'])); // numbers compare by value
   assert.ok(grader.mustInclude('order 000001170', ['1170']));
+  assert.ok(grader.exactMatch('Stephane Peters', 'Stéphane Peters'));
   assert.ok(!grader.mustInclude('10 comments', ['1']));
   assert.ok(!grader.mustInclude('$2.15', ['1']));
   assert.ok(!grader.mustInclude('total 55.5', ['55']));
