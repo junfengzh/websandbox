@@ -455,10 +455,19 @@ module.exports = function mergeRequests(app, ctx) {
     I.resourceEvent('merge_request', mr, u, { kind: 'state', state: 'merged' });
     I.addEvent(project, u, 'merged', 'merge_request', mr.id, mr.title);
     kit.sql("UPDATE todos SET state = 'done', updated_at = ? WHERE target_type = 'merge_request' AND target_id = ? AND state = 'pending'").run(now, mr.id);
+    // web-edited files of the source branch (temp.repo_files, for graders) now live on the target
+    const newTree = git.getCommit(newSha).tree_sha;
+    for (const f of kit.sql('SELECT * FROM temp.repo_files WHERE project_id = ? AND branch = ?').all(sp ? sp.id : project.id, mr.source_branch)) {
+      const at = git.blobAt(newTree, f.path);
+      if ((f.content == null && at == null) || (f.blob_sha && at === f.blob_sha)) {
+        kit.sql(`INSERT INTO temp.repo_files (project_id, branch, path, content, blob_sha, commit_sha, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT (project_id, branch, path) DO UPDATE SET content = excluded.content, blob_sha = excluded.blob_sha, commit_sha = excluded.commit_sha, updated_at = excluded.updated_at`)
+          .run(project.id, mr.target_branch, f.path, f.content, f.blob_sha, newSha, kit.nowSql());
+      }
+    }
     if (U.bool(b.should_remove_source_branch) && sp && !(sp.default_branch === mr.source_branch) && ctx.code.accessLevel(u, sp) >= A.DEVELOPER) {
-      git.deleteBranch(sp.id, mr.source_branch);
-      I.addEvent(sp, u, 'pushed', null, null, null);
-      kit.sql("UPDATE events SET push_ref = ?, push_ref_type = 'branch', push_action = 'removed' WHERE id = (SELECT max(id) FROM events)").run(mr.source_branch);
+      if (ctx.write) ctx.write.deleteBranch(sp, u, mr.source_branch);
+      else git.deleteBranch(sp.id, mr.source_branch);
     }
     // "Closes #12" in the description closes issues when merging into the default branch
     if (mr.target_branch === project.default_branch) {

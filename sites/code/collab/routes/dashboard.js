@@ -29,6 +29,26 @@ module.exports = function dashboard(app, ctx) {
     });
   }
 
+  // ------------------------------------------------------------ your groups
+  // groups the user is a member of (directly; subgroups of them too), filter + sort like /explore/groups
+  app.get('/dashboard/groups', { config: { login: true } }, async (req, reply) => {
+    const qx = U.str(req.query.filter || req.query.search);
+    const SORTS = { name_asc: 'n.name COLLATE NOCASE ASC', name_desc: 'n.name COLLATE NOCASE DESC', created_desc: 'n.created_at DESC', created_asc: 'n.created_at ASC', latest_activity_desc: 'coalesce(n.updated_at, n.created_at) DESC' };
+    const sortKey = SORTS[U.str(req.query.sort)] ? U.str(req.query.sort) : 'name_asc';
+    const like = qx ? `%${qx.replace(/[\\%_]/g, (x) => '\\' + x)}%` : null;
+    const where = `n.kind = 'group' AND n.id IN (WITH RECURSIVE t(id) AS (
+        SELECT source_id FROM members WHERE source_type = 'namespace' AND user_id = ? AND requested_at IS NULL
+        UNION SELECT c.id FROM namespaces c JOIN t ON c.parent_id = t.id) SELECT id FROM t)${like ? " AND (n.name LIKE ? ESCAPE '\\' OR n.path LIKE ? ESCAPE '\\')" : ''}`;
+    const params = [req.user.id, ...(like ? [like, like] : [])];
+    const total = kit.sql(`SELECT count(*) FROM namespaces n WHERE ${where}`).pluck().get(...params);
+    const pager = kit.paginate(req, total, { perPage: 20 });
+    const rows = kit.sql(`SELECT n.*, (SELECT count(*) FROM projects WHERE namespace_id = n.id) AS projects_count,
+        (SELECT count(*) FROM members WHERE source_type = 'namespace' AND source_id = n.id AND user_id IS NOT NULL AND requested_at IS NULL) AS members_count,
+        (SELECT max(access_level) FROM members WHERE source_type = 'namespace' AND source_id = n.id AND user_id = ?) AS my_access
+      FROM namespaces n WHERE ${where} ORDER BY ${SORTS[sortKey]}, n.id LIMIT ? OFFSET ?`).all(req.user.id, ...params, pager.limit, pager.offset);
+    return view(reply, 'dashboard_groups', { title: 'Groups', rows, pager, q: qx, sort: sortKey, crumbs: [['Your work'], ['Groups']] });
+  });
+
   // ------------------------------------------------------------ to-dos
   const ACTIONS = { assigned: 'assigned you', mentioned: 'mentioned you on', build_failed: 'The pipeline failed in', marked: 'added a to do for', approval_required: 'set you as an approver for', unmergeable: 'Could not merge', directly_addressed: 'mentioned you on', merge_train_removed: 'Removed from Merge Train:', review_requested: 'requested a review of' };
   app.get('/dashboard/todos', { config: { login: true } }, async (req, reply) => {
@@ -52,7 +72,7 @@ module.exports = function dashboard(app, ctx) {
       FROM todos t LEFT JOIN users u ON u.id = t.author_id LEFT JOIN projects p ON p.id = t.project_id WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT ? OFFSET ?`).all(...params, pager.limit, pager.offset);
     const projects = kit.sql('SELECT DISTINCT p.id, p.full_path FROM todos t JOIN projects p ON p.id = t.project_id WHERE t.user_id = ? ORDER BY p.full_path').all(req.user.id);
     const authors = kit.sql('SELECT DISTINCT u.id, u.username, u.name FROM todos t JOIN users u ON u.id = t.author_id WHERE t.user_id = ? ORDER BY u.username COLLATE NOCASE').all(req.user.id);
-    return view(reply, 'todos', { title: 'To-Do List', state, counts, rows, pager, projects, authors, actions: ACTIONS, active, crumbs: [['Your work'], ['To-Do List']] });
+    return view(reply, 'todos', { title: 'To-Do List', state, tcounts: counts, rows, pager, projects, authors, actions: ACTIONS, active, crumbs: [['Your work'], ['To-Do List']] });
   });
   const todo = (req) => { const t = kit.sql('SELECT * FROM todos WHERE id = ? AND user_id = ?').get(U.int(req.params.id), req.user.id); if (!t) throw kit.httpError(404, 'To-do not found'); return t; };
   const backTo = (req) => { const b = U.str(req.body && req.body.back); return b.startsWith('/dashboard/todos') ? b : '/dashboard/todos'; };

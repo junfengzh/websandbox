@@ -7,20 +7,7 @@ module.exports = function settings(app, ctx) {
   const { kit, U, A, I, view } = ctx;
   const VIS = { private: 0, internal: 10, public: 20 };
 
-  // topics: real tables when base.db has them (build step `collab`), else per-tenant temp tables
-  if (ctx.site && ctx.site.cfg) {
-    const cfg = ctx.site.cfg; const prev = cfg.onOpen;
-    if (!prev || !prev.wsbCollab) {
-      cfg.onOpen = Object.assign((db, t) => {
-        if (prev) prev(db, t);
-        const has = db.prepare("SELECT 1 FROM main.sqlite_master WHERE type = 'table' AND name = 'project_topics'").get();
-        if (!has) {
-          db.exec(`CREATE TEMP TABLE IF NOT EXISTS topics (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE, created_at TEXT);
-            CREATE TEMP TABLE IF NOT EXISTS project_topics (project_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, PRIMARY KEY (project_id, topic_id));`);
-        }
-      }, { wsbCollab: true });
-    }
-  }
+  // topics: tables `topics` / `project_topics` (main, or temp via plugin.onOpen)
   const topicsOf = (pid) => kit.sql('SELECT t.name FROM project_topics pt JOIN topics t ON t.id = pt.topic_id WHERE pt.project_id = ? ORDER BY t.name COLLATE NOCASE').pluck().all(pid);
   ctx.topicsOf = topicsOf;
   function setTopics(pid, names) {

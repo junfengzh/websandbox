@@ -1,0 +1,30 @@
+<% layout('layout') %>
+<% const X = it, U = it.U; %>
+<div class="page-title-row"><h1>Groups</h1><a class="btn btn-confirm" href="/groups/new">New group</a></div>
+<div class="top-area">
+  <nav aria-label="Groups"><ul class="nav-tabs">
+    <li><a href="/dashboard/groups" aria-current="page">Your groups</a></li>
+    <li><a href="/explore/groups">Explore public groups</a></li>
+  </ul></nav>
+  <form method="get" action="/dashboard/groups" class="filter-bar" role="search" aria-label="Filter groups">
+    <label class="sr-only" for="group-filter">Search by name</label>
+    <input type="search" id="group-filter" name="filter" value="<%= it.q %>" placeholder="Search by name">
+    <select name="sort" aria-label="Sort by" data-autosubmit>
+      <% for (const [v, l] of [['name_asc', 'Name'], ['name_desc', 'Name, descending'], ['created_desc', 'Last created'], ['created_asc', 'Oldest created'], ['latest_activity_desc', 'Updated date']]) { %><option value="<%= v %>"<%~ it.sort === v ? ' selected' : '' %>><%= l %></option><% } %>
+    </select>
+    <button class="btn" type="submit">Search</button>
+  </form>
+</div>
+<% if (!it.rows.length) { %><div class="empty-state"><h3><%= it.q ? 'No groups match your search' : 'You are not a member of any groups yet' %></h3><p>A group is a collection of several projects. <a href="/groups/new">Create a group</a> or <a href="/explore/groups">explore public groups</a>.</p></div><% } else { %>
+<ul class="projects-list">
+<% for (const g of it.rows) { %>
+  <li class="project-row">
+    <span class="project-avatar group" aria-hidden="true"><%= g.name[0].toUpperCase() %></span>
+    <div class="project-details"><h3 class="project-title"><a href="/<%= g.full_path %>"><%= g.full_path.includes('/') ? g.full_path.split('/').slice(0, -1).join(' / ') + ' / ' : '' %><%= g.name %></a> <span class="badge badge-muted"><%= g.visibility %></span><% if (g.my_access) { %> <span class="access-badge"><%= U.ACCESS[g.my_access] %></span><% } %></h3>
+      <% if (g.description) { %><p class="project-description"><%= g.description %></p><% } %></div>
+    <div class="project-stats"><span class="stat" title="Projects"><%= X.plural(g.projects_count, 'project') %></span><span class="stat" title="Members"><%= X.plural(g.members_count, 'member') %></span></div>
+  </li>
+<% } %>
+</ul>
+<%~ include('_pager', { pager: it.pager }) %>
+<% } %>

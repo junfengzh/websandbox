@@ -3,7 +3,7 @@
    const href = (ch) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries({ ...q, ...ch })) if (v != null && v !== '') p.append(k, v); const s = p.toString(); return base + (s ? '?' + s : ''); }; %>
 <div class="top-area">
   <ul class="nav-tabs" aria-label="Filter milestones by state">
-    <% for (const [s, l] of [['opened', 'Open'], ['closed', 'Closed'], ['all', 'All']]) { %><li><a href="<%= href({ state: s, page: null }) %>"<%~ it.state === s ? ' aria-current="page"' : '' %>><%= l %> <span class="issuable-count"><%= it.counts[s] %></span></a></li><% } %>
+    <% for (const [s, l] of [['opened', 'Open'], ['closed', 'Closed'], ['all', 'All']]) { %><li><a href="<%= href({ state: s, page: null }) %>"<%~ it.state === s ? ' aria-current="page"' : '' %>><%= l %> <span class="issuable-count"><%= it.mcounts[s] %></span></a></li><% } %>
   </ul>
   <div class="nav-controls">
     <form method="get" action="<%= base %>" class="gap8" role="search"><input type="hidden" name="state" value="<%= it.state %>">

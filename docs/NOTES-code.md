@@ -150,3 +150,32 @@ Routes: `sites/code/ROUTES.md`. Facts for task conversion / graders:
   (message, `availability = 'busy'`); profile fields on `users`.
 - Contributors page = `contributors.commits` for the branch (job `repo.contributors` recomputes
   after a web commit); commits list `?author=` is a substring match on name or e-mail.
+
+## Site: collaboration side (`sites/code/collab/`, 2026-11-15)
+
+Routes: `sites/code/ROUTES.md` ("Collaboration side"). Facts for task conversion / graders:
+
+- **base.db additions** (build step `collab` = `sites/code/build/collab_indexes.sql`, run after
+  `assemble`; applied to the current base.db on 2026-11-15 01:05 -- restart servers started
+  before that): indexes `issues(project_id, created_at|updated_at)`, `issues(project_id, state,
+  updated_at)`, the same three on `merge_requests`, `merge_requests(milestone_id)`; tables
+  `label_priorities(project_id, label_id, priority)` (empty in the source), `topics(id, name)` +
+  `project_topics(project_id, topic_id)` (empty). Measured on the shared box: list/detail pages
+  p50 18 ms, p95 130 ms, max 170 ms (bootstrap 22k issues, first-contributions 65k MRs, label
+  priority sort is the slowest).
+- Issue search = GitLab's: every word of >= 3 chars must occur in title or description
+  (substring, case-insensitive), so "homepage content" finds "Rethink the homepage's content".
+- Label filters match the label **title exactly** (case-sensitive, as PostgreSQL in GitLab);
+  `label_name[]` repeated = AND. `label_name[]=None` = issues without labels.
+- New rows: issue/MR `iid` = max+1 per project; milestone `iid` per project/group; notes get a
+  deterministic 40-hex `discussion_id`. Labels/state/milestone changes go to `resource_events`
+  (as GitLab 15.7), assignee/reviewer/title/description/due-date changes to system `notes`.
+- Assignees/reviewers may be any active user (GitLab allows anyone who can read a public
+  project), e.g. Seirdy on a11y-webring.club (task 447), not only members.
+- A merge writes a real merge commit (two parents) and moves the target ref; `branch_commits`
+  of the target is rewritten with pos 0..n in `git log` date order (still "order by pos").
+  From a fork, `/-/merge_requests/new` targets the upstream by default (as GitLab).
+- Invites: an existing user gets a `members` row at once (no acceptance step); an unknown
+  e-mail is a pending invite (`user_id` NULL). Group creation can invite members directly
+  (tasks 799-803); the creator is Owner (50).
+- Project deletion removes every dependent row synchronously (foreign keys are enforced).

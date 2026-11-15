@@ -1,7 +1,7 @@
 'use strict';
 // Collaboration-side tests on the real code data (node --test sites/code/collab/test/).
-// Needs $WSB_DATA_ROOT/code (or CODE_DATA). Runs the dev harness (the plugin +
-// a minimal sign-in) unless COLLAB_FULL=1 (then ../../server.js). byteblaze's password comes from
+// Needs $WSB_DATA_ROOT/code (or CODE_DATA). Runs ../../server.js (repo side +
+// this plugin); COLLAB_HARNESS=1 runs the dev harness (plugin + minimal sign-in) instead. byteblaze's password comes from
 // CODE_PASSWORD or WebArena's env_config.py (never printed); without it the form-login test is
 // skipped and the rest use POST /__rl/login. Every write is checked with SQL via /__rl/query.
 const test = require('node:test');
@@ -11,7 +11,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const DATA = process.env.CODE_DATA || '$WSB_DATA_ROOT/code';
-const SITE = process.env.COLLAB_FULL ? path.join(__dirname, '../../server.js') : path.join(__dirname, '../dev/harness.js');
+const SITE = process.env.COLLAB_HARNESS ? path.join(__dirname, '../dev/harness.js') : path.join(__dirname, '../../server.js');
 function password() {
   if (process.env.CODE_PASSWORD) return process.env.CODE_PASSWORD;
   const f = path.join(__dirname, '../../../../../3rd-party/webarena/browser_env/env_config.py');
@@ -197,6 +197,8 @@ test('groups: create with members, page, add member, group milestone', async () 
   assert.deepEqual(mem.map((x) => `${x.username}:${x.access_level}`).sort(), ['byteblaze:50', 'egpast:30', 'patou:30'].sort());
   r = await c.get('/groups/n-lab');
   assert.equal(r.status, 200);
+  r = await c.get('/dashboard/groups');
+  assert.match(r.text, /href="\/n-lab"/);
   r = await c.post('/groups/n-lab/-/group_members', { invitees: 'westurner', access_level: '30' }, '/groups/n-lab/-/group_members');
   assert.equal(r.status, 302);
   r = await c.get('/groups/n-lab/-/group_members');
@@ -254,6 +256,26 @@ test('merge request: create from a branch, review, approve, merge', async () => 
   assert.equal(mc.has_tree, 1);
   await fetch(base + '/__rl/jobs/run', { method: 'POST' });
   assert.ok(await one('SELECT count(*) FROM contributors WHERE project_id = ? AND branch = ?', [pick.id, pick.default_branch]) > 0);
+});
+
+test('web commit on a new branch -> MR -> merge carries temp.repo_files to the target', { skip: !!process.env.COLLAB_HARNESS && 'needs the repo side' }, async () => {
+  const P = '/byteblaze/cloud-to-butt';
+  const p = (await q("SELECT id, default_branch FROM projects WHERE full_path = 'byteblaze/cloud-to-butt'"))[0];
+  let r = await c.post(`${P}/-/create/${p.default_branch}/`, { file_name: 'NOTES.md', content: 'hello from a branch\n', commit_message: 'Add notes', branch_name: 'add-notes' }, `${P}/-/new/${p.default_branch}/`);
+  assert.equal(r.status, 302, r.text.slice(0, 300));
+  assert.equal(await one("SELECT content FROM repo_files WHERE project_id = ? AND branch = 'add-notes' AND path = 'NOTES.md'", [p.id]), 'hello from a branch\n');
+  r = await c.post(`${P}/-/merge_requests`, { source_branch: 'add-notes', target_branch: p.default_branch, title: 'Add notes' }, `${P}/-/merge_requests/new`);
+  assert.equal(r.status, 302, r.text.slice(0, 300));
+  const mr = (await q("SELECT * FROM merge_requests WHERE project_id = ? AND title = 'Add notes'", [p.id]))[0];
+  assert.equal(mr.files_count, 1);
+  r = await c.get(`${P}/-/merge_requests/${mr.iid}/diffs`);
+  assert.match(r.text, /hello from a branch/);
+  r = await c.post(`${P}/-/merge_requests/${mr.iid}/merge`, { should_remove_source_branch: '1' }, `${P}/-/merge_requests/${mr.iid}`);
+  assert.equal(await one('SELECT state FROM merge_requests WHERE id = ?', [mr.id]), 'merged');
+  assert.equal(await one('SELECT content FROM repo_files WHERE project_id = ? AND branch = ? AND path = ?', [p.id, p.default_branch, 'NOTES.md']), 'hello from a branch\n');
+  assert.equal(await one("SELECT count(*) FROM refs WHERE project_id = ? AND kind = 'branch' AND name = 'add-notes'", [p.id]), 0);
+  r = await c.get(`${P}/-/raw/${p.default_branch}/NOTES.md`);
+  assert.equal(r.text, 'hello from a branch\n');
 });
 
 test('wiki and project settings', async () => {

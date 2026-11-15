@@ -210,6 +210,22 @@ function mergeBlobs(base, ours, theirs) {
   return writeObject('blob', Buffer.from(out, 'utf8'));
 }
 
+// blob sha at `path` in tree `treeSha` (null when missing / trees not stored)
+function blobAt(treeSha, path) {
+  let cur = treeSha;
+  const parts = String(path).split('/');
+  try {
+    for (let i = 0; i < parts.length; i++) {
+      const e = readTree(cur).find((x) => x.name === parts[i]);
+      if (!e) return null;
+      if (i === parts.length - 1) return e.type === 'blob' ? e.sha : null;
+      if (e.type !== 'tree') return null;
+      cur = e.sha;
+    }
+  } catch (e) { if (e instanceof GitUnavailable) return null; throw e; }
+  return null;
+}
+
 // dry-run merge (no writes): { tree } or { conflicts }
 function checkMerge(base, ours, theirs) {
   DRY = true;
@@ -282,7 +298,10 @@ function updateBranch(project, name, newSha, { contributors = true } = {}) {
   }
   kit.sql('UPDATE projects SET last_activity_at = ?, updated_at = ? WHERE id = ?').run(kit.nowSql(), kit.nowSql(), project.id);
   if (contributors) {
-    try { kit.jobs.enqueue('collab.contributors', { project_id: project.id, branch: name }); } catch { recomputeContributors(project.id, name); }
+    // the repo side's job (same as after a web commit); ours if it is not registered
+    try { kit.jobs.enqueue('repo.contributors', { project_id: project.id, branch: name }); } catch {
+      try { kit.jobs.enqueue('collab.contributors', { project_id: project.id, branch: name }); } catch { recomputeContributors(project.id, name); }
+    }
   }
   return { added: only, old };
 }
@@ -311,6 +330,6 @@ function recomputeContributors(projectId, branch) {
 
 module.exports = {
   GitUnavailable, sha1, objectId, readObject, writeObject, parseTree, readTree, writeTree, EMPTY_TREE,
-  getCommit, parentsOf, writeCommit, pathId, revList, mergeBase, isAncestor, diffTrees, mergeTrees, checkMerge, fileDiff, blobText,
+  getCommit, parentsOf, writeCommit, pathId, revList, mergeBase, isAncestor, diffTrees, mergeTrees, checkMerge, blobAt, fileDiff, blobText,
   branchHead, branches, updateBranch, deleteBranch, recomputeContributors,
 };

@@ -37,7 +37,7 @@ module.exports = function milestones(app, ctx) {
     const rows = kit.sql(`SELECT m.* FROM milestones m WHERE ${where.join(' AND ')}${state === 'all' ? '' : state === 'opened' ? " AND m.state = 'active'" : " AND m.state = 'closed'"} ORDER BY ${SORTS[sort]}, m.id LIMIT ? OFFSET ?`).all(...params, pager.limit, pager.offset);
     const st = stats(rows.map((m) => m.id));
     for (const m of rows) { m.stats = st.get(m.id); m.url = m.project_id ? (s.project && m.project_id === s.project.id ? `${sc.base}/${m.iid}` : null) : `/groups/${kit.sql('SELECT full_path FROM namespaces WHERE id = ?').pluck().get(m.group_id)}/-/milestones/${m.iid}`; }
-    return view(reply, 'milestones', { title: 'Milestones', project: s.project, group: s.group, nav: s.project ? 'issues.milestones' : 'group.issues', rows, counts, state, sort, sortOptions: SORT_LABELS, q, pager, base: sc.base, canAdmin: sc.access >= A.REPORTER && !sc.archived, crumbs: [['Milestones']] });
+    return view(reply, 'milestones', { title: 'Milestones', project: s.project, group: s.group, nav: s.project ? 'issues.milestones' : 'group.issues', rows, mcounts: counts, state, sort, sortOptions: SORT_LABELS, q, pager, base: sc.base, canAdmin: sc.access >= A.REPORTER && !sc.archived, crumbs: [['Milestones']] });
   }
   app.get(P('milestones'), async (req, reply) => list(req, reply, { project: A.loadProject(req) }));
   app.get('/groups/:group/-/milestones', async (req, reply) => list(req, reply, { group: A.loadGroup(req, req.params.group) }));
