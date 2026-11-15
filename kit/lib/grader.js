@@ -54,10 +54,12 @@ function normUrl(u) {
   params.sort((a, b) => (a[0] + '\0' + a[1] < b[0] + '\0' + b[1] ? -1 : 1));
   return { path: p.toLowerCase(), params };
 }
-// mode 'subset' (WebArena url_match semantics: reference params must all be present) or 'exact'.
+// mode 'subset' (WebArena url_match semantics: reference params must all be present),
+// 'exact', or 'prefix' (subset, and the path may continue below the reference path:
+// /f/books matches /f/books/123/slug).
 function urlMatch(pred, ref, { mode = 'subset', ignore = [] } = {}) {
   const a = normUrl(pred); const b = normUrl(ref);
-  if (a.path !== b.path) return false;
+  if (a.path !== b.path && !(mode === 'prefix' && a.path.startsWith(b.path === '/' ? '/' : b.path + '/'))) return false;
   const key = (x) => x.filter(([k]) => !ignore.includes(k)).map(([k, v]) => `${k}=${v.toLowerCase()}`);
   const pa = key(a.params); const pb = key(b.params);
   if (mode === 'exact') return pa.join('&') === pb.join('&');

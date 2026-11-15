@@ -106,6 +106,9 @@ test('grader: answers, URLs, state', async () => {
   assert.ok(!grader.urlMatch('http://x/search?q=usb', '__SHOPPING__/search?q=usb&sort=price_desc'));
   assert.ok(!grader.urlMatch('http://x/search?q=usb&sort=price_desc&page=2', '__SHOPPING__/search?q=usb&sort=price_desc', { mode: 'exact' }));
   assert.ok(grader.urlMatch('http://x/f/books/', '__REDDIT__/f/books'));
+  assert.ok(grader.urlMatch('http://x/f/books/12/a-title', '__REDDIT__/f/books', { mode: 'prefix' }));
+  assert.ok(!grader.urlMatch('http://x/f/bookshelf', '__REDDIT__/f/books', { mode: 'prefix' }));
+  assert.ok(!grader.urlMatch('http://x/f/books/12/a-title', '__REDDIT__/f/books'));
   assert.ok(grader.stateMatch([{ n: '55.00' }], 55));
   assert.ok(grader.stateMatch([{ a: 1, b: 'x' }, { a: 2, b: 'y' }], [[2, 'y'], [1, 'x']]));
   assert.ok(!grader.stateMatch([{ a: 1 }, { a: 2 }], { rows: [[2], [1]], ordered: true }));
