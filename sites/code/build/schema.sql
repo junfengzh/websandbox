@@ -436,15 +436,20 @@ CREATE TABLE commits (
 CREATE INDEX commits_author_email ON commits(author_email COLLATE NOCASE);
 CREATE INDEX commits_author_name ON commits(author_name COLLATE NOCASE);
 
--- Files changed by each commit vs its first parent (first 300 per commit; files_changed has the total).
--- change: A added | M modified | D deleted | R renamed (old_path set) | T type change.
+-- Files changed by each commit vs its first parent (first 100 per commit; commits.files_changed has
+-- the total; gcc-mirror/gcc: newest 5000 commits only). Paths are interned in `paths`.
+-- change: A added | M modified | D deleted | R renamed (old_path_id set) | T type change.
+CREATE TABLE paths (
+  id INTEGER PRIMARY KEY,
+  path TEXT NOT NULL UNIQUE
+);
 CREATE TABLE commit_files (
   commit_id INTEGER NOT NULL REFERENCES commits(id),
   ord INTEGER NOT NULL,
-  path TEXT NOT NULL,
-  old_path TEXT,
+  path_id INTEGER NOT NULL REFERENCES paths(id),
+  old_path_id INTEGER REFERENCES paths(id),
   change TEXT NOT NULL,
-  additions INTEGER, deletions INTEGER,     -- NULL for binary
+  additions INTEGER, deletions INTEGER,     -- NULL for binary files and for gcc-mirror/gcc
   PRIMARY KEY (commit_id, ord)
 ) WITHOUT ROWID;
 
@@ -468,9 +473,10 @@ CREATE TABLE project_commits (
 ) WITHOUT ROWID;
 CREATE INDEX project_commits_commit ON project_commits(commit_id);
 
--- History of a branch in `git rev-list` order (pos 0 = head; reverse chronological, topo order),
+-- History of a branch in `git rev-list` order (pos 0 = head; reverse chronological),
 -- precomputed for the default branch of every project and for other branches with
--- <= 50,000 commits. A branch without rows here: walk commits.parents from refs.sha.
+-- <= 10,000 commits, smallest first, up to 30,000 rows per project. A branch without rows
+-- here: walk commits.parents from refs.sha.
 CREATE TABLE branch_commits (
   project_id INTEGER NOT NULL,
   branch TEXT NOT NULL,

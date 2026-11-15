@@ -16,6 +16,7 @@ sites/code/build/build.sh mount pgcopy pgstart export      # or individual steps
 | `export` | `export_pg.py`: PostgreSQL -> `rel.db` (relational tables, MR diffs/commits) | 9-12 min |
 | `repocopy` | copy the bare repos (13 GB; root-only on the image) to `$SCR/work/code/repos`, chown | 5 min |
 | `git` | `import_git.py`: each repo -> `shards/p<id>.db` (refs, commits + numstat, branch histories, contributors, trees/blobs by policy, wiki); `JOBS` parallel | see NOTES |
+| | `import_git.py --reuse` keeps existing shards' `git log` output (the slow part) and recomputes branches, contributors and objects -- use it after changing the object/branch policies | 5 min |
 | `templates` | `templates.py`: GitLab's built-in project templates (bundles) -> `shards/t_<name>.db` | 1 min |
 | `assemble` | `assemble.py`: rel.db + shards -> base.db (dedupe by sha), site_settings, FTS5 + triggers, ANALYZE, VACUUM, integrity_check | |
 | `media` | the 2 uploaded avatars -> `data/code/media/avatars/` | s |

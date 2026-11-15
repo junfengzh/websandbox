@@ -149,9 +149,10 @@ All git data is content-addressed and shared across projects, so forks and templ
   space-separated sha list (first parent first). `*_tz` = UTC offset in minutes.
   `additions`/`deletions`/`files_changed` are vs the first parent (`git log --numstat`;
   NULL line counts for gcc-mirror/gcc, whose 200k commits were imported with file lists only).
-- `commit_files(commit_id, ord, path, old_path, change A|M|D|R|T, additions, deletions)`: files
-  changed by each commit vs its first parent (first 300 per commit). Lets the commit page
-  list changed files even when trees are not stored; a real diff needs both blobs.
+- `commit_files(commit_id, ord, path_id, old_path_id, change A|M|D|R|T, additions, deletions)`:
+  files changed by each commit vs its first parent (first 100 per commit; paths interned in
+  `paths(id, path)`). Lets the commit page list changed files even when trees are not
+  stored; a real diff needs both blobs.
 - `has_tree = 1`: the commit's whole tree (and blobs, modulo placeholders) is stored, so
   the file browser and diffs work at that commit. Which commits: see the object policy.
 - `refs(project_id, kind 'branch'|'tag'|'mr', name, sha, tag_*)`: `sha` is always the commit
@@ -162,7 +163,8 @@ All git data is content-addressed and shared across projects, so forks and templ
   the commit page's "which project" check.
 - `branch_commits(project_id, branch, pos, commit_id)`: the branch's history in `git log`
   order (pos 0 = head, reverse chronological), stored for the **default branch of every
-  project** and for other branches with <= 50k commits (until 200k rows per project). For
+  project** and for other branches with <= 10k commits, smallest first, until 30k rows per
+  project. For
   a branch without rows, walk `commits.parents` from `refs.sha` (date-ordered merge of
   parents, like `git log`). A new commit on a branch must shift/insert rows (or the site may
   drop and recompute the branch's rows -- it's a cache).
@@ -182,10 +184,14 @@ big repositories. Per project (`projects.objects_policy`):
 - `full`: every tree and blob reachable from any branch or tag -- projects whose history
   blobs (<= 1 MB each) total <= 100 MB. This is most projects, including every byteblaze
   repo and every repo a write task edits.
-- `recent`: the trees of the newest 300 commits of the default branch (+ their parent for
-  diffs), then the heads of the other branches and tags, newest first, until 50 MB of new blob
-  bytes were added. Older commits keep metadata, `commit_files` and stats but `has_tree = 0`
-  (UI: "the file contents of this old commit are not available in this sandbox").
+- `recent`: the trees of the newest 100 commits of the default branch (+ the parent of the
+  oldest, for diffs), then the heads of the other branches and tags, newest first, each one
+  only if its new blobs fit in the remaining 20 MB budget (measured before walking, so a
+  stored commit is always complete). Older commits keep metadata, `commit_files` and stats but
+  `has_tree = 0` (UI: "the file contents of this old commit are not available in this sandbox").
+- gcc-mirror/gcc (the only repository > 100k commits) is `recent` with the newest 30 commits,
+  and its commits are the default branch's history plus the tip commits of its other
+  branches/tags (whose older history is not imported).
 
 ### Web edits (how the site writes git)
 

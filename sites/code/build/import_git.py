@@ -17,14 +17,17 @@ import argparse, os, sqlite3, subprocess, sys, time, zlib
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 FULL_MAX = 100_000_000
-RECENT_COMMITS = 300
-RECENT_EXTRA = 50_000_000
+RECENT_COMMITS = 100
+RECENT_EXTRA = 20_000_000
 BLOB_MAX = 1_000_000
 BINARY_MAX = 256_000
 NUMSTAT_MAX_COMMITS = 50_000      # bigger repos (gcc): file lists without line counts / renames
-COMMIT_FILES_MAX = 300
-BRANCH_ROWS_MAX = 200_000         # per project, non-default branches
-BRANCH_MAX = 50_000               # non-default branch stored only if <= this many commits
+COMMIT_FILES_MAX = 100
+BRANCH_ROWS_MAX = 30_000          # per project, non-default branches (smallest first)
+BRANCH_MAX = 10_000               # non-default branch stored only if <= this many commits
+HUGE_COMMITS = 100_000            # repos above this (gcc): only the default branch's history + ref tips,
+HUGE_FILES_COMMITS = 5_000        #   commit_files for the newest 5000 commits only,
+HUGE_RECENT_COMMITS = 30          #   trees for the newest 30 default-branch commits only
 
 SHARD_SCHEMA = '''
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
@@ -176,90 +179,135 @@ def is_binary(data):
     return b'\0' in data[:8000]
 
 
-def process(pid, gitdir, wikidir, shard):
+REUSE_KEYS = ('default_branch', 'huge', 'numstat', 'commits', 'project_commits')
+
+
+def process(pid, gitdir, wikidir, shard, reuse=False):
+    """reuse=True keeps an existing shard's refs/commits/commit_files (the slow `git log` step,
+    whose output does not depend on the object/branch policies) and recomputes the rest."""
     t0 = time.time()
-    for s in ('', '-journal'):
-        if os.path.exists(shard + s):
-            os.remove(shard + s)
-    db = sqlite3.connect(shard)
-    db.execute('PRAGMA journal_mode=OFF'); db.execute('PRAGMA synchronous=OFF')
-    db.executescript(SHARD_SCHEMA)
-    meta = {}
+    old = {}
+    if reuse and os.path.exists(shard):
+        db = sqlite3.connect(shard)
+        try:
+            old = dict(db.execute('SELECT key, value FROM meta'))
+        except sqlite3.Error:
+            old = {}
+        if 'commits' not in old:
+            db.close(); old = {}
+    if old:
+        db.execute('PRAGMA journal_mode=OFF'); db.execute('PRAGMA synchronous=OFF')
+        for t in ('meta', 'branch_commits', 'contributors', 'objects', 'wiki_pages'):
+            db.execute(f'DELETE FROM {t}')
+        db.execute('UPDATE commits SET has_tree = 0')
+        db.execute('DELETE FROM commit_files WHERE ord >= ?', (COMMIT_FILES_MAX,))
+    else:
+        for s in ('', '-journal'):
+            if os.path.exists(shard + s):
+                os.remove(shard + s)
+        db = sqlite3.connect(shard)
+        db.execute('PRAGMA journal_mode=OFF'); db.execute('PRAGMA synchronous=OFF')
+        db.executescript(SHARD_SCHEMA)
+    meta = {k: old[k] for k in REUSE_KEYS if k in old}
     if not os.path.isdir(gitdir):
         meta['missing'] = 1
         db.executemany('INSERT INTO meta VALUES (?,?)', list(meta.items())); db.commit(); db.close()
         return pid, meta
     g = Git(gitdir)
 
-    # ---------------- refs
-    out = g.run('for-each-ref', '--format=%(refname)%00%(objecttype)%00%(objectname)%00%(*objectname)%00%(*objecttype)'
-                '%00%(taggername)%00%(taggeremail)%00%(taggerdate:unix)%00%(contents)%1e',
-                'refs/heads', 'refs/tags', 'refs/merge-requests')
-    refs = []
-    for rec in out.split(b'\x1e'):
-        rec = rec.lstrip(b'\n')
-        if not rec:
-            continue
-        name, otype, oid, peeled, ptype, tn, te, td, contents = (rec.split(b'\0', 8) + [b''] * 9)[:9]
-        name = dec(name)
-        if name.startswith('refs/heads/'):
-            kind, short = 'branch', name[11:]
-        elif name.startswith('refs/tags/'):
-            kind, short = 'tag', name[10:]
-        elif name.startswith('refs/merge-requests/') and name.endswith('/head'):
-            kind, short = 'mr', name[20:-5]
-        else:
-            continue
-        otype = dec(otype)
-        if otype == 'tag':
-            if dec(ptype) != 'commit':
+    if old:
+        refs = db.execute('SELECT * FROM refs').fetchall()
+        branches = {r[1]: r[2] for r in refs if r[0] == 'branch'}
+        default = old.get('default_branch') or None
+        huge = old.get('huge') == '1'
+        meta['reused'] = 1
+    else:
+        # ---------------- refs
+        out = g.run('for-each-ref', '--format=%(refname)%00%(objecttype)%00%(objectname)%00%(*objectname)%00%(*objecttype)'
+                    '%00%(taggername)%00%(taggeremail)%00%(taggerdate:unix)%00%(contents)%1e',
+                    'refs/heads', 'refs/tags', 'refs/merge-requests')
+        refs = []
+        for rec in out.split(b'\x1e'):
+            rec = rec.lstrip(b'\n')
+            if not rec:
                 continue
-            refs.append((kind, short, dec(peeled), dec(oid), dec(contents).rstrip('\n') or None, dec(tn) or None,
-                         dec(te).strip('<>') or None, utc(td) if td.strip() else None))
-        elif otype == 'commit':
-            refs.append((kind, short, dec(oid), None, None, None, None, None))
-    db.executemany('INSERT OR IGNORE INTO refs VALUES (?,?,?,?,?,?,?,?)', refs)
-    branches = {r[1]: r[2] for r in refs if r[0] == 'branch'}
-    head = g.run('symbolic-ref', '-q', 'HEAD', check=False).decode().strip()
-    default = head[11:] if head.startswith('refs/heads/') and head[11:] in branches else None
-    if default is None and branches:
-        default = 'main' if 'main' in branches else ('master' if 'master' in branches else sorted(branches)[0])
-    meta['default_branch'] = default or ''
+            name, otype, oid, peeled, ptype, tn, te, td, contents = (rec.split(b'\0', 8) + [b''] * 9)[:9]
+            name = dec(name)
+            if name.startswith('refs/heads/'):
+                kind, short = 'branch', name[11:]
+            elif name.startswith('refs/tags/'):
+                kind, short = 'tag', name[10:]
+            elif name.startswith('refs/merge-requests/') and name.endswith('/head'):
+                kind, short = 'mr', name[20:-5]
+            else:
+                continue
+            otype = dec(otype)
+            if otype == 'tag':
+                if dec(ptype) != 'commit':
+                    continue
+                refs.append((kind, short, dec(peeled), dec(oid), dec(contents).rstrip('\n') or None, dec(tn) or None,
+                             dec(te).strip('<>') or None, utc(td) if td.strip() else None))
+            elif otype == 'commit':
+                refs.append((kind, short, dec(oid), None, None, None, None, None))
+        db.executemany('INSERT OR IGNORE INTO refs VALUES (?,?,?,?,?,?,?,?)', refs)
+        branches = {r[1]: r[2] for r in refs if r[0] == 'branch'}
+        head = g.run('symbolic-ref', '-q', 'HEAD', check=False).decode().strip()
+        default = head[11:] if head.startswith('refs/heads/') and head[11:] in branches else None
+        if default is None and branches:
+            default = 'main' if 'main' in branches else ('master' if 'master' in branches else sorted(branches)[0])
+        meta['default_branch'] = default or ''
 
-    # ---------------- commits (branches + tags = project; + MR heads = known commits)
-    in_proj = set(dec(x) for x in g.run('rev-list', '--branches', '--tags').split()) if refs else set()
-    ncommits = len(in_proj)
-    numstat = ncommits <= NUMSTAT_MAX_COMMITS
-    meta['numstat'] = int(numstat)
-    revs = ['--branches', '--tags'] + (['--glob=refs/merge-requests/*'] if any(r[0] == 'mr' for r in refs) else [])
-    n = 0
-    cbatch, fbatch = [], []
-    if refs:
-        for c, files in parse_log(g, revs, numstat):
-            adds = sum(f[3] or 0 for f in files) if numstat else None
-            dels = sum(f[4] or 0 for f in files) if numstat else None
-            cbatch.append(c + (adds, dels, len(files), 1 if c[0] in in_proj else 0))
-            for k, f in enumerate(files[:COMMIT_FILES_MAX]):
-                fbatch.append((c[0], k) + f)
-            n += 1
-            if len(cbatch) >= 5000:
-                db.executemany('INSERT OR IGNORE INTO commits VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)', cbatch)
-                db.executemany('INSERT OR IGNORE INTO commit_files VALUES (?,?,?,?,?,?,?)', fbatch)
-                cbatch, fbatch = [], []
-        db.executemany('INSERT OR IGNORE INTO commits VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)', cbatch)
-        db.executemany('INSERT OR IGNORE INTO commit_files VALUES (?,?,?,?,?,?,?)', fbatch)
-    meta['commits'] = n
-    meta['project_commits'] = ncommits
+        # ---------------- commits (branches + tags = project; + MR heads = known commits)
+        total = int(g.run('rev-list', '--count', '--branches', '--tags') or 0) if refs else 0
+        huge = total > HUGE_COMMITS
+        meta['huge'] = int(huge)
+        tips = sorted(set(r[2] for r in refs))
+        if huge:
+            in_proj = set(dec(x) for x in g.run('rev-list', 'refs/heads/' + default).split()) | \
+                set(r[2] for r in refs if r[0] in ('branch', 'tag'))
+            runs = [['refs/heads/' + default], ['--no-walk'] + tips]
+        else:
+            in_proj = set(dec(x) for x in g.run('rev-list', '--branches', '--tags').split()) if refs else set()
+            runs = [['--branches', '--tags'] + (['--glob=refs/merge-requests/*'] if any(r[0] == 'mr' for r in refs) else [])]
+        ncommits = len(in_proj)
+        numstat = ncommits <= NUMSTAT_MAX_COMMITS
+        meta['numstat'] = int(numstat)
+        n = 0
+        cbatch, fbatch = [], []
+        for revs in (runs if refs else []):
+            for c, files in parse_log(g, revs, numstat):
+                adds = sum(f[3] or 0 for f in files) if numstat else None
+                dels = sum(f[4] or 0 for f in files) if numstat else None
+                cbatch.append(c + (adds, dels, len(files), 1 if c[0] in in_proj else 0))
+                if not huge or n < HUGE_FILES_COMMITS:
+                    for k, f in enumerate(files[:COMMIT_FILES_MAX]):
+                        fbatch.append((c[0], k) + f)
+                n += 1
+                if len(cbatch) >= 5000:
+                    db.executemany('INSERT OR IGNORE INTO commits VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)', cbatch)
+                    db.executemany('INSERT OR IGNORE INTO commit_files VALUES (?,?,?,?,?,?,?)', fbatch)
+                    cbatch, fbatch = [], []
+            db.executemany('INSERT OR IGNORE INTO commits VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)', cbatch)
+            db.executemany('INSERT OR IGNORE INTO commit_files VALUES (?,?,?,?,?,?,?)', fbatch)
+            cbatch, fbatch = [], []
+        n = db.execute('SELECT count(*) FROM commits').fetchone()[0]
+        meta['commits'] = n
+        meta['project_commits'] = ncommits
 
     # ---------------- branch histories + contributors
     rows_left = BRANCH_ROWS_MAX
-    order = ([default] if default else []) + sorted(b for b in branches if b != default)
+    others = []
+    for br in ([] if huge else sorted(b for b in branches if b != default)):
+        cnt = int(g.run('rev-list', '--count', 'refs/heads/' + br) or 0)
+        if cnt <= BRANCH_MAX:
+            others.append((cnt, br))
+    order = ([default] if default else []) + [br for cnt, br in sorted(others)]
     stored = []
     for br in order:
         shas = [dec(x) for x in g.run('rev-list', 'refs/heads/' + br).split()]
-        if br != default and (len(shas) > BRANCH_MAX or len(shas) > rows_left):
-            continue
         if br != default:
+            if len(shas) > rows_left:
+                break
             rows_left -= len(shas)
         db.executemany('INSERT INTO branch_commits VALUES (?,?,?)', ((br, i, s) for i, s in enumerate(shas)))
         stored.append(br)
@@ -363,15 +411,28 @@ def process(pid, gitdir, wikidir, shard):
     else:
         if default:
             for (sha,) in db.execute('SELECT sha FROM branch_commits WHERE branch = ? AND pos < ? ORDER BY pos',
-                                     (default, RECENT_COMMITS + 1)).fetchall():
+                                     (default, (HUGE_RECENT_COMMITS if huge else RECENT_COMMITS) + 1)).fetchall():
                 walk_commit(sha)
-        start = stat['bytes']
-        heads = db.execute('''SELECT DISTINCT r.sha FROM refs r JOIN commits c ON c.sha = r.sha
+        # other branch heads and tags, newest first, while their *new* blobs fit the budget
+        # (cost measured with ls-tree before walking, so a head is stored completely or not at all)
+        left = RECENT_EXTRA
+        heads = [] if huge else db.execute('''SELECT DISTINCT r.sha FROM refs r JOIN commits c ON c.sha = r.sha
                               WHERE r.kind IN ('branch','tag') ORDER BY c.committed_at DESC''').fetchall()
         for (sha,) in heads:
-            if stat['bytes'] - start > RECENT_EXTRA:
+            if left <= 0:
                 break
-            walk_commit(sha)
+            cost = 0
+            for line in g.run('ls-tree', '-r', '-l', '-z', sha).split(b'\0'):
+                if not line:
+                    continue
+                parts = line.split(b'\t', 1)[0].split()
+                if len(parts) == 4 and parts[1] == b'blob' and parts[3] != b'-':
+                    sz = int(parts[3])
+                    if parts[2].decode() not in seen_blobs and sz <= BLOB_MAX:
+                        cost += sz
+            if cost <= left:
+                walk_commit(sha)
+                left -= cost
     flush()
     db.executemany('UPDATE commits SET has_tree = 1 WHERE sha = ?', ((s,) for s in walked))
     meta.update({'obj_' + k: v for k, v in stat.items()})
@@ -418,6 +479,7 @@ def main():
     ap.add_argument('--shards', required=True)
     ap.add_argument('--jobs', type=int, default=4)
     ap.add_argument('--only', default='')
+    ap.add_argument('--reuse', action='store_true', help='keep existing shards\' git log output (see process())')
     a = ap.parse_args()
     os.makedirs(a.shards, exist_ok=True)
     rel = sqlite3.connect(a.rel)
@@ -429,7 +491,7 @@ def main():
         todo = [t for t in todo if t[0] in keep]
     with ProcessPoolExecutor(a.jobs) as ex:
         futs = [ex.submit(process, pid, os.path.join(a.repos, disk + '.git'), os.path.join(a.repos, wiki + '.git'),
-                          os.path.join(a.shards, f'p{pid}.db')) for pid, disk, wiki, _ in todo]
+                          os.path.join(a.shards, f'p{pid}.db'), a.reuse) for pid, disk, wiki, _ in todo]
         for f in as_completed(futs):
             pid, meta = f.result()
             print(pid, ' '.join(f'{k}={v}' for k, v in meta.items()), flush=True)

@@ -44,7 +44,8 @@ class V:
 
     def git(self, full_path, *args):
         return subprocess.run(['git', '-c', 'safe.directory=*', '-C', self.gitdir(full_path), *args],
-                              capture_output=True, check=True).stdout.decode('utf-8', 'replace')
+                              capture_output=True, check=True, env=dict(os.environ, TZ='UTC')
+                              ).stdout.decode('utf-8', 'replace')
 
     # ------------------------------------------------------------------ 1. counts
     def counts(self):
@@ -155,8 +156,12 @@ class V:
     def tasks(self, tasks):
         exp = {t['task_id']: t['eval'].get('reference_answers') for t in tasks}
 
+        # Reference answers that disagree with the source data itself (checked on the live WebArena
+        # GitLab too); see docs/NOTES-code.md. Values here are what the source shows.
+        corrected = {786: {'must_include': ['414']}}   # live /-/graphs/master JSON: vinta.chen@gmail.com 414
+
         def must(tid, got):
-            ref = exp[tid] or {}
+            ref = corrected.get(tid) or exp[tid] or {}
             vals = ref.get('must_include') or ([ref['exact_match']] if 'exact_match' in ref else [])
             return all(str(v).lower() in got.lower() for v in vals)
 
@@ -166,9 +171,11 @@ class V:
                 (133, 'a11yproject/a11yproject.com', ['Eric'], '2023-03-02', '2023-03-02'),
                 (134, 'a11yproject/a11yproject.com', ['kilian'], '2023-03-01', '2023-03-01'),
                 (135, 'a11yproject/a11yproject.com', ['Eric', 'Kilian'], '2023-01-03', '2023-01-03'),
-                (136, 'byteblaze/a11y-webring.club', ['Steven Woodson'], '2023-02-06', '2023-02-06'),
+                # the reference counts both of his git identities ("Steven Woodson" 3 + "Steve Woodson" 2)
+                (136, 'byteblaze/a11y-webring.club', ['Steven Woodson', 'Steve Woodson'], '2023-02-06', '2023-02-06'),
                 (304, 'a11yproject/a11yproject.com', ['Eric'], '2023-02-01', '2023-05-31'),
-                (307, 'a11yproject/a11yproject.com', ['Nic'], '2021-04-01', '2021-04-30')]:
+                # reference 16 = Nic Chan's commits in April *2022* (the intent says 2021, which has 0)
+                (307, 'a11yproject/a11yproject.com', ['Nic'], '2022-04-01', '2022-04-30')]:
             a, b_ = self.commits_lite(path, names, d0, d1), self.commits_src(path, names, d0, d1)
             report(f'task {tid} commits {names} {path} {d0}..{d1}', a == b_ and must(tid, str(a)),
                    f'lite {a} source {b_} expected {exp[tid]}')
@@ -180,7 +187,7 @@ class V:
                                     (315, 'eriklindernoren/PyTorch-GAN', 3, 1), (316, 'facebook/create-react-app', 3, 0),
                                     (317, 'root/metaseq', 3, 2), (318, 'yjlou/2019-nCov', 3, 0),
                                     (784, 'CellularPrivacy/Android-IMSI-Catcher-Detector', 1, 1),
-                                    (786, 'vinta/awesome-python', 1, 2)]:
+                                    (786, 'vinta/awesome-python', 1, 0)]:
             a = [tuple(r) for r in self.top_lite(path, k)]
             b_ = self.top_src(path, k)
             got = ' | '.join(f'{n}: {c} <{e}>' for n, e, c in a)
@@ -227,8 +234,9 @@ class V:
         low = [r[0] for r in rows if r[1] == rows[-1][1]] if rows else []
         report('task 169 most-starred contributed repos', sorted(rows) == sorted(src) and must(169, ' '.join(top + [r[0] for r in rows[:2]])),
                f'top {rows[:3]}')
-        report('task 170 least-starred contributed repos', must(170, ' '.join(low)), f'least ({rows[-1][1] if rows else None}) {low}')
-
+        own0 = [r[0] for r in self.q('''SELECT p.path FROM projects p JOIN namespaces n ON n.id = p.namespace_id
+                                         WHERE n.path = 'byteblaze' AND p.star_count = 0''')]
+        report('task 170 least-starred (0) byteblaze repos', must(170, ' '.join(own0)), f'{own0}')
         # top starred repos (523..527)
         a = self.q('SELECT full_path, star_count FROM projects ORDER BY star_count DESC, id LIMIT 8')
         b_ = self.pq('''SELECT r.path, p.star_count FROM projects p JOIN routes r ON r.source_type='Project' AND r.source_id=p.id
@@ -247,12 +255,13 @@ class V:
         for tid, kw, order in [(173, 'better', 'updated_at'), (177, 'homepage content', 'updated_at'),
                                (178, 'better', 'created_at'), (180, 'dependency', 'created_at'),
                                (182, 'homepage content', 'created_at')]:
+            like = '%' + '%'.join(kw.split()) + '%'      # keywords in order ("homepage's content")
             a = self.q(f'''SELECT i.title, i.state FROM issues i JOIN users u ON u.id = i.author_id
                            WHERE u.username = 'byteblaze' AND lower(i.title) LIKE ? ORDER BY i.{order} DESC LIMIT 1''',
-                       f'%{kw}%')
+                       like)
             b_ = self.pq(f'''SELECT i.title, CASE i.state_id WHEN 1 THEN 'opened' ELSE 'closed' END FROM issues i
                              JOIN users u ON u.id = i.author_id WHERE u.username = 'byteblaze' AND lower(i.title) LIKE %s
-                             ORDER BY i.{order} DESC LIMIT 1''', f'%{kw}%')
+                             ORDER BY i.{order} DESC LIMIT 1''', like)
             ref = json.dumps(exp[tid])
             want_closed = ('Yes' in ref) or ('closed' in ref.lower() and 'not' not in ref.lower() and 'No,' not in ref)
             ok = bool(a) and a == [tuple(x) for x in b_] and ((a[0][1] == 'closed') == want_closed)
@@ -297,9 +306,11 @@ class V:
         # files the edit tasks touch (411-414, 441, 736): blob present on the default branch
         for tid, path, fname in [(411, 'byteblaze/cloud-to-butt', 'LICENSE.txt'),
                                  (412, 'byteblaze/accessible-html-content-patterns', 'LICENSE'),
-                                 (414, 'byteblaze/dotfiles', 'LICENSE'), (441, 'byteblaze/gimmiethat.space', 'index.html')]:
+                                 (414, 'byteblaze/dotfiles', '!LICENSE'), (441, 'byteblaze/gimmiethat.space', 'index.html')]:
             a = self.q('''SELECT c.tree_sha FROM projects p JOIN refs r ON r.project_id = p.id AND r.kind='branch'
                           AND r.name = p.default_branch JOIN commits c ON c.sha = r.sha WHERE p.full_path = ?''', path)
+            absent = fname.startswith('!')     # the task creates it (no LICENSE in the source either)
+            fname = fname.lstrip('!')
             found = False
             if a:
                 import zlib
@@ -307,7 +318,8 @@ class V:
                 if o:
                     data = zlib.decompress(o[0][1]) if o[0][0] == 1 else o[0][1]
                     found = (b' ' + fname.encode() + b'\0') in data
-            report(f'task {tid} {path}/{fname} on default branch', found, 'present' if found else 'missing')
+            report(f'task {tid} {path}/{fname} {"absent" if absent else "present"} on default branch', found != absent,
+                   'present' if found else 'missing')
 
         # templates for 747-756
         names = {r[0] for r in self.q('SELECT name FROM project_templates')}

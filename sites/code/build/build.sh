@@ -49,7 +49,7 @@ step_pgstart() {
   until docker exec $PG_NAME pg_isready -h /tmp -q; do sleep 1; done
 }
 
-step_export() { venv; "$VENV/bin/python" -I "$HERE/export_pg.py" --pg "$PG" --out "$WORK/rel.db"; }
+step_export() { venv; "$VENV/bin/python" -I -B "$HERE/export_pg.py" --pg "$PG" --out "$WORK/rel.db"; }
 
 step_repocopy() {  # repos are root-only on the image; copy and chown so git can read them
   if [ ! -d "$WORK/repos" ]; then
@@ -58,11 +58,11 @@ step_repocopy() {  # repos are root-only on the image; copy and chown so git can
   fi
 }
 
-step_git() { python3 -I "$HERE/import_git.py" --repos "$WORK/repos" --rel "$WORK/rel.db" --shards "$WORK/shards" --jobs "$JOBS"; }
+step_git() { python3 -I -B "$HERE/import_git.py" --repos "$WORK/repos" --rel "$WORK/rel.db" --shards "$WORK/shards" --jobs "$JOBS"; }
 
-step_templates() { python3 -I "$HERE/templates.py" --rails "$RAILS" --work "$WORK" --shards "$WORK/shards"; }
+step_templates() { python3 -I -B "$HERE/templates.py" --rails "$RAILS" --work "$WORK" --shards "$WORK/shards"; }
 
-step_assemble() { python3 -I "$HERE/assemble.py" --rel "$WORK/rel.db" --shards "$WORK/shards" --out "$OUT/base.db"; }
+step_assemble() { python3 -I -B "$HERE/assemble.py" --rel "$WORK/rel.db" --shards "$WORK/shards" --out "$OUT/base.db"; }
 
 step_media() {    # the only uploaded avatars (2 bots); everyone else gets a letter avatar
   local up=$MNT/var/opt/gitlab/gitlab-rails/uploads/-/system/user/avatar
@@ -74,9 +74,9 @@ step_media() {    # the only uploaded avatars (2 bots); everyone else gets a let
   done
 }
 
-step_verify() { venv; "$VENV/bin/python" -I "$HERE/verify.py" --db "$OUT/base.db" --pg "$PG" --repos "$WORK/repos"; }
+step_verify() { venv; "$VENV/bin/python" -I -B "$HERE/verify.py" --db "$OUT/base.db" --pg "$PG" --repos "$WORK/repos"; }
 
-step_licenses() { python3 -I "$HERE/licenses.py" --db "$OUT/base.db" --out "$HERE/../SOURCES.repos.md"; }
+step_licenses() { python3 -I -B "$HERE/licenses.py" --db "$OUT/base.db" --out "$HERE/../SOURCES.repos.md"; }
 
 step_cleanup() {
   docker rm -f $PG_NAME >/dev/null 2>&1 || true

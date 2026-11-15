@@ -9,6 +9,10 @@ drops build-only tables, ANALYZE + VACUUM + integrity_check.
 """
 import argparse, glob, os, shutil, sqlite3, time
 
+COMMIT_FILES_MAX = 100   # same as import_git.py
+GIT_TABLES = ('git_objects', 'commits', 'paths', 'commit_files', 'refs', 'project_commits', 'branch_commits',
+              'contributors', 'project_templates', 'wiki_pages')
+
 SETTINGS = {
     'external_url': 'http://metis.lti.cs.cmu.edu:8023',   # GitLab's configured URL (WebArena)
     'ssh_clone_prefix': 'ssh://git@metis.lti.cs.cmu.edu:2222/',  # + full_path + '.git' (tasks 293-297)
@@ -63,9 +67,12 @@ def merge_git(db, shard_alias):
                    FROM {s}.commits ORDER BY committed_at, sha''')
     db.execute(f'''UPDATE commits SET has_tree = 1 WHERE has_tree = 0 AND sha IN
                    (SELECT sha FROM {s}.commits WHERE has_tree = 1)''')
-    db.execute(f'''INSERT OR IGNORE INTO commit_files (commit_id, ord, path, old_path, change, additions, deletions)
-                   SELECT c.id, f.ord, f.path, f.old_path, f.change, f.additions, f.deletions
-                   FROM {s}.commit_files f JOIN commits c ON c.sha = f.sha''')
+    db.execute(f'''INSERT OR IGNORE INTO paths (path) SELECT path FROM {s}.commit_files WHERE ord < {COMMIT_FILES_MAX}
+                   UNION SELECT old_path FROM {s}.commit_files WHERE old_path IS NOT NULL AND ord < {COMMIT_FILES_MAX}''')
+    db.execute(f'''INSERT OR IGNORE INTO commit_files (commit_id, ord, path_id, old_path_id, change, additions, deletions)
+                   SELECT c.id, f.ord, p.id, o.id, f.change, f.additions, f.deletions
+                   FROM {s}.commit_files f JOIN commits c ON c.sha = f.sha JOIN paths p ON p.path = f.path
+                   LEFT JOIN paths o ON o.path = f.old_path WHERE f.ord < {COMMIT_FILES_MAX}''')
 
 
 def main():
@@ -83,6 +90,16 @@ def main():
     db = sqlite3.connect(tmp, isolation_level=None)
     for p in ('journal_mode=OFF', 'synchronous=OFF', 'cache_size=-2000000', 'temp_store=MEMORY'):
         db.execute('PRAGMA ' + p)
+    # (Re)create the git tables from schema.sql so a rel.db exported with an older schema still works.
+    import re
+    ddl = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'schema.sql')).read()
+    ddl = '\n'.join(l.split('--', 1)[0] for l in ddl.split('\n'))
+    for t in GIT_TABLES:
+        db.execute(f'DROP TABLE IF EXISTS {t}')
+    for stmt in ddl.split(';'):
+        m = re.search(r'CREATE (?:TABLE|INDEX \w+ ON) (\w+)', stmt)
+        if m and m.group(1) in GIT_TABLES:
+            db.execute(stmt)
     db.execute('BEGIN')
 
     projects = [r[0] for r in db.execute('SELECT project_id FROM _repos ORDER BY project_id')]
@@ -128,7 +145,8 @@ def main():
     db.executescript(triggers('users', 'users_fts', ['username', 'name']))
     for t in ('projects_fts', 'issues_fts', 'merge_requests_fts', 'users_fts'):
         db.execute(f"INSERT INTO {t}({t}) VALUES ('optimize')")
-    db.execute('COMMIT')
+    if db.in_transaction:
+        db.execute('COMMIT')
     print(f'fts done ({time.time() - t0:.0f}s)', flush=True)
     db.execute('ANALYZE')
     db.execute('PRAGMA journal_mode=DELETE')
