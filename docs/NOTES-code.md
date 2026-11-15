@@ -179,3 +179,27 @@ Routes: `sites/code/ROUTES.md` ("Collaboration side"). Facts for task conversion
   e-mail is a pending invite (`user_id` NULL). Group creation can invite members directly
   (tasks 799-803); the creator is Owner (50).
 - Project deletion removes every dependent row synchronously (foreign keys are enforced).
+
+## Task conversion, batch a (2026-11-15)
+
+93 gitlab-only tasks of 24 templates (289-294, 298-300, 303, 308, 310, 312, 316, 320-325, 327-330) in
+`tasks/code/webarena-a.jsonl` (`python3 -I tasks/code/convert-a.py`), evidence in `tasks/code/verify-a.jsonl`:
+all 93 verified by a manual browse.js run + grade.js, one negative check per template (24/24 fail as they
+should); on a fresh tenant with no answer all 93 fail or stay pending (fuzzy). None dropped.
+
+- program_html -> SQL: members rows (any role / `access_level = 10`), `follows`, new `projects` row,
+  `temp.repo_files` for index.html, byteblaze's newest new issue (`created_at >= '2023-04-27'`) with title /
+  due_date / assignee or text in title+description. The url_match "GOLD in PRED" on issue lists of 327/328 is
+  dropped (the kit grader has no prefix mode; the SQL check covers it).
+- Reference fixes: 786 412 -> 414 and "main" -> "master"; 784 "main" -> "development" (no main branch);
+  785 "gh-page" -> "gh-pages"; 307 April 2021 -> 2022; 45 sort=created_asc (oldest) -> newest-first list
+  (exact URL match on the default list variants); 536 @lahwaacz -> @ghost (intent names ghost); 175 keyword
+  "dependency" -> "dependencies" (title search is a substring match; the reference is "Outdated
+  dependencies"); 174/175 intent says "(assigned to me)" (the references are the dashboard's assigned issues,
+  not authored ones); 317 tie Peter Albert / Zachary DeVito (12) both accepted; 296/297 exact -> must_include.
+- "Repositories where I made contributions" (168-172) = own + member projects ("Your projects"); the
+  Contributed tab is event-based and misses dotfiles/gimmiethat.space/remove-board-....
+- 312 csvkit: James McKinney has 450 + 130 under two e-mails; GitLab groups by e-mail, so Groskopf (499) is top.
+- Site fixes: top-bar counters were shadowed by page `counts` locals ("undefined" on dashboard/tree/profile
+  pages); member invites accept a user's full name (unique exact match), like GitLab's invite picker.
+- Headless Chrome: a date input takes typed `MM/DD/YYYY` (typing `YYYY-MM-DD` garbles it).
