@@ -1,0 +1,14 @@
+<% layout('layout') %>
+<section aria-labelledby="about_h">
+<% if (it.copyright) { %>
+  <h2 id="about_h">Copyright and License</h2>
+  <p>OpenStreetMap® is <em>open data</em>, licensed under the <a href="https://opendatacommons.org/licenses/odbl/" rel="noopener">Open Data Commons Open Database License</a> (ODbL) by the OpenStreetMap Foundation.</p>
+  <p>Map data © <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap contributors</a>. Vector tiles: OpenMapTiles schema (© OpenMapTiles). Fonts: Noto Sans (SIL OFL).</p>
+<% } else { %>
+  <h2 id="about_h">About</h2>
+  <p>This is a lightweight OpenStreetMap website: a slippy map, search (geocoding), place pages, "Where is this?",
+  "Query features" and directions by car, bicycle and foot. Map data © OpenStreetMap contributors.</p>
+  <h3>Routing</h3>
+  <p>Car routes use OSRM's car profile speeds; bicycle 15 km/h; walking 5 km/h. Times include turn penalties.</p>
+<% } %>
+</section>

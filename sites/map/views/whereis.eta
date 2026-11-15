@@ -1,0 +1,19 @@
+<% layout('layout') %>
+<section aria-labelledby="where_h">
+  <h2 id="where_h">Where is this?</h2>
+  <p class="coords">Location: <span class="latitude"><%= it.P.coords(it.lat, it.lon).split(', ')[0] %></span>, <span class="longitude"><%= it.P.coords(it.lat, it.lon).split(', ')[1] %></span></p>
+  <h3 class="results-source">Results from OpenStreetMap Nominatim</h3>
+  <% if (!it.results.length) { %><p class="no-results">No results found.</p><% } else { %>
+  <ul class="results-list">
+  <% for (const r of it.results) { %>
+    <li class="search_results_entry">
+      <span class="result-type"><%= it.P.typeLabel(r) %></span>
+      <% if (r.place_id != null) { %><a href="<%= it.P.placeUrl(r) %>"><%= r.display_name %></a><% } else { %><%= r.display_name %><% } %>
+    </li>
+  <% } %>
+  </ul>
+  <% } %>
+  <p class="actions"><a href="/query?lat=<%= it.lat %>&amp;lon=<%= it.lon %>">Query features here</a> ·
+    <a href="/directions?route=<%= it.P.llStr(it) %>;">Directions from here</a> ·
+    <a href="/directions?route=;<%= it.P.llStr(it) %>">Directions to here</a></p>
+</section>

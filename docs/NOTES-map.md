@@ -234,3 +234,37 @@ Query time: car CH 2-30 ms; foot/bike A* 5-700 ms (160 km bike trip ~0.4 s); eng
   be cleaner.
 - Turn penalties (OSRM formula) are added to reported durations but do not steer the search.
 
+
+## Site UI (sites/map/server.js) -- 2026-11-15
+
+OSM-website-like UI on the kit; URL scheme in `sites/map/ROUTES.md`. Shared DB mode (`geocode.db`
+is the kit's base DB, so graders can `/__rl/query` the `places` table); all pages are raw routes
+(no tenant lock, no session) because nothing is written. Geocoding runs in a worker pool (3 threads,
+`lib/geo-worker.js`) and routing in one worker thread (`lib/route.js`), both per process and shared
+by its tenants (`lib/engines.js`, LRU caches for geocoder calls and routes). The ~10 s graph load
+starts with the first tenant; routing requests wait for it.
+
+- Server-rendered sidebar is the source of truth (results, place facts, route summary
+  `Distance: 33km. Time: 36 min.` with `data-meters`/`data-seconds`, turn list); `public/map.js`
+  draws MapLibre from `#map-data` JSON and navigates in place (fetch + swap `#sidebar` + pushState).
+- Directions keep OSM's DOM: `div#content select.routing_engines` (index 0 bike, 1 car, 2 foot),
+  `[name=route_from]`/`[name=route_to]`; form submits geocode and 302 to
+  `/directions?engine=fossgis_osrm_car&route=lat,lon;lat,lon&from=<name>&to=<name>`.
+- Fix in `lib/geocode.js` reverse(): area-level results now pick the same-named admin/place row that
+  contains the point (was "Oakland, Bergen County, NJ" for Pittsburgh's Oakland).
+- **Bike/foot limited to 250 km straight line** (`WSB_MAP_MAX_SLOW_KM`): A* on one worker took ~8 s
+  (CMU -> MIT on foot) to ~50 s (500+ km) and stalled every other route of the process. None of the
+  WebArena walk/bike tasks is longer (longest: Vinalhaven -> Acadia by bike, ~60 km straight line;
+  task 382 USCIS RI -> SSA PA on foot expects N/A anyway).
+- Perf (`node test/bench.js`, 2 tenants, box load ~3.5, uncached first pass): concurrency 1 --
+  search p50 33 / p95 428 ms, place page p50 4 / p95 10 ms, car route page p95 248 ms, bike p95
+  961 ms (259 km), where-is p95 214 ms, tiles p95 3 ms; concurrency 8 -- search p95 ~800 ms,
+  routes p95 ~1.2 s (single route worker). Repeats are cached (all p95 < 30 ms). RSS ~3.6 GB per
+  process (routing graph ~2.6 GB incl. bike/foot adjacency): run the map with `--workers 1` (or 2)
+  and many tenants, not many worker processes.
+- Tests: `npm test` (site.test.js: 11 route tests + geocode/route engine tests), `npm run smoke`
+  (headless Chrome: tiles render, search CMU, place page, car CMU -> PIT 33km / 36 min, switch to
+  foot 29km / 5h 46min, back button, map click -> Where is this?, zero console errors).
+- Gaps: no user accounts/notes (read-only site); search ranking depends on the map view centre
+  (header from the page script, default CMU), not on the URL; foot/bike > 250 km refused; the
+  "Nearby" list on place pages is straight-line; no GPX/export, layers switcher or map keys.

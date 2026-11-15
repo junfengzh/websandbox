@@ -504,8 +504,12 @@ class Geocoder {
     if (!parts.length) return this._fmt(base, ref);
     const [k, nm] = parts[0];
     // find the matching admin/place row
-    const rows = this.search(nm, { center: ref, limit: 5 }).filter((x) => x.name === nm && (x.class === 'boundary' || x.class === 'place'));
-    if (rows.length) return rows[0];
+    // the admin/place row of that name that contains the point (else the nearest one):
+    // "Oakland" here is the Pittsburgh neighbourhood, not Oakland, NJ
+    const inBox = (x) => { const b = x.boundingbox; return b && b[0] != null && lat >= b[0] && lat <= b[1] && lon >= b[2] && lon <= b[3]; };
+    const rows = this.search(nm, { center: ref, limit: 10 }).filter((x) => x.name === nm && (x.class === 'boundary' || x.class === 'place'))
+      .sort((a, b) => (inBox(b) - inBox(a)) || (a.distance - b.distance));
+    if (rows.length && (inBox(rows[0]) || rows[0].distance < 20000)) return rows[0];
     return { place_id: null, lat, lon, class: 'place', type: k, name: nm, display_name: [...parts.map((x) => x[1]), c.country].filter(Boolean).join(', '), address: { [k]: nm, country: c.country } };
   }
 

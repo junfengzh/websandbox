@@ -1,0 +1,54 @@
+<% layout('layout', { ...it, hideSearch: true }) %>
+<% const p = it.P, r = it.route; %>
+<section class="directions" aria-labelledby="dir_h">
+  <h2 id="dir_h">Directions</h2>
+  <form id="directions_form" class="directions_form" action="/directions" method="get">
+    <div class="field">
+      <label for="route_engine">Mode</label>
+      <select id="route_engine" name="engine" class="routing_engines">
+      <% for (const e of p.ENGINES) { %><option value="<%= e.id %>"<% if (e.id === it.eng.id) { %> selected<% } %>><%= e.label %></option><% } %>
+      </select>
+    </div>
+    <div class="field">
+      <label for="route_from">From</label>
+      <input type="text" id="route_from" name="route_from" value="<%= it.from ? it.from.name : '' %>" placeholder="From" autocomplete="off" list="route_from_suggestions">
+      <datalist id="route_from_suggestions"></datalist>
+      <% if (it.from && !it.from.missing) { %><input type="hidden" name="from_ll" value="<%= p.llStr(it.from) %>"><input type="hidden" name="from" value="<%= it.from.name %>"><% } %>
+    </div>
+    <div class="field">
+      <label for="route_to">To</label>
+      <input type="text" id="route_to" name="route_to" value="<%= it.to ? it.to.name : '' %>" placeholder="To" autocomplete="off" list="route_to_suggestions">
+      <datalist id="route_to_suggestions"></datalist>
+      <% if (it.to && !it.to.missing) { %><input type="hidden" name="to_ll" value="<%= p.llStr(it.to) %>"><input type="hidden" name="to" value="<%= it.to.name %>"><% } %>
+    </div>
+    <div class="buttons">
+      <button type="submit" class="btn-go">Go</button>
+      <% if (it.swapUrl) { %><a class="btn reverse_directions" href="<%= it.swapUrl %>">Reverse directions</a><% } %>
+      <a class="btn secondary" href="/">Close</a>
+    </div>
+  </form>
+  <% for (const e of (it.geoErrors || [])) { %>
+  <p class="error" role="alert">Could not find "<%= e.text %>" (<%= e.side %>).</p>
+  <% } %>
+  <% if (it.error) { %><p class="error" role="alert"><%= it.error %></p><% } %>
+  <% if (r) { %>
+  <div id="routing_summary" class="routing_summary" role="status">
+    <p class="summary-line"><strong>Distance: <span class="route-distance" data-meters="<%= Math.round(r.distance) %>"><%= p.distanceText(r.distance) %></span></strong>.
+      <strong>Time: <span class="route-time" data-seconds="<%= Math.round(r.duration) %>"><%= p.durationText(r.duration) %></span></strong>.</p>
+    <p class="summary-sub"><%= it.eng.label %> · <%= p.hhmm(r.duration) %> h:mm · from <%= it.from.name.split(',')[0] %> to <%= it.to.name.split(',')[0] %></p>
+    <nav class="other-modes" aria-label="Other modes">
+    <% for (const x of it.engineUrls) { if (x.e.id !== it.eng.id) { %><a href="<%= x.href %>"><%= x.e.mode === 'car' ? 'By car' : x.e.mode === 'bike' ? 'By bicycle' : 'On foot' %></a> <% } } %>
+    </nav>
+  </div>
+  <h3>Turn-by-turn directions</h3>
+  <ol class="routing_steps">
+  <% r.steps.forEach((s, i) => { %>
+    <li class="routing_step"><span class="step-icon" aria-hidden="true"><%= p.stepIcon(s.maneuver) %></span>
+      <span class="step-text"><%= s.instruction %></span><% if (s.distance > 0) { %> <span class="step-distance"><%= p.distanceText(s.distance) %></span><% } %></li>
+  <% }) %>
+  </ol>
+  <p class="attribution">Directions courtesy of OSRM-compatible routing on OpenStreetMap data.</p>
+  <% } else if (!it.error && !(it.geoErrors || []).length) { %>
+  <p class="hint">Enter a start and a destination (a place name, an address, or coordinates "lat, lon"), choose a mode, then press Go. You can also click the map and pick "Directions from here" / "Directions to here".</p>
+  <% } %>
+</section>

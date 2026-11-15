@@ -1,0 +1,12 @@
+<% layout('layout') %>
+<section class="welcome" aria-labelledby="welcome_h">
+  <h2 id="welcome_h">Welcome to OpenStreetMap!</h2>
+  <p>A map of the world, created by people like you and free to use. This copy covers the
+  US Northeast (Pennsylvania, New York, New England, New Jersey), the San Francisco Bay Area, Greater London and Singapore.</p>
+  <ul class="tips">
+    <li>Search for a place or address in the box above, e.g. <a href="/search?query=Carnegie%20Mellon%20University">Carnegie Mellon University</a> or <a href="/search?query=401%20Shady%20Ave%2C%20Pittsburgh">401 Shady Ave, Pittsburgh</a>.</li>
+    <li>Find things near a place: <a href="/search?query=cafes%20near%20Carnegie%20Mellon%20University">cafes near Carnegie Mellon University</a>.</li>
+    <li>Get <a href="/directions">directions</a> by car, bicycle or on foot.</li>
+    <li>Click the map to see what is there ("Where is this?", "Query features", directions from/to a point).</li>
+  </ul>
+</section>

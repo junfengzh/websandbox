@@ -1,0 +1,41 @@
+<% layout('layout') %>
+<% const p = it.P; %>
+<section aria-labelledby="query_h">
+  <h2 id="query_h"><%= it.category ? `${it.label} near ${p.coords(it.lat, it.lon)}` : 'Query Features' %></h2>
+  <p class="coords">Location: <%= p.coords(it.lat, it.lon) %> · <a href="/search?lat=<%= it.lat %>&amp;lon=<%= it.lon %>">Where is this?</a></p>
+  <form class="nearby_form" action="/query" method="get">
+    <input type="hidden" name="lat" value="<%= it.lat %>"><input type="hidden" name="lon" value="<%= it.lon %>">
+    <label for="nearby_category">What's nearby?</label>
+    <select id="nearby_category" name="category">
+      <option value="">Everything here</option>
+    <% for (const [v, l] of p.NEARBY) { %><option value="<%= v %>"<% if (v === it.category.toLowerCase()) { %> selected<% } %>><%= l %></option><% } %>
+    </select>
+    <button type="submit">Show</button>
+  </form>
+  <% if (it.category) { %>
+  <% if (!it.nearby.length) { %><p class="no-results">Nothing found within 20 km.</p><% } else { %>
+  <ol class="results-list query-results">
+  <% for (const r of it.nearby) { %>
+    <li><span class="result-type"><%= p.typeLabel(r) %></span> <a href="<%= p.placeUrl(r) %>"><%= p.title(r) %></a>
+      <span class="result-distance"><%= p.distanceText(r.distance) %> (straight line)</span>
+      <div class="result-address"><%= r.display_name %></div></li>
+  <% } %>
+  </ol>
+  <% } %>
+  <% } else { %>
+  <h3>Nearby features</h3>
+  <% if (!it.nearby.length) { %><p class="no-results">No features found.</p><% } else { %>
+  <ul class="results-list query-results">
+  <% for (const r of it.nearby) { %>
+    <li><span class="result-type"><%= p.typeLabel(r) %></span> <a href="<%= p.placeUrl(r) %>"><%= p.title(r) %></a> <span class="result-distance"><%= p.distanceText(r.distance) %></span></li>
+  <% } %>
+  </ul>
+  <% } %>
+  <h3>Enclosing features</h3>
+  <% if (!it.enclosing.length) { %><p class="no-results">No features found.</p><% } else { %>
+  <ul class="results-list enclosing">
+  <% for (const e of it.enclosing) { %><li><span class="result-type"><%= e.label %></span> <%= e.name %></li><% } %>
+  </ul>
+  <% } %>
+  <% } %>
+</section>

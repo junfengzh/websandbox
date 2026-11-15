@@ -1,0 +1,22 @@
+<% layout('layout') %>
+<section aria-labelledby="results_h">
+  <h2 id="results_h">Search Results</h2>
+<% if (!it.query) { %>
+  <p>Enter a place name, an address or a category ("hotels near Carnegie Music Hall") in the search box.</p>
+<% } else { %>
+  <h3 class="results-source">Results from OpenStreetMap Nominatim</h3>
+  <% if (!it.results.length) { %>
+  <p class="no-results">No results found for "<%= it.query %>".</p>
+  <% } else { %>
+  <ul class="results-list">
+  <% for (const r of it.results) { %>
+    <li class="search_results_entry" data-lat="<%= r.lat %>" data-lon="<%= r.lon %>">
+      <span class="result-type"><%= it.P.typeLabel(r) %></span>
+      <a class="set_position" href="<%= it.P.placeUrl(r) %>"><%= r.display_name %></a>
+      <% if (it.near && r.distance != null) { %><span class="result-distance">(<%= it.P.distanceText(r.distance) %> away, straight line)</span><% } %>
+    </li>
+  <% } %>
+  </ul>
+  <% } %>
+<% } %>
+</section>

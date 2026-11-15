@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= it.title ? it.title + ' | ' : '' %><%= it.site.title %></title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/vendor/maplibre-gl.css">
+<link rel="stylesheet" href="/static/map.css">
+<% if (it.skin.css) { %><style><%~ it.skin.css %></style><% } %>
+</head>
+<body class="skin-<%= it.skin.name %> theme-<%= it.skin.theme || 'light' %> nav-<%= it.skin.nav || 'top' %>">
+<a class="skip-link" href="#sidebar_content">Skip to sidebar</a>
+<header id="header">
+  <h1><a href="/" class="brand"><span class="brand-logo" aria-hidden="true"></span><%= it.site.title %></a></h1>
+  <nav class="primary" aria-label="Main">
+  <% for (const m of it.menu) { %><a href="<%= m.href %>"<% if (it.req.path === m.href) { %> aria-current="page"<% } %>><%= m.label %></a>
+  <% } %></nav>
+</header>
+<div id="content">
+  <div id="sidebar">
+    <% if (!it.hideSearch) { %>
+    <form class="search_form" action="/search" method="get" role="search">
+      <label for="query" class="visually-hidden">Search</label>
+      <input type="search" id="query" name="query" value="<%= it.query || '' %>" placeholder="<%= it.L('search.placeholder', 'Search') %>" autocomplete="off" list="query_suggestions" aria-describedby="search_help">
+      <datalist id="query_suggestions"></datalist>
+      <button type="submit" class="btn-go"><%= it.L('search.go', 'Go') %></button>
+      <a class="btn-directions" href="/directions" title="Find directions" aria-label="Find directions">⇄</a>
+    </form>
+    <p id="search_help" class="visually-hidden">Search for a place, an address, or "restaurants near Carnegie Mellon University".</p>
+    <% } %>
+    <div id="sidebar_loader" role="status" aria-live="polite" hidden><span class="spinner" aria-hidden="true"></span> <span class="loader-text">Loading…</span></div>
+    <div id="sidebar_content">
+<%~ it.body %>
+<script type="application/json" id="map-data"><%~ JSON.stringify(it.mapData || {}).replace(/</g, '\\u003c') %></script>
+    </div>
+    <footer class="sidebar-footer"><a href="/copyright">© OpenStreetMap contributors</a> · <a href="/about">About</a></footer>
+  </div>
+  <div id="map" role="region" aria-label="Map"><noscript><p class="noscript">The map needs JavaScript. All search results, place details and directions are listed in the sidebar.</p></noscript></div>
+</div>
+<script src="/vendor/maplibre-gl.js" defer></script>
+<script src="/static/map.js" defer></script>
+</body>
+</html>

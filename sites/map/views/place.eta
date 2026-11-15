@@ -1,0 +1,42 @@
+<% layout('layout') %>
+<% const p = it.P, x = it.p; const ll = p.llStr(x); %>
+<article class="place" aria-labelledby="place_h" data-place-id="<%= x.place_id %>">
+  <p class="place-kind"><%= p.typeLabel(x) %><% if (x.osm_type && x.osm_id != null && x.osm_type !== 'postcode') { %> · <span class="osm-ref"><%= p.titleCase(x.osm_type) %> <%= x.osm_id %></span><% } %></p>
+  <h2 id="place_h"><%= p.title(x) %></h2>
+  <dl class="place-facts">
+    <dt>Category</dt><dd class="place-category"><%= p.typeLabel(x) %> (<%= x.class %>=<%= x.type %>)</dd>
+    <dt>Address</dt><dd class="place-address"><%= x.display_name %></dd>
+    <% if (x.address && x.address.postcode) { %><dt>Postcode</dt><dd class="place-postcode"><%= x.address.postcode %></dd><% } %>
+    <dt>Coordinates</dt><dd class="place-coords"><span class="latitude"><%= p.coords(x.lat, x.lon).split(', ')[0] %></span>, <span class="longitude"><%= p.coords(x.lat, x.lon).split(', ')[1] %></span></dd>
+    <% for (const d of p.details(x)) { %>
+    <dt><%= d.label %></dt><dd><% if (d.kind === 'url') { %><a href="<%= /^https?:/i.test(d.value) ? d.value : 'http://' + d.value %>" rel="nofollow noopener" target="_blank"><%= d.value %></a><% } else if (d.kind === 'tel') { %><a href="tel:<%= d.value.replace(/[^+\d]/g, '') %>"><%= d.value %></a><% } else { %><%= d.value %><% } %></dd>
+    <% } %>
+  </dl>
+  <p class="actions">
+    <a class="btn" href="/directions?route=<%= ll %>;&amp;from=<%= encodeURIComponent(x.display_name) %>">Directions from here</a>
+    <a class="btn" href="/directions?route=;<%= ll %>&amp;to=<%= encodeURIComponent(x.display_name) %>">Directions to here</a>
+  </p>
+  <form class="nearby_form" action="/query" method="get">
+    <input type="hidden" name="lat" value="<%= x.lat %>"><input type="hidden" name="lon" value="<%= x.lon %>">
+    <label for="nearby_category">What's nearby?</label>
+    <select id="nearby_category" name="category">
+    <% for (const [v, l] of p.NEARBY) { %><option value="<%= v %>"><%= l %></option><% } %>
+    </select>
+    <button type="submit">Show</button>
+  </form>
+  <h3>Tags</h3>
+  <table class="browse-tag-list">
+    <thead><tr><th scope="col">Key</th><th scope="col">Value</th></tr></thead>
+    <tbody>
+    <% for (const [k, v] of p.tags(x)) { %><tr><th scope="row" class="browse-tag-k"><%= k %></th><td class="browse-tag-v"><%= v %></td></tr><% } %>
+    </tbody>
+  </table>
+  <% if (it.nearby.length) { %>
+  <h3>Nearby</h3>
+  <ul class="results-list nearby-list">
+  <% for (const r of it.nearby) { %>
+    <li><span class="result-type"><%= p.typeLabel(r) %></span> <a href="<%= p.placeUrl(r) %>"><%= r.name %></a> <span class="result-distance"><%= p.distanceText(r.distance) %></span></li>
+  <% } %>
+  </ul>
+  <% } %>
+</article>
