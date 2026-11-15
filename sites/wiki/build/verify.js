@@ -78,8 +78,9 @@ for (const [from, to] of Object.entries(redirects)) {
 console.log('redirect count', db.prepare('select count(*) n from redirect').get().n);
 
 // 3. FTS
-const fts = db.prepare(`select a.path, bm25(article_fts, 10.0, 1.0) s from article_fts f join article a on a.id=f.rowid
-  where article_fts match ? order by s limit 5`);
+// recommended ranking: bm25 with title weight 50, minus 0.3 * ln(1 + in-links) (see SCHEMA.md)
+const fts = db.prepare(`select a.path, bm25(article_fts, 50.0, 1.0) - 0.3 * ln(1 + a.inlinks) s
+  from article_fts f join article a on a.id=f.rowid where article_fts match ? order by s limit 5`);
 const queries = [
   ['christopher nolan', 'Christopher_Nolan'], ['acadia national park', 'Acadia_National_Park'],
   ['turing award', 'Turing_Award'], ['nash equilibrium', 'Nash_equilibrium'],
@@ -105,7 +106,7 @@ function suggest(q) {
   if (n.length <= 3) { const r = topq.get(n); return r ? JSON.parse(r.items).map((x) => x[0]) : []; }
   return sugq.all(n, n + '￿').map((r) => r.title);
 }
-for (const [q, want] of [['chri', 'Christopher Nolan'], ['acadia', 'Acadia National Park'], ['bos', 'Boston'], ['mackinac b', 'Mackinac Bridge']]) {
+for (const [q, want] of [['chri', 'Christianity'], ['christopher n', 'Christopher Nolan'], ['acadia n', 'Acadia National Park'], ['bos', 'Boston'], ['mackinac b', 'Mackinac Bridge'], ['the chair', 'The Chair (2021 TV series)']]) {
   const s = suggest(q);
   ok(s.includes(want), `suggest "${q}" -> ${JSON.stringify(s)}`);
   console.log(`suggest "${q}" -> ${s.slice(0, 5).join(' | ')}`);

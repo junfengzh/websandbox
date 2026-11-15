@@ -25,12 +25,12 @@ resumable or cheap to re-run; outputs of each step are inputs of the next.
 
 | step | command | output (in WORK unless noted) | time (8 cores, NFS, shared box) |
 |---|---|---|---|
-| 1 | `$PY s1_dirents.py` | `dirents.db`: every ZIM directory entry (articles, redirects, images) | ~5 min |
-| 2 | `$PY s2_linkscan.py` | `s2/stats.npz`: in-links, size, infobox, image count per article (streams all 28 GB of HTML clusters once; chunked, resumable) | ~45 min |
+| 1 | `$PY s1_dirents.py` | `dirents.db`: every ZIM directory entry (articles, redirects, images) | 4 min |
+| 2 | `$PY s2_linkscan.py` | `s2/stats.npz`: in-links, size, infobox, image count per article (streams all 28 GB of HTML clusters once; chunked, resumable) | 68 min |
 | 3 | `$PY s3_select.py` | `selection.tsv`: task articles + one hop, then by in-links until the budget (`WIKI_ARTICLE_BUDGET_MB`) | ~5 min |
-| 4 | `$PY s4_articles.py` | `build.db`: cleaned zstd HTML, text, links, media list per article (resumable per 400-article job) | see NOTES |
-| 5 | `$PY s5_media.py` | `OUT/media/`: thumbnails (resumable per file) | see NOTES |
-| 6 | `$PY s6_assemble.py` | `OUT/base.db`: final DB with FTS5, redirects, links, suggestions | see NOTES |
+| 4 | `$PY s4_articles.py` | `build.db`: cleaned zstd HTML, text, links, media list per article (resumable per 400-article job) | 9 h on the loaded box (CPU-bound; ~2-3 h idle) |
+| 5 | `$PY s5_media.py` | `OUT/media/`: thumbnails within `WIKI_MEDIA_BUDGET_MB` (default 900; built with 850), prunes files over budget (resumable per file) | 6 min |
+| 6 | `$PY s6_assemble.py` | `OUT/base.db`: final DB with FTS5, redirects, links, suggestions; strips `<img>` of thumbnails not kept | 14 min |
 | 7 | `node verify.js [OUT]` | checks: task articles + facts, links, images, redirects, FTS, suggestions, size | seconds |
 
 Files:
@@ -40,5 +40,5 @@ Files:
 - `task_articles.json` -- the articles the WebArena Wikipedia tasks need, why, and the facts `verify.js` checks.
 - `common.py` -- paths.
 
-Afterwards delete `WORK/build.db`, `WORK/s2/chunk_*.npz` and (if not rebuilding
-soon) `WORK/dirents.db` (2.3 GB).
+Afterwards delete `WORK/build.db` (2.8 GB), `WORK/s2/chunk_*.npz` and
+`WORK/dirents.db` (2.3 GB); keep `s2/stats.npz` and `selection.tsv`.

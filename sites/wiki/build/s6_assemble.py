@@ -132,7 +132,7 @@ def main():
     for p, title, t in reds:
         k = (norm(title), t)
         if k not in sug:
-            sug[k] = (title, score[t], 1)
+            sug[k] = (title, score[t] // 10, 1)
     rows = [(k[0], v[0], k[1], v[1], v[2]) for k, v in sug.items() if k[0]]
     db.executemany('insert into suggest values(?,?,?,?,?)', rows)
     db.execute('create index suggest_norm on suggest(norm, score desc)')

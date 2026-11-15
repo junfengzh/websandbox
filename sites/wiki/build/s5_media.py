@@ -136,6 +136,25 @@ def main():
     dd = sqlite3.connect(os.path.join(WORK, 'dirents.db'))
     allowed = choose(bdb)
     rows = [r for r in bdb.execute('select url, zpath, mime from media where bytes is null') if r[0] in allowed]
+    # prune files fetched earlier that no longer fit the budget
+    drop = [u for (u,) in bdb.execute('select url from media where bytes is not null') if u not in allowed]
+    for u in drop:
+        try:
+            os.remove(os.path.join(OUT, u.lstrip('/')))
+        except FileNotFoundError:
+            pass
+    with bdb:
+        bdb.executemany('update media set bytes=null, w=null, h=null where url=?', [(u,) for u in drop])
+    # and files on disk that the media table does not know as kept (e.g. interrupted runs)
+    stray = 0
+    mroot = os.path.join(OUT, 'media')
+    if os.path.isdir(mroot):
+        for d in os.listdir(mroot):
+            for fn in os.listdir(os.path.join(mroot, d)):
+                if '/media/%s/%s' % (d, fn) not in allowed:
+                    os.remove(os.path.join(mroot, d, fn))
+                    stray += 1
+    print('pruned', len(drop), 'stray', stray, flush=True)
     bycl = {}
     for url, zpath, mime in rows:
         r = dd.execute('select cl, bl from img where path=?', (zpath,)).fetchone()

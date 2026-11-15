@@ -15,7 +15,7 @@ Wikipedia, 2022-05-01). Sources and licences: [SOURCES.md](SOURCES.md).
 | `title` | text | display title (`Christopher Nolan`). |
 | `html` | blob | cleaned article body HTML, **zstd with the dictionary in `zdict` (id 1)**. Starts with `<div class="mw-parser-output">`. |
 | `html_len` | int | decompressed size in bytes. |
-| `text` | blob | plain text, zstd *without* dictionary, or NULL if the build dropped it (see `meta.keep_text`). |
+| `text` | blob | plain text, zstd *without* dictionary -- NULL in the default build (`KEEP_TEXT=1` in s6 stores it: +~0.84 GB). |
 | `text_len` | int | plain-text size in bytes (what FTS indexed). |
 | `lead` | text | first paragraph as plain text (<= 600 chars): search-result snippets, link previews. |
 | `sections` | text | JSON `[[level, anchor, heading], ...]` (levels 2-6) for the table of contents. Anchors are the `id`s of the `<h2>`..`<h6>` in `html`. |
@@ -60,14 +60,25 @@ SVG), `bytes`. The file is `<data dir>/<url>`. WebP <= 320 px wide, or SVG.
 `fts5(title, body, content='', tokenize='porter unicode61 remove_diacritics 2')`,
 `rowid` = `article.id`, `body` = plain text without reference lists.
 Contentless, so `snippet()`/`highlight()` are unavailable: use `article.lead`
-or decompress `article.text` for snippets. Ranking:
-`order by bm25(article_fts, 10.0, 1.0)` (title weight 10), optionally mixed
-with `article.inlinks`. `detail` mode is in `meta.fts_detail`.
+for snippets (or decompress `article.html` and cut around the match).
+`detail=full`, so phrase (`"suspension bridge"`), prefix (`mack*`) and NEAR
+queries work. Recommended ranking (tuned on the task queries, see
+`build/verify.js`): bm25 with title weight 50, plus a small popularity prior;
+and an exact title/redirect match goes first (or straight to the page, like
+Wikipedia's "Go"):
 
 ```sql
-select a.id, a.path, a.title, a.lead from article_fts f join article a on a.id = f.rowid
-where article_fts match ? order by bm25(article_fts, 10.0, 1.0) limit 20;
+select a.id, a.path, a.title, a.lead,
+       bm25(article_fts, 50.0, 1.0) - 0.3 * ln(1 + a.inlinks) as score
+from article_fts f join article a on a.id = f.rowid
+where article_fts match ? order by score limit 20;
 ```
+
+Pure bm25 (no prior) ranks short sub-articles first ("List of accolades
+received by Inception" for *christopher nolan*); a larger prior (>= 0.6)
+lets huge articles win (*stephen king* -> Hungary). Queries of very common
+words take up to ~350 ms (the whole match set is scored); strip stop words
+("where was the") before matching.
 
 ### `suggest`, `suggest_top` (title suggestions / autocomplete)
 `suggest(norm, title, target, score, is_redirect)`, index `(norm, score desc)`.
