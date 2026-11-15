@@ -297,7 +297,7 @@ function languageOf(filename) {
   const m = /\.([a-z0-9]+)$/.exec(base);
   return m ? LANG_BY_EXT[m[1]] || null : null;
 }
-let hljs = null;
+const hljs = require('highlight.js'); // loaded at boot (~200 ms), not on the first blob view
 // Highlighted lines (HTML strings, one per line) for a blob; plain escaped lines when the
 // language is unknown or the file is big.
 function highlightLines(sha, text, filename) {
@@ -307,7 +307,6 @@ function highlightLines(sha, text, filename) {
   if (c) return c;
   let html = null;
   if (lang && lang !== 'plaintext' && text.length <= 400 * 1024) {
-    hljs = hljs || require('highlight.js');
     if (hljs.getLanguage(lang)) {
       try { html = hljs.highlight(text, { language: lang, ignoreIllegals: true }).value; } catch (e) { html = null; }
     }

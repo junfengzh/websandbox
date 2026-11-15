@@ -76,7 +76,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
 /* ---------- buttons and forms */
 .btn, button.btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap; text-decoration: none; }
 .btn:hover { background: var(--bg-subtle); text-decoration: none; }
-.btn-sm { height: 28px; padding: 0 8px; font-size: 13px; }
+.btn-sm, button.btn-sm { height: 28px; padding: 0 8px; font-size: 13px; }
 .btn-confirm, button.btn-confirm { background: var(--blue); border-color: var(--blue-dark); color: #fff; } .btn-confirm:hover { background: var(--blue-dark); }
 .btn-danger, button.btn-danger { background: var(--red); border-color: #c91c00; color: #fff; } .btn-danger:hover { background: #c91c00; }
 .btn-danger-secondary { color: var(--red); border-color: var(--red); }
@@ -252,7 +252,14 @@ table.diff { border-collapse: collapse; width: 100%; font-family: var(--mono); f
 .event-detail { color: var(--muted); font-size: 13px; margin-top: 4px; overflow-wrap: anywhere; } .event-target-title { color: var(--fg); }
 .calendar { overflow-x: auto; margin: 8px 0 16px; } .calendar svg rect { shape-rendering: crispEdges; }
 .settings-layout { display: grid; grid-template-columns: 280px 1fr; gap: 32px; padding: 16px 0; border-bottom: 1px solid var(--line-soft); }
-.settings-layout h2 { font-size: 1.15rem; margin: 0 0 6px; } @media (max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } .sidebar { display: none; } }
+.settings-layout h2 { font-size: 1.15rem; margin: 0 0 6px; } @media (max-width: 900px) {
+  .settings-layout { grid-template-columns: 1fr; }
+  .layout-page { flex-direction: column; }
+  .sidebar { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 0; }
+  .sidebar-nav { display: flex; flex-wrap: wrap; } .sidebar-sub { display: none; } .sidebar-top .badge { margin-left: 4px; }
+  .content-wrapper { padding: 0 12px 32px; } .navbar-search { display: none; } .menu-panel { min-width: 0; flex-direction: column; }
+  .project-stats .updated { min-width: 0; } .brand-name { display: none; }
+}
 
 /* ---------- auth */
 .auth-page { max-width: 420px; margin: 40px auto; } .auth-page h1 { text-align: center; } .auth-box { border: 1px solid var(--line); border-radius: 4px; padding: 24px; background: var(--bg); box-shadow: 0 1px 2px rgba(0,0,0,.06); }

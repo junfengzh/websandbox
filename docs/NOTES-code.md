@@ -134,3 +134,19 @@ pg datadir copy 8 min; repo copy ~7 min; `export` 9-12 min; `git` first run 2 h 
 gcc 50 min -> 5 min after the gcc change); re-run with `--reuse` (keeps the git-log output,
 recomputes branches/contributors/objects) 5 min; templates 1 min; assemble 2 min; verify 4 s.
 Disk peak ~30 GB in `work/code` (pgdata 12 + repos 13 + shards 3.7), all removed by `cleanup`.
+
+## Site: repository side (`sites/code/repo/`, 2026-11-15)
+
+Routes: `sites/code/ROUTES.md`. Facts for task conversion / graders:
+
+- Site clock "today" = 2023-04-27 16:00 UTC (data ends 2023-04-26).
+- Web edits create real git objects (blob/tree/commit shas as git computes them); the new head
+  of a branch gets `branch_commits.pos = min(pos) - 1` (order by pos; pos can be negative).
+- `temp.repo_files(project_id, branch, path, content, ...)` holds the current text of every file
+  a web commit wrote (NULL = deleted), copied to new branches and forks: state checks on edited
+  files are plain SQL (task 414's LICENSE, the README tasks, ...).
+- Stars: `stars` row + `projects.star_count` +/- 1; forks: new `projects` row with
+  `forked_from_id`, parent `forks_count` + 1; follows: `follows`; status: `user_statuses`
+  (message, `availability = 'busy'`); profile fields on `users`.
+- Contributors page = `contributors.commits` for the branch (job `repo.contributors` recomputes
+  after a web commit); commits list `?author=` is a substring match on name or e-mail.
