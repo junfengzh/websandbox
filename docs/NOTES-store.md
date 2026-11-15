@@ -266,3 +266,33 @@ dominate).
   indexes added to `build/schema.sql` and created in place in base.db (0.4 s; the admin's temp
   `admin_popt`/`admin_povr` maps are now left empty). base.db's mtime changed, so servers started
   before this must be restarted (`/__rl/health` reports `baseChanged`).
+
+## Generated tasks (2026-11-15)
+
+`node tasks/store/gen/index.js --seed 1` writes `tasks/store/generated-shopping.jsonl` (site `shopping`,
+30 templates, 1,796 tasks: 795 read / 1,001 write) and `tasks/store/generated-admin.jsonl` (site
+`shopping_admin`, 37 templates, 1,962 tasks: 1,061 read / 901 write); deterministic per seed, ids
+`gen-shopping-*` / `gen-admin-*` (`<template>-NNNN`). Modules: `gen/shopping/*.js`, `gen/admin/*.js`
+(one file per family), shared SQL in `gen/lib.js` (final/listing prices, anchor-category listings, ratings,
+store-local dates, the storefront's FTS match, fake US addresses). Report templates reuse
+`sites/store/admin/lib/reports.js` to pick unique answers. Storefront tasks log in as many different
+customers (not only Emma); the guest order lookup runs signed out.
+
+- Self-check at generation (every task, on base.db with the kit grader): answer tasks pass with their
+  reference and `answer_sql` reproduces it (no drift), a wrong answer fails; state tasks fail on the
+  untouched base data. Samplers reject ties, empty results, substring-ambiguous grid filters (name /
+  nickname / brand / ZIP), and storefront color+size pairs where independent filters differ from the
+  combination.
+- Validation: every template has 2 instances done by hand through the UI (browse.js) + 1 negative,
+  graded with grade.js: `tasks/store/verify-generated.jsonl` (4 lines marked `superseded` from runs
+  before a template fix). `gen/verified.json` lists the validated templates (task `status`).
+- Fixes found while validating: dimension specs graded on the part before ';'; units-bought needs >= 2
+  non-canceled orders; search-add-cheapest requires the query words in the cheapest result's name;
+  wishlist-most-reviewed brands must be in the Brand facet's top 30; URL key / meta title graded exact;
+  search-term stats ask one number (two numbers could be swapped).
+- Site fix: under /admin a fresh admin `wsb_sid` (from `/__rl/login`) now wins over a stale
+  `wsb_admin_sid` whose session a tenant reset rolled back (before: login page).
+- Known: count answers use must_include, so any equal number in the answer passes (phrasings avoid
+  echoing numbers, e.g. "five-star"); listing ratings are in a `role=img` aria-label, so text-only
+  snapshots show "Rating:" without the percent (product pages show "x.x out of 5"); complete orders have
+  no `total_paid`, so credit memos are generated as invoice-then-refund on open orders.
