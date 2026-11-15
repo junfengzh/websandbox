@@ -264,3 +264,38 @@ found nothing; it now also matches names by substring (ROUTES.md, test added).
 Grader notes: must_include on short numbers is WebArena-lenient ("10" contains "1"); the
 task 23 group's 409/410 accept any reply by the user under the target comment that contains
 the text; vote tasks do not penalise extra votes on other posts (as WebArena).
+
+## Generated tasks (2026-11-15)
+
+Generator: [../tasks/forum/gen/](../tasks/forum/gen/) (`node tasks/forum/gen/index.js --seed 1` ->
+[../tasks/forum/generated.jsonl](../tasks/forum/generated.jsonl), deterministic, ~12 s; `--list` prints the
+templates). 40 templates in 11 family modules (listings, search, threads, users, forums, votes, comments,
+posts, profile, messages, moderation), 2,314 tasks (1,054 read / 1,260 write; difficulty 1/2/3 = 436/1,638/240),
+60 per template except newest-post-comments (16) and category-largest-forum (18). Every reference is computed
+by SQL on base.db at generation time; answer tasks carry a static reference plus `answer_sql` (drift check),
+state tasks compare rows. `node tasks/forum/gen/check.js --site <tenant>` re-checks all tasks on a fresh tenant:
+answer_sql == reference, the reference passes, empty/decoy answers fail, every state check fails untouched.
+
+Validation: per template 2 instances done by hand through the UI with `tasks/tools/browse.js` (headless
+Chrome, :7250) and graded with `tasks/tools/grade.js`, plus 1 negative (wrong answer or wrong/over-broad
+action) -- 80 positive + 40 negative lines in [../tasks/forum/verify-generated.jsonl](../tasks/forum/verify-generated.jsonl),
+all ok. No site bugs found.
+
+Design decisions / data facts:
+- Moderation: nobody moderates a forum in the data, so moderation tasks log in as the site admin
+  `KrokmaniakPL` (moderator of every forum). Moderator "Remove" has a fixed reason, so removal tasks don't
+  ask for one; bans do (the ban form takes a reason).
+- No post has a negative score (min 0 everywhere), so "lowest score" questions are degenerate; the
+  template asks for the score of the N-th post by top instead (neighbours must differ).
+- Time windows: the clock (2023-07-11) is past the data (ends 2023-03-31), so `?t=day|week|month` are empty and
+  `t=year` == all; no template uses windows. Pages show relative times only, so no date questions either.
+- "Top comment" = first comment shown (top-level, highest score); a reply can outscore its parent, so vote
+  templates require the global max to be top-level. Link-post templates require the target within the first
+  two pages of `/top` and URLs without `&amp;` (Reddit-escaped URLs are stored raw).
+- Answer titles exclude `&`/entities/emoji; typographic quotes get an ASCII ` |OR| ` alternative. Intents only
+  quote ASCII-clean, site-wide unique titles. Single-name comparisons (compare-karma) use `exact`, since
+  must_include would pass an answer naming both users.
+- Write graders reject spray actions: other comment votes in the thread, other subscriptions, other locked/
+  pinned posts, other bans, extra moderators, other deleted comments, unrequested preference changes,
+  messages to other users, and the bio template fails if it names the user's other forums.
+- bio-top-forum has 12 distinct intents over 60 login users (the answer depends on who is logged in).
