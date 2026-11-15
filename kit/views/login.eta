@@ -1,0 +1,12 @@
+<% layout('layout') %>
+<section class="kit-login">
+  <h1><%= it.title || 'Sign in' %></h1>
+  <% if (it.error) { %><div class="kit-flash kit-flash-error" role="alert"><%= it.error %></div><% } %>
+  <form method="post" action="<%= it.req.path %>">
+    <%~ it.csrfInput() %>
+    <input type="hidden" name="next" value="<%= it.next %>">
+    <%~ include('kit/field', { name: 'login', label: it.L('auth.username', 'Username or email'), value: it.values.login, required: true }) %>
+    <%~ include('kit/field', { name: 'password', label: it.L('auth.password', 'Password'), type: 'password', required: true }) %>
+    <button type="submit"><%= it.L('auth.login', 'Sign in') %></button>
+  </form>
+</section>

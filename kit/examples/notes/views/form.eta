@@ -1,0 +1,12 @@
+<% layout('layout') %>
+<h1><%= it.title %></h1>
+<form method="post" action="<%= it.note ? '/notes/' + it.note.id + '/edit' : '/notes' %>" enctype="multipart/form-data">
+  <%~ it.csrfInput() %>
+  <%~ include('kit/field', { name: 'title', label: 'Title', value: it.values.title, error: it.errors.title, required: true }) %>
+  <%~ include('kit/field', { name: 'body', label: 'Body', type: 'textarea', value: it.values.body, error: it.errors.body, required: true }) %>
+  <%~ include('kit/field', { name: 'tag', label: 'Tag', type: 'select', options: it.tags, value: it.values.tag, error: it.errors.tag, required: true }) %>
+  <%~ include('kit/field', { name: 'likes', label: 'Likes', type: 'number', value: it.values.likes, error: it.errors.likes }) %>
+  <% if (!it.note) { %><%~ include('kit/field', { name: 'attachment', label: 'Attachment', type: 'file' }) %><% } %>
+  <button type="submit"><%= it.note ? 'Save' : 'Create note' %></button>
+  <a href="<%= it.note ? '/notes/' + it.note.id : '/' %>">Cancel</a>
+</form>

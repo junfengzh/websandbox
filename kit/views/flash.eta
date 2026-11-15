@@ -1,0 +1,2 @@
+<% for (const f of it.flashes || []) { %><div class="kit-flash kit-flash-<%= f.type %>" role="<%= f.type === 'error' ? 'alert' : 'status' %>"><%= f.msg %></div>
+<% } %>

@@ -1,0 +1,8 @@
+<% layout('layout') %>
+<h1>Admin</h1>
+<h2>Notes by status</h2>
+<table class="grid"><tr><th>Status</th><th>Notes</th></tr>
+<% for (const s of it.stats) { %><tr><td><%= s.status %></td><td><%= it.fmt.number(s.n) %></td></tr><% } %></table>
+<h2>Background jobs</h2>
+<table class="grid"><tr><th>#</th><th>Type</th><th>Run at</th><th>Status</th><th>Result</th></tr>
+<% for (const j of it.jobs) { %><tr><td><%= j.id %></td><td><%= j.type %></td><td><%= j.run_at %></td><td><%= j.status %></td><td><%= j.result || j.error || '' %></td></tr><% } %></table>

@@ -1,0 +1,21 @@
+<% layout('layout') %>
+<article class="note">
+  <h1><%= it.n.title %></h1>
+  <p class="muted">by <%= it.n.display_name %> · <%= it.n.tag %> · <span id="status"><%= it.n.status %></span> · created <%= it.fmt.datetime(it.n.created_at) %><% if (it.n.published_at) { %> · published <%= it.fmt.datetime(it.n.published_at) %><% } %></p>
+  <div class="body"><%= it.n.body %></div>
+  <% if (it.n.attachment) { %><p>Attachment: <a href="<%= it.n.attachment %>"><%= it.n.attachment.split('/').pop() %></a></p><% } %>
+  <p><button type="button" class="secondary" id="like" data-id="<%= it.n.id %>">Like (<span><%= it.n.likes %></span>)</button></p>
+  <% if (it.canEdit) { %>
+  <p>
+    <a class="button" href="/notes/<%= it.n.id %>/edit">Edit</a>
+    <% if (it.n.status === 'draft') { %><form method="post" action="/notes/<%= it.n.id %>/publish" class="inline"><%~ it.csrfInput() %><button type="submit" class="secondary">Publish in 10 minutes</button></form><% } %>
+    <form method="post" action="/notes/<%= it.n.id %>/delete" class="inline" data-confirm="Delete this note?"><%~ it.csrfInput() %><button type="submit" class="danger">Delete</button></form>
+  </p>
+  <% } %>
+</article>
+<script>
+document.getElementById('like').addEventListener('click', async (e) => {
+  const b = e.currentTarget; const r = await fetch('/api/notes/' + b.dataset.id + '/like', { method: 'POST' });
+  if (r.ok) b.querySelector('span').textContent = (await r.json()).likes;
+});
+</script>

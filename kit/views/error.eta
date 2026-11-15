@@ -1,0 +1,7 @@
+<% layout('layout') %>
+<section class="kit-errorpage">
+  <h1><%= it.status === 404 ? 'Page not found' : it.status === 403 ? 'Access denied' : it.status === 401 ? 'Sign in required' : it.status >= 500 ? 'Server error' : 'Error' %></h1>
+  <p class="code">Error <%= it.status %></p>
+  <p><%= it.message %></p>
+  <p><a href="/">Go to the home page</a></p>
+</section>

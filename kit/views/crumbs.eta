@@ -1,0 +1,7 @@
+<% if (it.crumbs && it.crumbs.length) { %>
+<nav class="kit-crumbs" aria-label="Breadcrumb"><ol>
+<% it.crumbs.forEach((c, i) => { const [label, href] = Array.isArray(c) ? c : [c.label, c.href]; %>
+  <li><% if (href && i < it.crumbs.length - 1) { %><a href="<%= href %>"><%= label %></a><% } else { %><span aria-current="page"><%= label %></span><% } %></li>
+<% }) %>
+</ol></nav>
+<% } %>

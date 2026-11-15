@@ -1,0 +1,9 @@
+<%/* include('kit/pagination', {p: pager}) where pager = kit.paginate(...) */%>
+<% const p = it.p; if (p && p.pages > 1) { %>
+<nav class="kit-pager" aria-label="Pagination">
+  <% if (p.prev) { %><a href="<%= p.prev %>" rel="prev">&laquo; Previous</a><% } else { %><span class="disabled">&laquo; Previous</span><% } %>
+  <% for (const l of p.links) { if (l.gap) { %><span class="gap">&hellip;</span><% } else if (l.current) { %><span class="current" aria-current="page"><%= l.n %></span><% } else { %><a href="<%= l.href %>"><%= l.n %></a><% } } %>
+  <% if (p.next) { %><a href="<%= p.next %>" rel="next">Next &raquo;</a><% } else { %><span class="disabled">Next &raquo;</span><% } %>
+</nav>
+<% } %>
+<% if (p) { %><p class="kit-count">Showing <%= p.from %>&ndash;<%= p.to %> of <%= p.total %></p><% } %>

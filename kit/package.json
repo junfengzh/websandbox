@@ -1,0 +1,28 @@
+{
+  "name": "@websandbox/kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared server kit for websandbox sites: tenants, transactional reset, auth, search, jobs, control and grading API",
+  "main": "index.js",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "wsb-grade": "bin/wsb-grade.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "bench": "node bench/bench.js"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/formbody": "^9.0.2",
+    "@fastify/multipart": "^10.1.8",
+    "@fastify/static": "^10.1.11",
+    "better-sqlite3": "^12.11.1",
+    "eta": "^3.5.0",
+    "fastify": "^5.12.8",
+    "hash-wasm": "^4.13.0"
+  }
+}

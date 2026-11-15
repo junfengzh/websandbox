@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="<%= it.csrf() %>">
+<title><%= it.title ? it.title + ' - ' : '' %><%= it.site.title %></title>
+<link rel="stylesheet" href="/_kit/kit.css">
+<% if (it.styles) { for (const s of [].concat(it.styles)) { %><link rel="stylesheet" href="<%= s %>">
+<% } } %><% if (it.skin.css) { %><style><%~ it.skin.css %></style><% } %>
+</head>
+<body class="skin-<%= it.skin.name %> theme-<%= it.skin.theme || 'light' %> nav-<%= it.skin.nav || 'top' %>">
+<header class="kit-header">
+  <a class="kit-brand" href="/"><%= it.site.title %></a>
+  <nav class="kit-menu" aria-label="Main">
+  <% for (const m of it.menu) { %><a href="<%= m.href %>"<% if (it.req.path === m.href || (m.href !== '/' && it.req.path.startsWith(m.href + '/'))) { %> aria-current="page"<% } %>><%= m.label %></a>
+  <% } %></nav>
+  <div class="kit-user">
+  <% if (it.user) { %>
+    <span>Signed in as <strong><%= it.user.display_name || it.user.username || it.user.name || it.user.email %></strong></span>
+    <form method="post" action="<%= it.logoutPath || '/logout' %>" class="inline"><%~ it.csrfInput() %><button type="submit" class="link"><%= it.L('auth.logout', 'Sign out') %></button></form>
+  <% } else if (it.loginPath !== false) { %>
+    <a href="<%= it.loginPath || '/login' %>"><%= it.L('auth.login', 'Sign in') %></a>
+  <% } %>
+  </div>
+</header>
+<main class="kit-main">
+<%~ include('kit/crumbs', { crumbs: it.crumbs }) %>
+<%~ include('kit/flash', { flashes: it.flashes }) %>
+<%~ it.body %>
+</main>
+<footer class="kit-footer"><%= it.L('footer', it.site.title) %></footer>
+<script src="/_kit/kit.js" defer></script>
+<% if (it.scripts) { for (const s of [].concat(it.scripts)) { %><script src="<%= s %>" defer></script>
+<% } } %>
+</body>
+</html>
