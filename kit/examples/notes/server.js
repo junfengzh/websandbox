@@ -10,7 +10,7 @@ module.exports = kit.site({
   title: 'Notes',
   siteIndex: 9, // 127.10.<i>.9 (not a WebArena site)
   dir: __dirname,
-  db: { mode: 'copy', file: 'base.db', cacheMB: 32 },
+  db: { mode: 'overlay', file: 'base.db', cacheMB: 32 }, // overlay (default) | copy | shared
   clock: { start: '2023-05-01T09:00:00Z' }, // the site's fixed "today"; running clock
   auth: {
     loginPath: '/login',

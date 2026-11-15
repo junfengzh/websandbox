@@ -9,7 +9,7 @@ A complete small site using every feature lives in [`examples/notes/`](examples/
 copy it as a starting point. Benchmarks: [BENCH.md](BENCH.md).
 
 ```
-cd kit && npm install && npm test
+cd kit && npm install && npm test   # postinstall rebuilds better-sqlite3 with URI support (needs gcc/make/python3; idempotent: npm run build-sqlite)
 node examples/notes/build/build.js --out $WSB_TMP/notes --notes 2000
 node examples/notes/server.js --tenants 4 --port 7110 --data $WSB_TMP/notes
 # tenant i on http://127.0.0.1:7110+i ; try /__rl/health, /?q=zebra, /login (alice / Password.123)
@@ -49,7 +49,7 @@ module.exports = kit.site({
   title: 'Postmill',             // <title> / header brand (skins can relabel: labels['site.title'])
   siteIndex: 4,                  // k in 127.10.<i>.<k> (shopping 2, shopping_admin 3, forum 4, gitlab 5, wiki 6, map 7)
   dir: __dirname,                // views/ and public/ are found here
-  db: { mode: 'copy', file: 'base.db', cacheMB: 32 },   // mode 'shared' = read-only sites (wiki, map)
+  db: { mode: 'overlay', file: 'base.db', cacheMB: 32 },  // overlay (default) | copy | shared (read-only sites: wiki, map)
   clock: { start: '2023-03-15T10:00:00Z', frozen: false }, // the site's fixed "today"
   auth: {
     loginPath: '/login',                                   // where login-required pages redirect
@@ -88,7 +88,7 @@ node sites/<site>/server.js --tenants N --port P --data $WSB_DATA_ROOT/<site> [o
   --bind rl           tenant i on 127.10.<i>.<k>:P (+ 127.0.0.1:P, tenant via X-WSB-Tenant)  -- RL stack (P=80)
   --bind HOST         one listener; tenant from the 127.10.<i>.x local address or X-WSB-Tenant
   --workers W         W processes, worker w owns tenants i % W == w (needs --bind rl or ports)
-  --db-mode copy|shared   --db-file base.db   --tenant-dir DATA/tenants   --cache-mb 32 (SQLite page cache per tenant)   --mmap-mb 0
+  --db-mode overlay|copy|shared   --db-file base.db   --tenant-dir DATA/tenants   --cache-mb 32 (SQLite page cache per tenant)   --mmap-mb 0
   --uploads DIR       per-tenant upload dirs DIR/<i> (default /dev/shm/wsb-<site>-<port>; emptied by reset)
   --media DIR         shared read-only media served at /media/ (default DATA/media)
   --control-token T   require header X-WSB-Control: T on /__rl/* (or env WSB_CONTROL_TOKEN)
@@ -101,10 +101,33 @@ not from browsers) → the first owned tenant. **The Host header never matters**
 works as `forum.wa`, `localhost:7204`, or `127.10.3.4`. Generate relative URLs (`/f/books`)
 or derive them from `req.headers.host`; never hard-code a hostname.
 
-Copy mode copies `base.db` to `DATA/tenants/t<i>.db` once (4 at a time) and reuses the
-copy while `base.db`'s size/mtime are unchanged (nothing is ever committed to a copy).
-Disk cost: N × DB size per site. Shared mode opens `base.db` read-only for all tenants
-(writes throw; sessions and jobs still work -- they live in `temp`).
+**DB modes.**
+- **overlay** (default): every tenant (and every worker process) opens the *same* `base.db`
+  -- no copies, no extra disk. The connection is opened as `file:base.db?nolock=1` (no file
+  locks, so tenants never block each other) with `journal_mode=MEMORY` and
+  `cache_spill=OFF`: a rollout's dirty pages (plus their rollback journal) live only in that
+  connection's private page cache and are never written to the file, because only a COMMIT
+  would write them and the commit guard (below) refuses it. ROLLBACK drops them. Costs RAM
+  instead of disk: ~2x the rollout's write set per tenant (dirty page + journal copy).
+  The OS page cache for base.db is shared by all tenants. Requirements, checked at start:
+  base.db in rollback-journal mode (`kit.build.finalize()`), no `base.db-journal`/`-wal`
+  next to it, better-sqlite3 built with `SQLITE_USE_URI=1` (`npm run build-sqlite`, run by
+  postinstall). base.db's size/mtime/inode are re-checked at every reset (`/__rl/health`
+  `ok: false` + `baseChanged` if it ever changed). Never rebuild base.db while servers run.
+  `chmod 0444` is **not** possible: SQLite then opens it read-only and refuses even
+  in-cache writes.
+- **copy**: base.db copied to `DATA/tenants/t<i>.db` once (4 at a time), reused while
+  base.db's size/mtime are unchanged. N × DB size of disk; dirty pages may spill to the
+  copy's WAL. Use it if a rollout can write more than RAM allows.
+- **shared**: base.db opened read-only by all tenants; site writes throw (sessions and jobs
+  still work -- they live in `temp`).
+
+**Commit guard** (all modes): on tenant connections, `db.exec`/`db.prepare(...).run()`
+refuse `COMMIT`/`END`/`BEGIN`/`ROLLBACK`/`VACUUM`/`ATTACH`/`DETACH`, `RELEASE`/`ROLLBACK TO`
+of the kit's `wsb_*` savepoints and `PRAGMA journal_mode/locking_mode/cache_spill/...`, and
+any write (or `db.transaction()`) when the connection is not inside the rollout
+transaction (e.g. after SQLite auto-rolled back on an error) -- so nothing can ever
+autocommit. `cfg.onOpen` runs before the guard: create temp objects/functions only.
 
 ## The transaction model -- rules for site code
 
@@ -134,10 +157,9 @@ Rules (break them and resets stop being exact):
 7. Determinism: ids come from SQLite (rolled back with the data, so a re-run gets the same
    ids); avoid `Math.random()` in anything a grader or task could depend on.
 
-Long transactions: tenant DBs use WAL with `synchronous=OFF`. Dirty pages stay in the page
-cache (`cacheMB`) and spill to the WAL only when it fills; `ROLLBACK` discards them in
-O(1). The WAL file keeps its high-water size (never checkpointed, since nothing commits).
-See BENCH.md for numbers.
+Long transactions: in overlay mode dirty pages never leave the connection's memory
+(`cacheMB` bounds only clean pages); in copy mode (WAL, `synchronous=OFF`) they spill to
+the WAL once the page cache fills. Either way `ROLLBACK` takes milliseconds. See BENCH.md.
 
 ## Routes and the request API
 

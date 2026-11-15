@@ -7,13 +7,19 @@ const path = require('node:path');
 const { buildNotes, startNotes, Client, rl, q } = require('./helpers');
 const kit = require('..');
 
-let dir, s, A, B; // A = tenant 0 base URL, B = tenant 1
+let dir, s, A, B, baseHash; // A = tenant 0 base URL, B = tenant 1
+const sha = (f) => require('node:crypto').createHash('sha256').update(fs.readFileSync(f)).digest('hex');
 test.before(async () => {
   dir = buildNotes();
+  baseHash = sha(path.join(dir, 'base.db'));
   s = await startNotes(dir);
   A = s.url(0); B = s.url(1);
 });
-test.after(async () => { await s.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+test.after(async () => {
+  await s.close();
+  assert.equal(sha(path.join(dir, 'base.db')), baseHash, 'base.db must be unchanged after all tests');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
 test.beforeEach(async () => { await rl(A, '/reset?all=1', {}); });
 
 const snapshot = async (base) => ({
@@ -84,11 +90,12 @@ test('uncommitted writes are visible to the same tenant pages and /__rl/query', 
   assert.deepEqual(await q(A, `SELECT title, tag FROM notes WHERE id = ${id}`), [{ title: 'Visible before commit', tag: 'ideas' }]);
   const h = await rl(A, '/health');
   assert.equal(h.inTransaction, true);
-  // never committed: the tenant file still has the base state (separate connection)
+  // never committed: base.db (overlay: shared by all tenants) is byte-identical
   const Database = require('better-sqlite3');
-  const raw = new Database(path.join(dir, 'tenants', 't0.db'), { readonly: true });
+  const raw = new Database(path.join(dir, 'base.db'), { readonly: true });
   assert.equal(raw.prepare(`SELECT count(*) FROM notes WHERE id = ${id}`).pluck().get(), 0);
   raw.close();
+  assert.equal(sha(path.join(dir, 'base.db')), baseHash);
 });
 
 test('a failed request rolls back only itself; the rollout transaction survives', async () => {

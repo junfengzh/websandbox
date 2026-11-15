@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const Database = require('better-sqlite3');
 const { als, sqlTime, parseTime } = require('./context');
+const guard = require('./guard');
 
 const KIT_SCHEMA = `
 CREATE TEMP TABLE IF NOT EXISTS kit_sessions (
@@ -42,6 +43,41 @@ async function ensureCopy(base, dest, fresh) {
   return true;
 }
 
+// Overlay mode: every tenant opens the SAME base.db read-write but never commits.
+// nolock=1 (no file locks, so tenants don't block each other), journal_mode=MEMORY
+// (no journal file; rollback journal in RAM) and cache_spill=OFF (dirty pages stay in
+// the connection's private page cache, never written to the file before a COMMIT,
+// which the guard refuses). ROLLBACK drops the dirty pages.
+function baseFingerprint(base) {
+  const st = fs.statSync(base);
+  return `${st.size}:${st.mtimeMs}:${st.ino}`;
+}
+function checkOverlayBase(base) {
+  for (const s of ['-journal', '-wal']) {
+    if (fs.existsSync(base + s) && fs.statSync(base + s).size > 0) throw new Error(`overlay: ${base}${s} exists -- SQLite would roll it into base.db; rebuild or remove it`);
+  }
+  const fd = fs.openSync(base, 'r');
+  const h = Buffer.alloc(20);
+  fs.readSync(fd, h, 0, 20, 0);
+  fs.closeSync(fd);
+  if (h.toString('latin1', 0, 15) !== 'SQLite format 3') throw new Error(`overlay: ${base} is not a SQLite database`);
+  if (h[18] === 2 || h[19] === 2) throw new Error(`overlay: ${base} is in WAL mode; build it with kit.build.finalize() (journal_mode=DELETE)`);
+}
+function openOverlay(base) {
+  checkOverlayBase(base);
+  let db;
+  try {
+    db = new Database(`file:${encodeURI(base).replace(/\?/g, '%3f').replace(/#/g, '%23')}?nolock=1`, { fileMustExist: true });
+  } catch (e) {
+    throw new Error(`overlay: cannot open base.db as a URI (${e.message}). better-sqlite3 needs SQLITE_USE_URI=1: run \`npm run build-sqlite\` in kit/ (or use --db-mode copy)`);
+  }
+  const jm = db.pragma('journal_mode = MEMORY', { simple: true });
+  db.pragma('cache_spill = OFF');
+  if (jm !== 'memory' || db.pragma('cache_spill', { simple: true }) !== 0) { db.close(); throw new Error(`overlay: could not set journal_mode=MEMORY/cache_spill=OFF (got ${jm})`); }
+  db.pragma('synchronous = OFF');
+  return db;
+}
+
 class Tenant {
   constructor(site, index, o) {
     this.site = site; // the site runtime (config + jobs + auth)
@@ -57,7 +93,9 @@ class Tenant {
 
   async open() {
     const { mode, base, file, cacheMB = 32, mmapMB = 0 } = this.o;
-    if (mode === 'copy') {
+    if (mode === 'overlay') {
+      this.db = openOverlay(base);
+    } else if (mode === 'copy') {
       this.copied = await ensureCopy(base, file, this.o.fresh);
       this.db = new Database(file, { fileMustExist: true });
       this.db.pragma('journal_mode = WAL');
@@ -74,6 +112,11 @@ class Tenant {
     db.function('today', { deterministic: false }, () => this.nowSql().slice(0, 10));
     db.exec(KIT_SCHEMA); // temp tables: committed empty, so ROLLBACK empties them
     if (this.site.cfg.onOpen) this.site.cfg.onOpen(db, this);
+    if (mode === 'overlay') {
+      this.baseFp = this.o.baseFp || baseFingerprint(base);
+      this.checkBase();
+    }
+    this.x = guard.install(db).exec; // site code can't COMMIT/BEGIN/...; the kit uses this.x
     this.st = {
       sess: db.prepare('SELECT * FROM kit_sessions WHERE id = ?'),
       due: db.prepare("SELECT * FROM kit_jobs WHERE status = 'queued' AND run_at <= ? ORDER BY run_at, id LIMIT 1"),
@@ -83,8 +126,16 @@ class Tenant {
     };
     this.resetClock();
     this.clearUploads();
-    db.exec('BEGIN');
+    this.x('BEGIN');
     return this;
+  }
+
+  // Overlay: base.db must never change (size/mtime/inode). Checked at open and every reset.
+  checkBase() {
+    if (this.o.mode !== 'overlay') return true;
+    const ok = baseFingerprint(this.o.base) === this.baseFp;
+    if (!ok) { this.stats.baseChanged = true; throw new Error(`overlay: ${this.o.base} changed on disk -- stop all tenants and rebuild it`); }
+    return true;
   }
 
   // Cached prepared statement (modes reset on every call, so .pluck()/.raw() are safe).
@@ -126,7 +177,7 @@ class Tenant {
       // Site code ran COMMIT/ROLLBACK or SQLite aborted the transaction (I/O
       // error, SQLITE_FULL). Writes may have been lost or committed: flag it.
       this.stats.lostTransactions++;
-      this.db.exec('BEGIN');
+      this.x('BEGIN');
     }
   }
 
@@ -136,13 +187,13 @@ class Tenant {
     return this.lock(() => als.run({ tenant: this, db: this.db, ...extra }, async () => {
       const db = this.db;
       this.ensureTx();
-      db.exec('SAVEPOINT wsb_unit');
+      this.x('SAVEPOINT wsb_unit');
       try {
         const r = await fn(db);
-        db.exec('RELEASE wsb_unit');
+        this.x('RELEASE wsb_unit');
         return r;
       } catch (e) {
-        if (db.inTransaction) { db.exec('ROLLBACK TO wsb_unit'); db.exec('RELEASE wsb_unit'); }
+        if (db.inTransaction) { this.x('ROLLBACK TO wsb_unit'); this.x('RELEASE wsb_unit'); }
         throw e;
       } finally {
         this.ensureTx();
@@ -154,12 +205,13 @@ class Tenant {
   reset(o = {}) {
     return this.lock(() => {
       const t0 = performance.now();
-      if (this.db.inTransaction) this.db.exec('ROLLBACK'); else this.stats.lostTransactions++;
+      if (this.db.inTransaction) this.x('ROLLBACK'); else this.stats.lostTransactions++;
       this.clearUploads();
       if (o.skin) this.skin = o.skin;
       this.resetClock(o);
-      this.db.exec('BEGIN');
+      this.x('BEGIN');
       const ms = performance.now() - t0;
+      this.checkBase();
       Object.assign(this.stats, { resets: this.stats.resets + 1, lastResetMs: +ms.toFixed(3), maxResetMs: Math.max(this.stats.maxResetMs, +ms.toFixed(3)) });
       return ms;
     });
@@ -181,7 +233,7 @@ class Tenant {
       const stmt = db.prepare(s);
       if (!stmt.reader || !stmt.readonly) throw Object.assign(new Error('query must be read-only'), { statusCode: 400 });
       this.ensureTx();
-      db.exec('SAVEPOINT wsb_query');
+      this.x('SAVEPOINT wsb_query');
       try {
         const columns = stmt.columns().map((c) => c.name);
         const rows = [];
@@ -189,7 +241,7 @@ class Tenant {
         for (const r of it) { if (rows.length >= maxRows) { it.return(); break; } rows.push(r); }
         return { columns, rows, truncated: rows.length >= maxRows };
       } finally {
-        db.exec('ROLLBACK TO wsb_query'); db.exec('RELEASE wsb_query');
+        this.x('ROLLBACK TO wsb_query'); this.x('RELEASE wsb_query');
       }
     });
   }
@@ -214,13 +266,13 @@ class Tenant {
       await this.run(async (db) => {
         const cur = db.prepare("SELECT status FROM kit_jobs WHERE id = ?").get(job.id);
         if (!cur || cur.status !== 'queued') return; // raced with a reset or another runner
-        db.exec('SAVEPOINT wsb_job');
+        this.x('SAVEPOINT wsb_job');
         try {
           const r = await handler({ payload: JSON.parse(job.payload), job, db, now: new Date(jobTime), tenant: this });
-          db.exec('RELEASE wsb_job');
+          this.x('RELEASE wsb_job');
           this.st.jobDone.run(r === undefined ? null : JSON.stringify(r), sqlTime(jobTime), job.id);
         } catch (e) {
-          db.exec('ROLLBACK TO wsb_job'); db.exec('RELEASE wsb_job');
+          this.x('ROLLBACK TO wsb_job'); this.x('RELEASE wsb_job');
           this.st.jobFail.run(String(e && e.stack || e).slice(0, 2000), sqlTime(jobTime), job.id);
         }
       }, { jobTime });
@@ -238,4 +290,4 @@ class Tenant {
   close() { try { this.db && this.db.close(); } catch {} }
 }
 
-module.exports = { Tenant, ensureCopy };
+module.exports = { Tenant, ensureCopy, baseFingerprint, openOverlay };

@@ -12,6 +12,8 @@
     "wsb-grade": "bin/wsb-grade.js"
   },
   "scripts": {
+    "postinstall": "node scripts/build-sqlite.js",
+    "build-sqlite": "node scripts/build-sqlite.js",
     "test": "node --test test/*.test.js",
     "bench": "node bench/bench.js"
   },

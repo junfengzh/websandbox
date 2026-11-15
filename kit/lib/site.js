@@ -49,7 +49,7 @@ function resolveOptions(rt, o = {}) {
   return {
     tenants, port, data, workers, wid, owned,
     bind: o.bind || 'ports',
-    mode: o.dbMode || dbc.mode || 'copy',
+    mode: o.dbMode || dbc.mode || 'overlay',
     base: path.resolve(data, o.dbFile || dbc.file || 'base.db'),
     tenantDir: path.resolve(o.tenantDir || path.join(data, 'tenants')),
     uploads: path.resolve(o.uploads || (fs.existsSync('/dev/shm') ? `/dev/shm/wsb-${cfg.name}-${port}` : path.join(data, 'uploads'))),
@@ -190,7 +190,7 @@ function buildApp(rt, o) {
     });
     c.get('/health', async (req) => {
       const t = T(req);
-      return { ok: t.db.inTransaction && !t.stats.lostTransactions, site: cfg.name, tenant: t.index, inTransaction: t.db.inTransaction, now: t.now().toISOString(), frozen: t.clock.frozen, skin: t.skin, ...t.stats };
+      return { ok: t.db.inTransaction && !t.stats.lostTransactions && !t.stats.baseChanged, site: cfg.name, tenant: t.index, mode: o.mode, inTransaction: t.db.inTransaction, now: t.now().toISOString(), frozen: t.clock.frozen, skin: t.skin, ...t.stats };
     });
     c.get('/clock', async (req) => ({ now: T(req).now().toISOString(), frozen: T(req).clock.frozen }));
     c.post('/clock', async (req) => {

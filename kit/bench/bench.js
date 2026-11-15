@@ -75,7 +75,7 @@ function load(o) {
   });
 }
 
-const walSizes = (dir) => fs.readdirSync(path.join(dir, 'tenants')).filter((f) => f.endsWith('-wal')).map((f) => fs.statSync(path.join(dir, 'tenants', f)).size / 2 ** 20);
+const walSizes = (dir) => (fs.existsSync(path.join(dir, 'tenants')) ? fs.readdirSync(path.join(dir, 'tenants')) : []).filter((f) => f.endsWith('-wal')).map((f) => fs.statSync(path.join(dir, 'tenants', f)).size / 2 ** 20);
 
 async function multi() {
   const dir = a.dir; fs.mkdirSync(dir, { recursive: true });
@@ -153,4 +153,41 @@ async function big() {
   log({ step: 'whole-db-update', updateMs: +ums.toFixed(0), walMBmax: +Math.max(0, ...wal).toFixed(0), resetMs: +rms.toFixed(2), sumLikesAfterReset: after.rows[0].s });
 }
 
-(mode === 'big' ? big() : multi()).catch((e) => { console.error(e); process.exit(1); });
+// overlay: T tenants in-process on one base.db, each dirtying a large write set
+async function overlay() {
+  const dir = a.dir; fs.mkdirSync(dir, { recursive: true });
+  const base = ensureDb(dir, +a.notes);
+  const crypto = require('node:crypto');
+  const sha = () => crypto.createHash('sha256').update(fs.readFileSync(base)).digest('hex');
+  const io = () => +/write_bytes: (\d+)/.exec(fs.readFileSync('/proc/self/io', 'utf8'))[1];
+  const h0 = sha(); const st0 = fs.statSync(base);
+  delete require.cache[require.resolve(SERVER)];
+  const site = require(SERVER);
+  const T = +a.tenants;
+  const srv = await site.start({ tenants: T, port: 0, data: dir, bind: 'ports', uploads: path.join(dir, 'uploads-ov'), cacheMB: +a['cache-mb'], dbMode: 'overlay' });
+  global.gc && global.gc();
+  const rss = () => process.memoryUsage().rss / 2 ** 20;
+  const r0 = rss(); const w0 = io();
+  const rows = [];
+  for (const frac of [0.01, 0.1, 0.5]) {
+    const n = Math.round(+a.notes * frac);
+    const before = rss();
+    const t0 = performance.now();
+    await Promise.all([...srv.tenants.values()].map((t) => t.run((db) => db.prepare(`UPDATE notes SET likes = likes + ${t.index + 1} WHERE id <= ?`).run(n))));
+    const ums = performance.now() - t0;
+    const peak = rss();
+    const sums = await Promise.all([...srv.tenants.values()].map(async (t) => (await t.query('SELECT sum(likes) s FROM notes WHERE id <= 1000')).rows[0].s));
+    const resets = [];
+    for (const t of srv.tenants.values()) resets.push(await t.reset());
+    global.gc && global.gc();
+    rows.push({ rowsUpdatedPerTenant: n, dirtyMBperTenant: null, updateMsAll: +ums.toFixed(0), rssGrowthPerTenantMB: +((peak - before) / T).toFixed(1),
+      resetMsMax: +Math.max(...resets).toFixed(2), rssAfterResetMB: +rss().toFixed(0), distinctTenantSums: new Set(sums).size });
+  }
+  const wrote = io() - w0;
+  await srv.close();
+  const st1 = fs.statSync(base);
+  log({ step: 'overlay', tenants: T, baseMB: +(st0.size / 2 ** 20).toFixed(0), cacheMB: +a['cache-mb'], rssStartMB: +r0.toFixed(0), rows,
+    processDiskWriteBytes: wrote, baseUnchanged: sha() === h0 && st1.mtimeMs === st0.mtimeMs, filesNextToBase: fs.readdirSync(dir).filter((f) => f.startsWith('base.db')) });
+}
+
+(mode === 'big' ? big() : mode === 'overlay' ? overlay() : multi()).catch((e) => { console.error(e); process.exit(1); });

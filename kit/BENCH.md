@@ -1,5 +1,8 @@
 # Kit benchmark
 
+Note: the 32-tenant and big-DB sections below were measured in copy mode (the default
+at the time); overlay mode (now the default) is measured in its own section.
+
 `node bench/bench.js multi|big --dir WORK ...` on the notes toy site (`bench/load.js` is the
 client). Run 2026-11-14 on the shared build box (8 cores, 70 GB, ext4 md RAID).
 
@@ -97,9 +100,46 @@ Findings:
   rather than long bodies, keep `prefix: 'last'`, add `prefix='2 3'` indexes if prefix
   queries are common, and fall back to a column sort when `countCapped` hits the cap.
 
+## Overlay mode (default since 2026-11-14): all tenants on one base.db
+
+`node --expose-gc bench/bench.js overlay --dir WORK --notes 200000 --tenants 8 --cache-mb 32`:
+8 tenants in one process on the same 205 MB base.db, each running one big UPDATE
+(different per tenant) inside its rollout transaction, then a reset.
+
+| rows updated per tenant | RSS growth per tenant | reset (max of 8) |
+|---|---|---|
+| 2,000 (1% of the table) | 3.4 MB | 14 ms |
+| 20,000 (10%) | 22 MB | 33 ms |
+| 100,000 (50%, ~50 MB of pages) | 100 MB | 343 ms |
+
+- Isolation: 8 different results (each tenant sees only its own writes); FTS5 inserts
+  visible to their own tenant only (tests).
+- **Nothing reaches the file**: the process's disk `write_bytes` (from `/proc/self/io`) stayed
+  **0** for the whole run, base.db's sha256 and mtime unchanged, no `-journal`/`-wal` files
+  created. Also verified in `test/overlay.test.js` with 4 tenants in 2 worker processes
+  writing in parallel with a 2 MB page cache (write set larger than the cache).
+- Memory: a dirty page costs ~2x its size (cache page + the in-memory rollback journal copy).
+  `cache_spill=OFF` lets the cache grow past `cache_size` instead of spilling, so the cost
+  is bounded by the rollout's write set, not by the cache setting. RSS keeps its high-water
+  mark after a reset (malloc keeps the pages for reuse) -- ~1 GB after the 8 x 100k-row test.
+- Reset cost is O(dirty pages) here (ROLLBACK replays the in-memory journal), unlike copy
+  mode's O(1) WAL rollback: milliseconds for realistic rollouts, ~0.35 s for a 50 MB write set.
+- An explicit COMMIT on such a connection *does* write base.db (verified in a probe), which
+  is why the commit guard exists. If a rollout exhausts memory, SQLite should fail with
+  SQLITE_NOMEM and roll back; the guard then refuses writes outside the transaction (not
+  exercised in tests). Use `--db-mode copy` for sites whose rollouts write hundreds of MB.
+
+- 32 tenants, 2 s think time, overlay (re-run 22:52, box load 30-42 -- *more* loaded than
+  before, so the p95 target still could not be checked fairly): start **3.6 s** for 32
+  tenants (copy mode: 32-41 s cold) with **zero extra disk**; 1 worker: p50 655 / p95 2026 ms;
+  4 workers: p50 32 ms (view 4.3, list 5.6, create 5.1) / p95 803 / p99 1296 ms; CPU
+  20 ms/request (unchanged; search-dominated); RSS 33-41 MB per tenant; reset after the run
+  <= 1.4 ms server-side.
+
 ## Reproduce
 
 ```
 node bench/bench.js multi --dir $WSB_WORK/kit/multi --notes 200000 --tenants 32 --workers 1,4,8 --seconds 30 [--think-ms 2000]
+node --expose-gc bench/bench.js overlay --dir $WSB_WORK/kit/ov --notes 200000 --tenants 8
 node bench/bench.js big   --dir $WSB_WORK/kit/big   --notes 1300000 --tenants 4 --seconds 30
 ```
