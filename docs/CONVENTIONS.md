@@ -46,6 +46,10 @@ Rules for everyone (human or agent) building websandbox. Read with
 - Kill anything you start (DB containers, servers) when done. Do not use
   `pkill -f <pattern>` where the pattern also appears in your own command
   line; kill by PID or `docker rm -f <name>`.
+- Never wait in a loop on `pgrep -f <pattern>` either (it matches the loop's
+  own command line and never exits). Wait on a PID (`while kill -0 $PID`),
+  a done-file, or the tool's own completion notification, and stop any wait
+  loops before you finish.
 
 ## Ports (avoid collisions between builders)
 
