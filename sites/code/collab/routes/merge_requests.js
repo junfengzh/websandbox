@@ -63,7 +63,8 @@ module.exports = function mergeRequests(app, ctx) {
     if (sp.id === tp.id && sb === tb) { out.errors.push('Source and target branch must be different'); return out; }
     const rv = git.revList(head, target, { limit: 50000 });
     out.commits = rv.only; out.base = rv.base; out.truncated = rv.truncated;
-    if (!rv.only.length) { out.errors.push(`There are no changes: ${tb} already contains all commits of ${sb}`); return out; }
+    // GitLab lets you create an MR with no changes (its page then says "Nothing to merge"); WebArena task 668 does that.
+    if (!rv.only.length) { out.files = []; out.empty = true; return out; }
     out.files = null;
     try {
       const baseC = rv.base ? git.getCommit(rv.base) : null; const headC = git.getCommit(head);

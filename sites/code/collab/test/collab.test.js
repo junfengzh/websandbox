@@ -278,6 +278,20 @@ test('web commit on a new branch -> MR -> merge carries temp.repo_files to the t
   assert.equal(r.text, 'hello from a branch\n');
 });
 
+test('merge request with no changes can be created (GitLab allows it; WebArena task 668)', async () => {
+  const P = '/a11yproject/a11yproject.com'; // redesign is already contained in main
+  let r = await c.get(`${P}/-/merge_requests/new?merge_request%5Bsource_branch%5D=redesign&merge_request%5Btarget_branch%5D=main`);
+  assert.equal(r.status, 200);
+  assert.match(r.text, /There are no changes/);
+  assert.match(r.text, /id="new_merge_request"/);
+  r = await c.post(`${P}/-/merge_requests`, { source_branch: 'redesign', target_branch: 'main', title: 'Redesign', reviewer_ids_usernames: 'justinmeister' }, `${P}/-/merge_requests/new`);
+  assert.equal(r.status, 302, r.text.slice(0, 300));
+  const mr = (await q("SELECT m.* FROM merge_requests m JOIN projects p ON p.id = m.project_id WHERE p.full_path = 'a11yproject/a11yproject.com' AND m.source_branch = 'redesign' AND m.state = 'opened'"))[0];
+  assert.equal(mr.commits_count, 0);
+  r = await c.get(`${P}/-/merge_requests/${mr.iid}`);
+  assert.match(r.text, /Nothing to merge/);
+});
+
 test('wiki and project settings', async () => {
   const P = '/byteblaze/dotfiles';
   let r = await c.post(`${P}/-/wikis`, { title: 'Setup guide', content: '# Setup\nRun `make`.', format: 'markdown' }, `${P}/-/wikis/new`);

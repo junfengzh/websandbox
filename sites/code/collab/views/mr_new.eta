@@ -24,6 +24,7 @@
 <% } else { const c = it.cmp, v = it.values || {}; %>
 <p class="compare-commit">From <code class="mr-source-branch"><%= sp.id !== tp.id ? sp.full_path + ':' : '' %><%= it.sb %></code> into <code class="mr-source-branch"><%= tp.id !== P.id || sp.id !== tp.id ? tp.full_path + ':' : '' %><%= it.tb %></code>
   <a class="btn btn-sm" href="<%= P.url %>/-/merge_requests/new?merge_request[source_project_id]=<%= sp.id %>&merge_request[source_branch]=<%= encodeURIComponent(it.sb) %>&merge_request[target_project_id]=<%= tp.id %>&merge_request[target_branch]=<%= encodeURIComponent(it.tb) %>&change_branches=1">Change branches</a></p>
+<% if (c.empty) { %><div class="flash flash-warning" role="status">There are no changes: <code><%= it.tb %></code> already contains all commits of <code><%= it.sb %></code>. You can still create the merge request.</div><% } %>
 <% if (Object.keys(e).length) { %><div class="flash flash-alert" role="alert"><ul><% for (const k in e) { %><li><%= e[k] %></li><% } %></ul></div><% } %>
 <form method="post" action="<%= P.url %>/-/merge_requests" id="new_merge_request"><%~ X.csrfInput() %>
   <input type="hidden" name="source_project_id" value="<%= sp.id %>"><input type="hidden" name="source_branch" value="<%= it.sb %>">
