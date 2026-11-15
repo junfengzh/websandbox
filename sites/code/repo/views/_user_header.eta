@@ -7,8 +7,9 @@
   <% if (!it.hidden) { %>
   <div class="profile-meta">
     <% if (u.pronouns) { %><span><%= u.pronouns %></span><% } %>
-    <% if (u.job_title || u.organization) { %><span><%= [u.job_title, u.organization].filter(Boolean).join(' at ') %></span><% } %>
-    <% if (u.location) { %><span title="Location"><%= u.location %></span><% } %>
+    <% if (u.job_title) { %><span title="Job title"><span class="muted">Job title:</span> <%= u.job_title %></span><% } %>
+    <% if (u.organization) { %><span title="Organization"><span class="muted">Organization:</span> <%= u.organization %></span><% } %>
+    <% if (u.location) { %><span title="Location"><span class="muted">Location:</span> <%= u.location %></span><% } %>
     <% if (u.public_email) { %><a href="mailto:<%= u.public_email %>"><%= u.public_email %></a><% } %>
     <% if (u.website_url) { %><a href="<%= /^https?:\/\//.test(u.website_url) ? u.website_url : 'https://' + u.website_url %>" rel="nofollow noreferrer noopener" target="_blank" class="user-website"><%= u.website_url %></a><% } %>
     <% if (u.twitter) { %><a href="https://twitter.com/<%= u.twitter %>" rel="nofollow noreferrer noopener" target="_blank">Twitter</a><% } %>

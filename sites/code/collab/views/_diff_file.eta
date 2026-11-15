@@ -5,7 +5,7 @@
     <span class="badge badge-<%= f.new_file ? 'success' : f.deleted_file ? 'danger' : 'info' %>"><%= st %></span>
     <span class="file-path"><% if (f.renamed_file && f.old_path) { %><%= f.old_path %> → <% } %><%= f.new_path %></span>
     <span class="file-stats"><span class="add-count">+<%= f.additions %></span> <span class="del-count">−<%= f.deletions %></span></span>
-    <% if (it.sha && !f.deleted_file) { %><a class="btn btn-sm" href="<%= P.url %>/-/blob/<%= it.sha %>/<%= X.enc(f.new_path) %>">View file @ <%= it.sha.slice(0, 8) %></a><% } %>
+    <% if (it.sha && !f.deleted_file) { %><a class="btn btn-sm" href="<%= P.url || P.base || ('/' + P.full_path) %>/-/blob/<%= it.sha %>/<%= X.enc(f.new_path) %>">View file @ <%= it.sha.slice(0, 8) %></a><% } %>
   </div>
   <% if (f.lines) { %>
   <table class="diff-table" role="presentation"><tbody>
