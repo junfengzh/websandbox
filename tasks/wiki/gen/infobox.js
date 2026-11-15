@@ -103,6 +103,7 @@ T.push({
 
 T.push({
   id: 'gen-wiki-settlement-population', skills: ['search', 'read-detail'], difficulty: 1, cap: 70,
+  changes: 'regrade 2026-11-15 (strict numbers): answer.strict_numbers false -- the infobox figure comes with its census year ("47,743 (2010)"), which the intent does not name, so the reference answer itself would fail the count check; large population figures are not guessable by listing numbers.',
   phrasings: [
     'What is the total population of {title} given in its infobox?',
     'According to the wiki, how many people live in {title} (the population figure in the infobox)?',
@@ -122,7 +123,7 @@ T.push({
       const v = F.count(first, { min: 100 });
       if (!v) continue;
       const yr = (/\((?:[A-Za-z.]+ )?(\d{4})\)/.exec(head) || [])[1];
-      out.push({ vars: { title: m.title }, eval: ans(v.shown), ref: v.shown + (yr ? ` (${yr})` : '') });
+      out.push({ vars: { title: m.title }, eval: { type: 'answer', answer: { must_include: [v.shown], strict_numbers: false } }, ref: v.shown + (yr ? ` (${yr})` : '') });
     }
     return out;
   },

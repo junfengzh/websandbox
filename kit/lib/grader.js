@@ -46,6 +46,57 @@ function mustInclude(pred, refs) {
   return [].concat(refs).every((r) => String(r).split(' |OR| ').some((alt) => includesRef(p, clean(alt))));
 }
 
+// ---- strict numbers: a count/amount answer must not hedge with other numbers.
+// must_include with plain-number references accepts any equal number in the answer, so
+// "1, 2, 3, 4, 5" would pass every small count. With strict numbers on, the answer also fails
+// if it contains a number whose value is not a reference value, ignoring numbers that the
+// intent mentions ("in 2022", "top 5", "the 2nd page", month names / number words included)
+// and date/time tokens built only from such numbers ("2022-05-01" when the intent says
+// "May 1, 2022"). Ordinals and list markers ("1st", "1.") are numbers like any other unless
+// their value is a reference or intent value. Default: on when every must_include item has a
+// plain-number alternative and the intent asks for a count or amount (COUNT_INTENT);
+// `answer.strict_numbers: true|false` (or `eval.strict_numbers`) overrides.
+// "number of" as a count, not an identifier ("the phone number of", "the order number of");
+// "total" as the asked amount, not a sort key ("the highest grand total", "by order total")
+const COUNT_INTENT = new RegExp([
+  String.raw`\b(how many|how much|count|counts|amount|sum)\b`,
+  String.raw`(?<!\b(highest|lowest|largest|biggest|smallest|maximum|minimum|max|min|by)\s+((grand|order|sub)\s*)?)\btotals?\b`,
+  String.raw`(?<!\b(phone|telephone|fax|tracking|order|account|serial|model|part|reference|zip|postal|id|issue|item|house|street|room|flight|contact|registration|license|licence|version|page|invoice|shipment)\s+)\bnumber of\b`,
+].join('|'), 'i');
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve',
+  'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+const NUM_TOKEN = /\d[\d,]*(?:\.\d+)?/g;
+const numsIn = (s) => [...String(s ?? '').matchAll(NUM_TOKEN)].map((m) => toNum(m[0].replace(/,$/, ''))).filter((v) => Number.isFinite(v));
+function intentNumbers(intent) {
+  const t = clean(intent);
+  const out = new Set(numsIn(t));
+  MONTHS.forEach((m, i) => { if (new RegExp(`\\b(${m}|${m.slice(0, 3)})\\b`).test(t)) out.add(i + 1); });
+  WORDS.forEach((w, i) => { if (new RegExp(`\\b${w}\\b`).test(t)) out.add(i); });
+  return out;
+}
+// every item has a plain-number alternative
+const numericRefs = (refs) => [].concat(refs).length > 0 && [].concat(refs).every((r) => String(r).split(' |OR| ').some((alt) => NUM_REF.test(clean(alt))));
+function strictNumbersOn(task, spec, refs) {
+  const ev = task.eval || task;
+  const flag = spec && 'strict_numbers' in spec ? spec.strict_numbers : ev.strict_numbers;
+  if (flag === false) return false;
+  if (!numericRefs(refs)) return false;
+  return flag === true || COUNT_INTENT.test(String(task.intent || ''));
+}
+/** numbers in the answer that are neither a reference value nor mentioned in the intent */
+function extraNumbers(pred, refs, intent) {
+  const allowed = new Set([].concat(refs).flatMap((r) => String(r).split(' |OR| ').flatMap((alt) => numsIn(clean(alt)))));
+  for (const v of intentNumbers(intent)) allowed.add(v);
+  const p = clean(pred);
+  const extra = [];
+  for (const m of p.matchAll(NUM_TOKEN)) {
+    const v = toNum(m[0].replace(/,$/, ''));
+    if (Number.isFinite(v) && !allowed.has(v)) extra.push(m[0].replace(/,$/, ''));
+  }
+  return extra;
+}
+
 // ---- numeric answers with a unit and a tolerance (map distances/durations, ...):
 //   answer.numeric: {value, unit, tol_pct?, tol_abs?} | [specs] (each must be found in the answer)
 // The answer's quantities of the spec unit's kind are parsed ("1h 22min", "1 hour and 22
@@ -231,7 +282,14 @@ async function grade(task, { answer = '', url = '', query, queries, fuzzy } = {}
             c.sql_reference = sqlRef; c.drift = a !== b;
           }
           if (mode === 'exact') c.pass = exactMatch(answer, ref);
-          else if (mode === 'must_include') c.pass = mustInclude(answer, ref);
+          else if (mode === 'must_include') {
+            c.pass = mustInclude(answer, ref);
+            if (strictNumbersOn(task, spec, ref)) {
+              c.strict_numbers = true;
+              const extra = extraNumbers(answer, ref, task.intent);
+              if (extra.length) { c.extra_numbers = extra; c.pass = false; }
+            }
+          }
           else if (mode === 'numeric') c.pass = numericMatch(answer, ref);
           else if (fuzzy) {
             const r = await fuzzy({ intent: task.intent, answer, reference: ref });
@@ -286,4 +344,4 @@ function remoteQuery(base, { tenant, token } = {}) {
   };
 }
 
-module.exports = { grade, remoteQuery, clean, exactMatch, mustInclude, numericMatch, quantities, urlMatch, normUrl, stateMatch };
+module.exports = { grade, remoteQuery, clean, exactMatch, mustInclude, extraNumbers, strictNumbersOn, COUNT_INTENT, numericMatch, quantities, urlMatch, normUrl, stateMatch };

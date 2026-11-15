@@ -101,3 +101,29 @@ are marked `superseded` (the task ids now name other instances). The changed adm
   "uni-size" (697's intent asks for it; not graded).
 - **graders, strict but faithful to WebArena** (kept): forum 637 needs the literal "sony headphone"; shopping 530/532
   need the full order number `000001161` in the contact-form draft.
+
+## Strict numbers (2026-11-15, second pass)
+
+`must_include` with plain-number references used to accept any equal number in the answer, so a count could be
+guessed by listing numbers ("1, 2, 3, 4, 5"). The kit grader now grades **count/amount questions with strict
+numbers** (kit/README.md "Grading"): when every `must_include` item has a plain-number alternative and the intent
+asks for a count or amount (`how many`, `how much`, `number of`, `count`, `total`, `amount`, `sum`; not "phone
+number of" / "order number of" or a sort key like "the highest grand total"), the answer also fails if it has any
+number that is neither a reference value nor mentioned in the intent. `answer.strict_numbers: true|false` overrides.
+A legit extra number ("3 orders, total $45" for "how many orders") fails by design: the question asks for one count.
+
+Full regrade with the same setup (`sites.sh up --tenants 2 --base 7900 --bind rl --port 7999`, `regrade.js`):
+strict numbers apply to **2,012 of the 7,780 answer tasks**; the results table above is unchanged after the fixes
+below (13,090/13,090 empty fail, 7,780/7,780 ref, 746/746 url ref, 994/997 full replays with the same 1 lenient +
+2 superseded, 198/198 per-check replays). The first pass failed 41 references and 3 recorded runs, all only
+because of extra numbers:
+
+| Tasks | Change | Why |
+|---|---|---|
+| map 254 ("What is the phone number of ...") | none -- the trigger no longer reads identifier "number of" as a count | the phone number's parts are three references; "+1" failed |
+| `gen-wiki-settlement-population` (70) | `answer.strict_numbers: false` (tasks/wiki/gen/infobox.js, `changes` note) | the reference is the infobox figure with its census year ("47,743 (2010)"), which the intent does not name; 41 references failed |
+| `gen-admin-bestseller-units` (19 tie instances of 25) | `answer.strict_numbers: false` (tasks/store/gen/admin/catalog_read.js, `changes` note on the template) | the intent also asks for the product, and names carry numbers ("9 Elements ...", "Sprite Stasis Ball 75 cm"): 2 recorded UI runs failed |
+
+Both templates were regenerated (same seed): only those 95 tasks changed. `consolidate.py` (seed 20261115) rebuilt
+`tasks/all.jsonl` and the splits with identical membership (train 10,452 / held-out 2,638, templates.json
+unchanged).

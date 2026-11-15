@@ -138,6 +138,7 @@ async function referenceAnswer(task) {
           const refUrl = types.includes('url') ? [].concat(ev.url)[0] : t.reference_url || '';
           const r = await grade(t, ref, refUrl);
           const ac = r.checks.filter((c) => c.type === 'answer' || (c.type === 'url' && refUrl));
+          if (r.checks.some((c) => c.strict_numbers)) s.strict_numbers = (s.strict_numbers || 0) + 1;
           const ok = ac.length && ac.every((c) => c.pass === true);
           const drift = r.checks.filter((c) => c.drift);
           if (drift.length) {

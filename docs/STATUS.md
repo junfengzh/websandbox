@@ -52,8 +52,11 @@ held-out tasks / 22 templates; generated 2,498 / 43, ~20% of each site's templat
 
 Collected from docs/NOTES-*.md:
 - **Grading.** Fuzzy answers (78 WebArena tasks, e.g. the "N/A" ones) need the RL stack's LLM judge.
-  `must_include` on numbers accepts any equal number in the answer (count answers can be guessed by
-  listing numbers); order-sensitive pairs are asked one value per task. Vote tasks do not penalise extra votes on
+  `must_include` on numbers accepts any equal number in the answer, but count/amount questions are
+  graded with strict numbers (kit/README.md "Grading"): any other number not in the intent fails, so
+  listing numbers no longer guesses a count -- and an extra legit number ("3 orders, total $45") fails
+  too; non-count numeric questions (ids, zip codes, prices asked as "what is") still accept extra
+  numbers; order-sensitive pairs are asked one value per task. Vote tasks do not penalise extra votes on
   other posts (as WebArena). Map "nearest" is straight-line distance (what the UI lists).
 - **Store.** Search relevance is untuned against Magento; Reorder adds separate cart rows; no rating sort;
   complete orders have no `total_paid`; listing ratings are only in an aria-label; few invoices/shipments in the

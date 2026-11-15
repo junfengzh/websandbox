@@ -361,7 +361,21 @@ curl -s -XPOST -H 'content-type: application/json' -d '{"sql":"SELECT count(*) n
 
 - `type`: `'answer' | 'url' | 'state'` or a list (all must pass); inferred from keys if absent.
 - `answer: {exact: s}` -- WebArena clean (trim, strip quotes, lowercase) then equal.
-  `{must_include: [..]}` -- each item (with ` |OR| ` alternatives) is a substring.
+  `{must_include: [..]}` -- each item (with ` |OR| ` alternatives) is a substring. References
+  with digits match whole numbers only (`1` is not in `10` or `2.15`); a plain-number reference
+  matches any number of equal value (`406` ~ `$406.00`, `1170` ~ `000001170`).
+  **Strict numbers**: when every item has a plain-number alternative and the task's `intent`
+  asks for a count or amount (`how many`, `how much`, `number of`, `count`, `total`, `amount`,
+  `sum`), the answer also fails if it contains any *other* number -- a value that is neither a
+  reference value nor mentioned in the intent (intent years / "top 5" / "2nd", month names and
+  number words count as mentioned; dates such as `2023-05-01` pass only if their parts are).
+  So `1, 2, 3, 4, 5` or `3 or 4` fail a count of 3, `There are 3 reviews` and `$45.00` (for 45)
+  pass, and so does `3 reviews in 2022` when 2022 is in the intent; `3 orders, total $45` for
+  "how many orders" fails **by design** (answer the count alone). Ordinals and list markers are
+  numbers like any other. `answer.strict_numbers: true` (or `eval.strict_numbers`) forces the
+  rule for a numeric reference whatever the intent; `false` turns it off for a task that
+  legitimately wants several numbers. The check reports `strict_numbers` and `extra_numbers`.
+  Text references (`must_include: ['Circe', '55']`) are unchanged.
   `{fuzzy: ..}` -- calls `fuzzy({intent, answer, reference})` (the RL stack's judge) or returns pending.
   `{numeric: {value, unit, tol_pct?, tol_abs?}}` (or a list of such specs, all must be found) --
   quantities of the unit's kind are parsed from the answer and compared with a tolerance:

@@ -142,6 +142,7 @@ const pOf = (x) => ({ from: x.from, to: x.to, period: x.period, dateUsed: 'creat
 
 const bestseller = {
   id: 'gen-admin-bestseller-units', site: 'shopping_admin', kind: 'read', skills: ['navigate', 'filter-sort', 'read-detail'], difficulty: 2, cap: 60,
+  regradeNote: 'regrade 2026-11-15 (strict numbers): tie instances set answer.strict_numbers false -- the intent also asks for the product, and product names carry numbers ("9 Elements ...", "Sprite Stasis Ball 75 cm"), so a correct answer naming the tied products would fail the count check.',
   phrasings: [
     'According to the Bestsellers report for {{month}}, which product is the top seller{{and_qty}}',
     'Run the Bestsellers report for {{month}}. What is the number one product{{and_qty}}',
@@ -167,7 +168,7 @@ const bestseller = {
         const n = Math.round(rows[0].qty_ordered);
         const sql = `SELECT ${qty} ${base} GROUP BY i.product_id ORDER BY 1 DESC LIMIT 1`;
         out.push({ slots: { month: per.label, and_qty: ', and how many units of it were sold? (If several products tie for first place, the unit count is enough.)' }, login_user: ADMIN,
-          eval: { type: 'answer', answer: { must_include: [String(n)] }, answer_sql: sql }, wrong_answer: String(n + 1) });
+          eval: { type: 'answer', answer: { must_include: [String(n)], strict_numbers: false }, answer_sql: sql }, wrong_answer: String(n + 1) });
       }
     }
     return out;

@@ -206,3 +206,41 @@ test('grader: numeric answers with units and tolerance', async () => {
   r = await grader.grade({ eval: { answer: { numeric: { value: 4.0, unit: 'km' } } } }, { answer: '' });
   assert.equal(r.pass, false);
 });
+
+test('grader: strict numbers for count/amount questions', async () => {
+  const g = (intent, answer, answerSpec, extra = {}) => grader.grade({ intent, eval: { type: 'answer', answer: answerSpec, ...extra } }, { answer });
+  const reviews = 'How many reviews did the Circe fleece get in 2022?';
+  const three = { must_include: ['3'] };
+  // gaming by listing numbers fails; the plain answer passes
+  assert.equal((await g(reviews, '1, 2, 3, 4, 5', three)).pass, false);
+  assert.deepEqual((await g(reviews, '1, 2, 3, 4, 5', three)).checks[0].extra_numbers, ['1', '2', '4', '5']);
+  assert.equal((await g(reviews, 'Either 3 or 4', three)).pass, false);
+  assert.equal((await g(reviews, 'There are 3 reviews', three)).pass, true);
+  assert.equal((await g(reviews, 'three', { must_include: ['3 |OR| three'] })).pass, true);
+  // numbers that the intent mentions are ignored (year, "top 5", month names in dates)
+  assert.equal((await g(reviews, '3 reviews in 2022', three)).pass, true);
+  assert.equal((await g('How many orders did I place in May 2023?', '3 orders (2023-05-01 to 2023-05-31)', three)).pass, false); // 31
+  assert.equal((await g('How many orders did I place on May 1, 2023?', '3 orders on 2023-05-01', three)).pass, true);
+  assert.equal((await g('How many of the top 5 posts are images?', '3 of the top 5', three)).pass, true);
+  // values compare by value: "$45.00" is 45
+  assert.equal((await g('How much did I spend on order 12?', 'I spent $45.00 on order 12', { must_include: ['45'] })).pass, true);
+  // a legit extra number still fails a count question (intended: answer the count alone)
+  let r = await g('How many orders did I place?', '3 orders, total $45', three);
+  assert.equal(r.pass, false); assert.equal(r.checks[0].strict_numbers, true); assert.deepEqual(r.checks[0].extra_numbers, ['45']);
+  // several numeric references are all allowed
+  assert.equal((await g('How many open and closed issues?', '4 open, 7 closed', { must_include: ['4', '7'] })).pass, true);
+  // not a count question, a text reference, or an explicit override: unchanged
+  assert.equal((await g('What is the zip code of CMU?', '15213 (5000 Forbes Ave)', { must_include: ['15213'] })).pass, true);
+  assert.equal((await g('How many stars and who wrote it?', 'Jane, 4 stars, 2 votes', { must_include: ['Jane', '4'] })).pass, true);
+  assert.equal((await g('How many orders did I place?', '3 orders, total $45', { must_include: ['3'], strict_numbers: false })).pass, true);
+  assert.equal((await g('Which order number is it?', '12 or 13', { must_include: ['12'], strict_numbers: true })).pass, false);
+  assert.equal((await g('How many orders did I place?', '3 orders, total $45', three, { strict_numbers: false })).pass, true);
+  // the trigger: identifiers and sort keys are not counts
+  assert.equal((await g('What is the phone number of Western Pennsylvania Hospital', '+1 412 578 5000', { must_include: ['412', '578', '5000'] })).pass, true);
+  assert.equal((await g('Which of her orders has the highest grand total? Give the order #.', 'Order #1036 ($245.10)', { must_include: ['1036'] })).pass, true);
+  assert.equal((await g('Tell me the grand total of order 12', '$45 (2 items)', { must_include: ['45'] })).pass, false);
+  // the reference may come from answer_sql
+  const query = async () => [{ n: 3 }];
+  r = await grader.grade({ intent: 'Count the reviews', eval: { answer: { must_include: '$sql' }, answer_sql: 'SELECT 3' } }, { answer: '2 or 3', query });
+  assert.equal(r.pass, false);
+});
