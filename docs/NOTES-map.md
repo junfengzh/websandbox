@@ -326,3 +326,48 @@ WebArena value or a wrong mode/place). 108 verified, 1 dropped.
   Somerset County) also resolves (`/way/295270550`).
 - Known search gaps left as is (Nominatim behaves the same): "Upitt", "PIT airport", "SCS CMU",
   bare "Whole Foods" (exact-name objects elsewhere outrank the local "Whole Foods Market").
+
+## Generated tasks (tasks/map/gen) -- 2026-11-15
+
+`node tasks/map/gen/index.js --seed 1` writes `tasks/map/generated.jsonl` (deterministic, ~20 min, no
+server: the site's own engines in process -- `lib/geocode.js` Geocoder + `lib/route.js` router, the
+code the UI's worker threads run). **35 templates, 1,770 tasks** (1,410 answer, 360 end-state; US
+Northeast 1,067 across 12 cities, London 296, San Francisco 213, Singapore 194; difficulty 815/705/250).
+Families: place facts (address, postcode, opening hours on a weekday, phone, website, category,
+cuisine, coordinates, county / London borough, peak elevation), reverse geocoding (place / street /
+postcode at coordinates), nearby (nearest X to Y, + straight-line distance, count within a radius,
+nearest + walking time), routes (drive/walk time and distance, bike time, two modes, mode
+difference, which of two destinations, quickest of 3-4 on foot, two-leg trip total, first street of
+the route), end states (directions A -> B by mode, walking/cycling directions to the nearest X,
+driving directions from coordinates, `<category> near <place>` search, place page by name / by
+address / of the nearest X). All are new families vs. webarena.jsonl.
+
+- **Unambiguous places.** POIs (amenity/tourism/leisure/historic/shop allowlist) with clean Latin
+  names; no other geocoder row with the same normalised (alt) name anywhere, and the name typed
+  into the search box / a From-To field gives the place as the top hit from a plain page load (CMU
+  ranking), from the task's view (`start_url` = `__MAP__/#map=13/<area centre>`), and for routes from
+  the other end point. "X in <city>" only when "X, city" / "X city" / "X in city" also find it.
+- **References = what the UI shows.** Routes replay the directions form (top hit -> llStr 5-decimal
+  rounding -> route; shown minutes); nearest/count = the "What's nearby?" list (and the first result
+  of `<category> near <place>` must agree); reverse = the "Where is this?" levels. Winners need a
+  clear margin (runner-up >= 1.4x and +50 m straight line; walking/route comparisons >= +2-3 min and
+  15-25 %), counts no item within 10 % of the radius and <= 12, walks <= 2 h, bike/foot << 250 km.
+  Answers: `numeric` for times/distances/coordinates/elevation (tolerances as convert.js; sums and
+  differences +-2 min or 10 %), `must_include` with wording alternatives (street abbreviations,
+  12/24 h clock times, phone formats, category synonyms), comparison answers = winner name + its
+  time (a wrong pick that names both still fails the number). `reference_answer` / `reference_url`
+  hold a passing answer / final URL.
+- **Checks.** `tasks/map/gen/check.js --ui` (map server running): every reference passes
+  `sites/map/grade.js`, empty / "I could not find it" / perturbed answers and other URLs fail,
+  answer_sql (postcode) has no drift, and the UI path replayed over HTTP from both ranking centres
+  (search -> first result -> place page text; directions form -> shown time/distance; form redirect
+  URL; address search) passes: 1,770/1,770 ok. Determinism: two runs give identical files.
+- **Manual validation** (`tasks/map/gen/verify-ui.js`, headless Chrome via `tasks/tools/browse.js`,
+  graded with `tasks/tools/grade.js --log`): 2 instances per template done through the UI (search
+  box, result link, place facts, "What's nearby?" select, "Directions to here", directions form and
+  mode links) + 1 negative per template (runner-up, other mode, other day's hours, digit changed,
+  ...) -> `tasks/map/verify-generated.jsonl`.
+- Caveats: "nearest" is straight-line (what the UI lists); in nearest-walk-time / directions-to-nearest
+  the straight-line winner is also the quickest walk. Chain names of a winner (e.g. "CVS Pharmacy") may
+  geocode elsewhere when typed into a To field: the agent has to route to the listed one ("Directions
+  to here"). Opening-hours tasks use only simple `Mo-Fr HH:MM-HH:MM; ...` values.
