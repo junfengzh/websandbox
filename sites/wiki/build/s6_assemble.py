@@ -8,6 +8,7 @@ Env: FTS_DETAIL=full|column (default full), FTS_LIMIT=N (only N articles, for
 measurements), KEEP_TEXT=1 to also store zstd plain text per article.
 """
 import json
+import re
 import os
 import sqlite3
 import sys
@@ -77,6 +78,11 @@ def main():
     zd = b.execute("select v from meta where k='zdict'").fetchone()[0]
     db.execute('insert into zdict values(1, ?)', (zd,))
     tdz = zstandard.ZstdDecompressor()
+    zdict = zstandard.ZstdCompressionDict(zd)
+    hdz = zstandard.ZstdDecompressor(dict_data=zdict)
+    hcz = zstandard.ZstdCompressor(level=15, dict_data=zdict)
+    img_re = re.compile(r'<img src="(/media/[^"]+)"[^>]*>')
+    stripped = 0
     media_ok = {u: (w, h, n) for u, w, h, n in b.execute('select url, w, h, bytes from media where bytes is not null')}
     db.executemany('insert into media values(?,?,?,?)', [(u, w, h, n) for u, (w, h, n) in media_ok.items()])
 
@@ -92,6 +98,13 @@ def main():
         title = dd.execute('select title from art where id=?', (zid,)).fetchone()[0]
         if image and image not in media_ok:
             image = None
+        h = hdz.decompress(html).decode()
+        if any(m.group(1) not in media_ok for m in img_re.finditer(h)):
+            # images not kept (media budget or fetch error): drop the <img> tags
+            h = img_re.sub(lambda m: m.group(0) if m.group(1) in media_ok else '', h)
+            hb = h.encode()
+            html, hl = hcz.compress(hb), len(hb)
+            stripped += 1
         db.execute('insert into article values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                    (i, path, title, html, hl, text if KEEP_TEXT else None, tl, lead, sec, ib, image,
                     int(inl[zid]), edited, oldid, why))
@@ -102,7 +115,7 @@ def main():
         n += 1
         if n % 20000 == 0:
             print('articles', n, '%.0fs' % (time.time() - t0), flush=True)
-    print('articles', n, flush=True)
+    print('articles', n, 'with images stripped', stripped, flush=True)
     db.execute("insert into article_fts(article_fts) values('optimize')")
     print('fts optimized %.0fs' % (time.time() - t0), flush=True)
 

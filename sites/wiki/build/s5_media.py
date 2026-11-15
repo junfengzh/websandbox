@@ -25,6 +25,8 @@ import zimraw  # noqa: E402
 from common import OUT, WORK, ZIM  # noqa: E402
 
 THREADS = int(os.environ.get('S5_THREADS', '12'))
+BUDGET = float(os.environ.get('WIKI_MEDIA_BUDGET_MB', '900')) * 1e6
+EST_BYTES, EST_TINY = 5500, 700  # measured averages (see NOTES-wiki.md)
 MAXW = 320
 local = threading.local()
 Image.MAX_IMAGE_PIXELS = 200_000_000
@@ -77,7 +79,14 @@ def do_cluster(job):
     for bl, url, mime in items:
         fn = os.path.join(OUT, url.lstrip('/'))
         if os.path.exists(fn):
-            res.append((url, None, None, os.path.getsize(fn), None))
+            w = h = 0
+            if not fn.endswith('.svg'):
+                try:
+                    with Image.open(fn) as im:
+                        w, h = im.size
+                except Exception:
+                    pass
+            res.append((url, w, h, os.path.getsize(fn), None))
             continue
         try:
             data, w, h = convert(get(bl), mime)
@@ -91,15 +100,42 @@ def do_cluster(job):
     return res
 
 
+def choose(bdb):
+    """Images to keep, within BUDGET: walk articles in id order (task articles
+    first, then by in-links) and their images in page order; tiny icons are
+    cheap and usually shared."""
+    import re
+    import zstandard
+    zd = zstandard.ZstdDecompressor(dict_data=zstandard.ZstdCompressionDict(
+        bdb.execute("select v from meta where k='zdict'").fetchone()[0]))
+    have = {u: b for u, b in bdb.execute('select url, bytes from media where bytes is not null')}
+    pat = re.compile(r'<img src="(/media/[^"]+)"(?: width="(\d+)" height="(\d+)")?')
+    keep, used = set(), 0.0
+    for (html,) in bdb.execute('select html from art where error is null order by id'):
+        for m in pat.finditer(zd.decompress(html).decode()):
+            u = m.group(1)
+            if u in keep:
+                continue
+            tiny = bool(m.group(2)) and int(m.group(2)) <= 40 and int(m.group(3)) <= 40
+            cost = have.get(u) or (EST_TINY if tiny else EST_BYTES)
+            if used + cost > BUDGET and not tiny:
+                continue
+            keep.add(u)
+            used += cost
+    print('chosen images', len(keep), 'est MB %.0f' % (used / 1e6), flush=True)
+    return keep
+
+
 def main():
     t0 = time.time()
-    bdb = sqlite3.connect(os.path.join(WORK, 'build.db'))
+    bdb = sqlite3.connect(os.path.join(WORK, 'build.db'), timeout=120)
     cols = {r[1] for r in bdb.execute('pragma table_info(media)')}
     for c in ('w', 'h', 'bytes', 'error'):
         if c not in cols:
             bdb.execute('alter table media add column %s' % c)
     dd = sqlite3.connect(os.path.join(WORK, 'dirents.db'))
-    rows = bdb.execute('select url, zpath, mime from media where bytes is null').fetchall()
+    allowed = choose(bdb)
+    rows = [r for r in bdb.execute('select url, zpath, mime from media where bytes is null') if r[0] in allowed]
     bycl = {}
     for url, zpath, mime in rows:
         r = dd.execute('select cl, bl from img where path=?', (zpath,)).fetchone()
@@ -110,9 +146,14 @@ def main():
     n = 0
     with ThreadPoolExecutor(THREADS) as ex:
         for res in ex.map(do_cluster, jobs):
-            with bdb:
-                bdb.executemany('update media set w=coalesce(?,w), h=coalesce(?,h), bytes=?, error=? where url=?',
-                                [(w, h, b, e, u) for u, w, h, b, e in res])
+            for attempt in range(30):
+                try:
+                    with bdb:
+                        bdb.executemany('update media set w=coalesce(?,w), h=coalesce(?,h), bytes=?, error=? where url=?',
+                                        [(w, h, b, e, u) for u, w, h, b, e in res])
+                    break
+                except sqlite3.OperationalError:
+                    time.sleep(10)
             n += len(res)
             if n % 5000 < len(res):
                 el = time.time() - t0

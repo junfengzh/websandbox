@@ -172,7 +172,7 @@ def main():
     loc = {}
     for rank, zid, path, why in sel:
         loc[zid] = dd.execute('select cl, bl from art where id=?', (zid,)).fetchone()
-    bdb = sqlite3.connect(os.path.join(WORK, 'build.db'))
+    bdb = sqlite3.connect(os.path.join(WORK, 'build.db'), timeout=120)
     bdb.executescript('''
       pragma journal_mode=wal; pragma synchronous=normal;
       create table if not exists meta(k text primary key, v);

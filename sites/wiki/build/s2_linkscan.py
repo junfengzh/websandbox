@@ -115,6 +115,9 @@ def work(job):
 
 def main():
     os.makedirs(S2, exist_ok=True)
+    if os.path.exists(os.path.join(S2, 'stats.npz')):
+        print('stats.npz exists (delete it to rescan)')
+        return
     t0 = time.time()
     n, canon, bycl = load()
     G.update(canon=canon, bycl=bycl)
