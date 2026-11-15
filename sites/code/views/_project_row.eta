@@ -1,0 +1,20 @@
+<%/* include('_project_row', {p, now}) : one project in a list (p = projects row + ns_name) */%>
+<% const p = it.p; %>
+<li class="project-row">
+  <span class="project-avatar" aria-hidden="true"><%= (p.name || '?')[0].toUpperCase() %></span>
+  <div class="project-details">
+    <h3 class="project-title"><a href="/<%= p.full_path %>"><span class="namespace-name"><%= p.ns_name || p.full_path.split('/')[0] %> / </span><span class="project-name"><%= p.name %></span></a>
+      <span class="visibility-icon" title="<%= p.visibility[0].toUpperCase() + p.visibility.slice(1) %> - <%= p.visibility === 'public' ? 'The project can be accessed without any authentication.' : p.visibility === 'internal' ? 'The project can be accessed by any logged in user.' : 'Project access must be granted explicitly to each user.' %>"><%= p.visibility === 'public' ? '' : p.visibility === 'internal' ? '◐' : '🔒' %><span class="sr-only"><%= p.visibility %></span></span>
+      <% if (p.my_access) { %><span class="badge badge-muted"><%= ({50:'Owner',40:'Maintainer',30:'Developer',20:'Reporter',10:'Guest'})[p.my_access] || '' %></span><% } %>
+      <% if (p.archived) { %><span class="badge badge-warning">Archived</span><% } %>
+    </h3>
+    <% if (p.description) { %><p class="project-description"><%= p.description.length > 240 ? p.description.slice(0, 240) + '…' : p.description %></p><% } %>
+  </div>
+  <div class="project-stats">
+    <a href="/<%= p.full_path %>/-/starrers" title="Stars" class="stat"><span aria-hidden="true">☆</span> <span class="sr-only">Stars:</span><%= p.star_count %></a>
+    <a href="/<%= p.full_path %>/-/forks" title="Forks" class="stat"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="3" r="1.6"/><circle cx="12" cy="3" r="1.6"/><circle cx="8" cy="13" r="1.6"/><path d="M4 4.6V6a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V4.6M8 8v3.4"/></svg> <span class="sr-only">Forks:</span><%= p.forks_count %></a>
+    <a href="/<%= p.full_path %>/-/merge_requests" title="Merge requests" class="stat"><span aria-hidden="true">⇄</span> <span class="sr-only">Merge requests:</span><%= p.open_merge_requests_count %></a>
+    <a href="/<%= p.full_path %>/-/issues" title="Issues" class="stat"><span aria-hidden="true">◎</span> <span class="sr-only">Issues:</span><%= p.open_issues_count %></a>
+    <span class="updated muted">Updated <%~ it.time ? it.time(p.last_activity_at || p.updated_at || p.created_at) : (p.last_activity_at || '') %></span>
+  </div>
+</li>

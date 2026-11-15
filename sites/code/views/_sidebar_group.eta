@@ -1,0 +1,18 @@
+<%
+  const G = it.G, nav = it.nav || '', base = '/groups/' + G.full_path;
+  const cur = (k) => (nav === k ? ' aria-current="page"' : '');
+  const items = [
+    ['group', 'Group overview', '/' + G.full_path], ['group.activity', 'Activity', base + '/-/activity'],
+    ['group.issues', 'Issues', base + '/-/issues'], ['group.mrs', 'Merge requests', base + '/-/merge_requests'],
+    ['group.members', 'Members', base + '/-/group_members'], ['group.settings', 'Settings', base + '/-/edit'],
+  ];
+%>
+<aside class="sidebar" aria-label="Group navigation">
+  <a class="sidebar-context" href="/<%= G.full_path %>">
+    <span class="project-avatar group" aria-hidden="true"><%= (G.name || '?')[0].toUpperCase() %></span>
+    <span class="sidebar-context-title"><%= G.name %></span>
+  </a>
+  <ul class="sidebar-nav">
+  <% for (const [k, l, h] of items) { %><li class="sidebar-item<%= nav === k ? ' active' : '' %>"><a class="sidebar-top" href="<%= h %>"<%~ cur(k) %>><span><%= l %></span></a></li><% } %>
+  </ul>
+</aside>

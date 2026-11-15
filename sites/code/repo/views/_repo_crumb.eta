@@ -1,0 +1,6 @@
+<%/* repository path breadcrumb: it.p project, it.ref, it.path, it.leafIsFile */%>
+<% const enc = (s) => String(s).split('/').map(encodeURIComponent).join('/'); const parts = it.path ? it.path.split('/') : []; const base = '/' + it.p.full_path + '/-/tree/' + enc(it.ref); %>
+<nav class="repo-breadcrumb" aria-label="Files breadcrumb">
+  <a href="<%= base %>"><%= it.p.path %></a>
+  <% parts.forEach((seg, i) => { const last = i === parts.length - 1; %><span class="sep" aria-hidden="true">/</span><% if (last) { %><strong aria-current="page"><%= seg %></strong><% } else { %><a href="<%= base %>/<%= enc(parts.slice(0, i + 1).join('/')) %>"><%= seg %></a><% } %><% }) %>
+</nav>

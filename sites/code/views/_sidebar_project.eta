@@ -1,0 +1,38 @@
+<%
+  const P = it.P, nav = it.nav || '', base = '/' + P.full_path, ref = (it.it && it.it.ref) || P.default_branch || 'main';
+  const enc = (s) => String(s).split('/').map(encodeURIComponent).join('/');
+  const on = (k) => nav === k || nav.startsWith(k + '.');
+  const cur = (k) => (nav === k ? ' aria-current="page"' : '');
+  const canAdmin = (P.access || 0) >= 40;
+  const sections = [
+    { key: 'project', label: 'Project information', href: base + '/activity', icon: 'info', items: [
+      ['activity', 'Activity', base + '/activity'], ['labels', 'Labels', base + '/-/labels'], ['members', 'Members', base + '/-/project_members']] },
+    { key: 'repo', label: 'Repository', href: base + '/-/tree/' + enc(ref), icon: 'doc', items: [
+      ['repo.files', 'Files', base + '/-/tree/' + enc(ref)], ['repo.commits', 'Commits', base + '/-/commits/' + enc(ref)],
+      ['repo.branches', 'Branches', base + '/-/branches'], ['repo.tags', 'Tags', base + '/-/tags'],
+      ['repo.contributors', 'Contributors', base + '/-/graphs/' + enc(ref)], ['repo.graph', 'Graph', base + '/-/network/' + enc(ref)],
+      ['repo.compare', 'Compare revisions', base + '/-/compare']] },
+  ];
+  if (P.issues_enabled !== 0) sections.push({ key: 'issues', label: 'Issues', href: base + '/-/issues', count: P.open_issues_count, icon: 'issues', items: [
+      ['issues.list', 'List', base + '/-/issues'], ['issues.boards', 'Boards', base + '/-/boards'], ['issues.milestones', 'Milestones', base + '/-/milestones']] });
+  if (P.merge_requests_enabled !== 0) sections.push({ key: 'mrs', label: 'Merge requests', href: base + '/-/merge_requests', count: P.open_merge_requests_count, icon: 'mr', items: [] });
+  if (P.wiki_enabled !== 0) sections.push({ key: 'wiki', label: 'Wiki', href: base + '/-/wikis/home', icon: 'book', items: [] });
+  if (canAdmin) sections.push({ key: 'settings', label: 'Settings', href: base + '/edit', icon: 'settings', items: [
+      ['settings.general', 'General', base + '/edit'], ['settings.members', 'Members', base + '/-/project_members'], ['settings.repository', 'Repository', base + '/-/settings/repository']] });
+%>
+<aside class="sidebar" aria-label="Project navigation">
+  <a class="sidebar-context" href="<%= base %>"<%~ nav === 'project' ? ' aria-current="page"' : '' %>>
+    <span class="project-avatar" aria-hidden="true"><%= (P.name || '?')[0].toUpperCase() %></span>
+    <span class="sidebar-context-title"><%= P.name %></span>
+  </a>
+  <ul class="sidebar-nav">
+  <% for (const s of sections) { const open = on(s.key) || (s.key === 'project' && ['activity', 'labels', 'members'].includes(nav)); %>
+    <li class="sidebar-item<%= open ? ' active' : '' %>">
+      <a class="sidebar-top" href="<%= s.href %>"<%~ nav === s.key ? ' aria-current="page"' : '' %>><span class="sb-icon sb-<%= s.icon %>" aria-hidden="true"></span><span><%= s.label %></span><% if (s.count != null) { %><span class="badge badge-pill"><%= Number(s.count).toLocaleString('en-US') %></span><% } %></a>
+      <% if (open && s.items.length) { %><ul class="sidebar-sub">
+        <% for (const [k, l, h] of s.items) { %><li><a href="<%= h %>"<%~ cur(k) %>><%= l %></a></li><% } %>
+      </ul><% } %>
+    </li>
+  <% } %>
+  </ul>
+</aside>

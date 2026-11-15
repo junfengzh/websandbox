@@ -1,0 +1,20 @@
+<% const L = it.list; %>
+<div class="nav-controls" style="justify-content:flex-end">
+  <form method="get" action="<%= it.req.path %>" class="filter-bar" role="search" aria-label="Filter projects" style="padding:0">
+    <label class="sr-only" for="project-filter">Filter by name</label>
+    <input type="search" id="project-filter" name="name" value="<%= L.name %>" placeholder="Filter by name">
+    <label class="sr-only" for="project-sort">Sort by</label>
+    <select id="project-sort" name="sort" data-autosubmit>
+      <% for (const o of L.sortMenu) { %><option value="<%= o.value %>"<%= o.selected ? ' selected' : '' %>><%= o.label %></option><% } %>
+    </select>
+    <button type="submit" class="btn">Filter</button>
+  </form>
+</div>
+<% if (!L.rows.length) { %>
+  <div class="empty-state"><h3><%= L.name ? 'No projects match "' + L.name + '"' : (it.emptyText || 'No projects found') %></h3><% if (it.emptyHelp) { %><p><%~ it.emptyHelp %></p><% } %></div>
+<% } else { %>
+<ul class="projects-list" aria-label="Projects">
+  <% for (const p of L.rows) { %><%~ include('_project_row', { p, time: it.time }) %><% } %>
+</ul>
+<%~ include('_pager', { pager: L.pager }) %>
+<% } %>

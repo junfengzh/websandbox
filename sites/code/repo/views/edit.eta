@@ -1,0 +1,48 @@
+<% layout('layout') %>
+<%
+  const p = it.project, enc = it.enc, ref = it.ref, v = it.values || {}, e = it.errors || {}, base = '/' + p.full_path;
+  const isNew = it.mode === 'new';
+  const action = isNew ? `${base}/-/create/${enc(ref)}${it.dir ? '/' + enc(it.dir) : ''}` : `${base}/-/update/${enc(ref)}/${enc(it.path)}`;
+  const branchVal = v.branch_name || ref;
+  const defaultMsg = isNew ? (v.file_name ? 'Add ' + v.file_name.split('/').pop() : 'Add new file') : 'Update ' + it.path.split('/').pop();
+%>
+<div class="page-title-row"><h1><%= isNew ? 'New file' : 'Edit file' %></h1></div>
+<% if (!it.canPush && it.refInfo && it.refInfo.kind === 'branch') { %>
+  <div class="flash flash-warning" role="note">You're not allowed to make changes to branch <strong><%= ref %></strong> directly. Your changes will be committed to a new branch<% if (!it.canCommitNew) { %> — but you are not a developer of this project: <a href="<%= base %>/-/forks/new">fork the project</a> first<% } %>.</div>
+<% } %>
+<% if (e.base) { %><div class="flash flash-alert" role="alert"><%= e.base %></div><% } %>
+<form method="post" action="<%= action %>" class="editor-form" aria-label="<%= isNew ? 'New file' : 'Edit file' %>">
+  <%~ it.csrfInput() %>
+  <% if (it.refInfo) { %><input type="hidden" name="last_commit_sha" value="<%= it.refInfo.sha %>"><% } %>
+  <div class="file-editor">
+    <div class="editor-head">
+      <span class="ref-name" title="Current branch"><%= ref %></span>
+      <% if (isNew) { %>
+        <label class="sr-only" for="file_name">File name</label>
+        <span class="muted"><%= it.dir ? it.dir + '/' : '' %></span><input class="form-control path-input<%= e.file_name ? ' is-invalid' : '' %>" type="text" id="file_name" name="file_name" value="<%= v.file_name || '' %>" placeholder="Filename" required autofocus>
+      <% } else { %>
+        <label class="sr-only" for="file_path">File path</label>
+        <input class="form-control path-input<%= e.file_path ? ' is-invalid' : '' %>" type="text" id="file_path" name="file_path" value="<%= v.file_path || it.path %>" required>
+      <% } %>
+    </div>
+    <% if (e.file_name || e.file_path) { %><p class="invalid-feedback" style="padding:0 8px"><%= e.file_name || e.file_path %></p><% } %>
+    <label class="sr-only" for="editor">File contents</label>
+    <textarea class="editor-textarea" id="editor" name="content" spellcheck="false" data-tabs><%= it.content %></textarea>
+  </div>
+  <div class="form-group" style="margin-top:16px<%= e.commit_message ? ';' : '' %>">
+    <label for="commit_message">Commit message</label>
+    <textarea class="form-control<%= e.commit_message ? ' is-invalid' : '' %>" id="commit_message" name="commit_message" rows="3" required><%= v.commit_message != null ? v.commit_message : defaultMsg %></textarea>
+    <% if (e.commit_message) { %><p class="invalid-feedback"><%= e.commit_message %></p><% } %>
+  </div>
+  <div class="form-group">
+    <label for="branch_name">Target Branch</label>
+    <input class="form-control<%= e.branch_name ? ' is-invalid' : '' %>" type="text" id="branch_name" name="branch_name" value="<%= branchVal %>" required style="max-width:420px">
+    <% if (e.branch_name) { %><p class="invalid-feedback"><%= e.branch_name %></p><% } %>
+    <label style="display:block;margin-top:8px;font-weight:400"><input type="checkbox" name="create_merge_request" value="1"<%= v.create_merge_request ? ' checked' : '' %>> Start a new merge request with these changes</label>
+    <p class="form-text">The merge request option applies when the target branch is a new branch.</p>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-confirm" id="commit-changes">Commit changes</button>
+    <a class="btn" href="<%= isNew ? base + '/-/tree/' + enc(ref) + (it.dir ? '/' + enc(it.dir) : '') : base + '/-/blob/' + enc(ref) + '/' + enc(it.path) %>">Cancel</a>
+  </div>
+</form>

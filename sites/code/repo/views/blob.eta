@@ -1,0 +1,62 @@
+<% layout('layout') %>
+<%
+  const p = it.project, enc = it.enc, ref = it.ref, path = it.path, b = it.blob, base = '/' + p.full_path;
+  const name = path.split('/').pop();
+%>
+<div class="tree-controls">
+  <%~ include('repo/_ref_switch', { refs: it.refs, ref, pattern: base + '/-/blob/{ref}/' + enc(path) }) %>
+  <%~ include('repo/_repo_crumb', { p, ref, path }) %>
+  <span class="spacer"></span>
+  <a class="btn btn-sm" href="<%= base %>/-/find_file/<%= enc(ref) %>">Find file</a>
+  <a class="btn btn-sm" href="<%= base %>/-/blame/<%= enc(ref) %>/<%= enc(path) %>">Blame</a>
+  <a class="btn btn-sm" href="<%= base %>/-/commits/<%= enc(ref) %>/<%= enc(path) %>">History</a>
+  <a class="btn btn-sm" href="<%= base %>/-/blob/<%= it.refInfo.sha %>/<%= enc(path) %>">Permalink</a>
+</div>
+<%~ include('repo/_last_commit', { c: it.last, p, time: it.time, avatar: it.avatar }) %>
+<div class="file-holder" style="border-top:0;border-radius:0 0 4px 4px">
+  <div class="file-title">
+    <span class="ficon" aria-hidden="true">▤</span>
+    <h1 class="file-name" style="margin:0"><%= name %></h1>
+    <span class="file-size"><%= it.bytes(b.size || (b.data ? b.data.length : 0)) %></span>
+    <% if (it.lang) { %><span class="badge badge-muted"><%= it.lang %></span><% } %>
+    <div class="file-actions">
+      <% if (it.isMd && b.text != null) { %><div class="btn-group"><a class="btn btn-sm<%= !it.plain ? ' btn-confirm' : '' %>" href="?">Display rendered file</a><a class="btn btn-sm<%= it.plain ? ' btn-confirm' : '' %>" href="?plain=1">Display source</a></div><% } %>
+      <% if (b.text != null) { %><button type="button" class="btn btn-sm" data-clipboard-target="#blob-source" title="Copy file contents">Copy contents</button><% } %>
+      <a class="btn btn-sm" href="<%= base %>/-/raw/<%= enc(ref) %>/<%= enc(path) %>" target="_blank" rel="noopener">Open raw</a>
+      <a class="btn btn-sm" href="<%= base %>/-/raw/<%= enc(ref) %>/<%= enc(path) %>?inline=false">Download</a>
+      <% if (it.user && b.text != null && it.refInfo.kind === 'branch') { %>
+        <a class="btn btn-sm btn-confirm" href="<%= base %>/-/edit/<%= enc(ref) %>/<%= enc(path) %>">Edit</a>
+        <button type="button" class="btn btn-sm btn-danger-secondary" data-open-dialog="#modal-delete-blob">Delete</button>
+      <% } %>
+    </div>
+  </div>
+  <div class="blob-content">
+  <% if (b.missing) { %><div class="blob-viewer-msg">The file contents are not available in this sandbox (history truncated).</div>
+  <% } else if (b.omitted) { %><div class="blob-viewer-msg"><strong>The file is too large to be displayed.</strong><br>This <%= it.bytes(b.size) %> <%= b.binary ? 'binary ' : '' %>file is stored externally and is not available in this sandbox.</div>
+  <% } else if (b.submodule) { %><div class="blob-viewer-msg">Submodule at commit <span class="commit-sha"><%= b.sha %></span></div>
+  <% } else if (it.image) { %><div class="blob-viewer-msg"><img src="<%= base %>/-/raw/<%= enc(ref) %>/<%= enc(path) %>" alt="<%= name %>" style="max-width:100%"></div>
+  <% } else if (b.binary) { %><div class="blob-viewer-msg">This file is stored in a binary format. <a href="<%= base %>/-/raw/<%= enc(ref) %>/<%= enc(path) %>?inline=false">Download</a> it to view it.</div>
+  <% } else if (it.rendered != null) { %><div class="md"><%~ it.rendered %></div>
+  <% } else { %>
+    <table class="code" aria-label="File contents of <%= name %>"><tbody>
+    <% it.lines.forEach((l, i) => { const n = i + 1; %><tr id="LC<%= n %>"><td class="line-num"><a href="#L<%= n %>" id="L<%= n %>"><%= n %></a></td><td class="line"><%~ l %></td></tr>
+    <% }) %>
+    </tbody></table>
+    <% if (!it.lines.length || (it.lines.length === 1 && it.lines[0] === '')) { %><div class="blob-viewer-msg">Empty file</div><% } %>
+  <% } %>
+  </div>
+  <% if (b.text != null) { %><textarea id="blob-source" class="sr-only" readonly tabindex="-1" aria-hidden="true"><%= b.text %></textarea><% } %>
+</div>
+<% if (it.user && b.text != null && it.refInfo.kind === 'branch') { %>
+<dialog id="modal-delete-blob" aria-labelledby="delete-blob-title">
+  <form method="post" action="<%= base %>/-/delete/<%= enc(ref) %>/<%= enc(path) %>">
+    <%~ it.csrfInput() %>
+    <div class="modal-header"><h2 id="delete-blob-title">Delete <%= name %></h2><button type="button" class="btn-link" data-close-dialog aria-label="Close">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label for="delete-commit-message">Commit message</label><textarea class="form-control" id="delete-commit-message" name="commit_message" rows="3" required>Delete <%= name %></textarea></div>
+      <div class="form-group"><label for="delete-branch-name">Target branch</label><input class="form-control" id="delete-branch-name" name="branch_name" value="<%= it.canPush ? ref : (it.user.username + '-' + ref + '-patch-1') %>" required></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn" data-close-dialog>Cancel</button><button type="submit" class="btn btn-danger">Delete file</button></div>
+  </form>
+</dialog>
+<% } %>

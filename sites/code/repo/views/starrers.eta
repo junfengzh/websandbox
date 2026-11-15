@@ -1,0 +1,12 @@
+<% layout('layout') %>
+<div class="page-title-row"><h1>Starrers</h1></div>
+<form method="get" class="filter-bar" role="search" aria-label="Search starrers">
+  <label class="sr-only" for="starrer-search">Search</label><input type="search" id="starrer-search" name="search" value="<%= it.q %>" placeholder="Search">
+  <select name="sort" aria-label="Sort by" data-autosubmit><% for (const [v, l] of [['name_asc', 'Name'], ['name_desc', 'Name, descending'], ['created_desc', 'Most recent star'], ['created_asc', 'Oldest star']]) { %><option value="<%= v %>"<%= it.sort.value === v ? ' selected' : '' %>><%= l %></option><% } %></select>
+</form>
+<% if (!it.rows.length) { %><div class="empty-state"><h3>Nobody has starred this repository yet</h3></div><% } else { %>
+<ul class="user-list">
+<% for (const u of it.rows) { %><li class="user-card"><%~ it.avatar(u, 40) %><div><a class="name" href="/<%= u.username %>"><%= u.name %></a><div class="username">@<%= u.username %></div><div class="muted" style="font-size:12px">Starred <%~ it.time(u.starred_at) %></div></div></li><% } %>
+</ul>
+<%~ include('_pager', { pager: it.pager }) %>
+<% } %>

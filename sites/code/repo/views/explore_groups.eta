@@ -1,0 +1,28 @@
+<% layout('layout') %>
+<div class="page-title-row"><h1>Groups</h1><% if (it.user) { %><a class="btn btn-confirm" href="/groups/new">New group</a><% } %></div>
+<div class="top-area">
+  <nav aria-label="Groups"><ul class="nav-tabs">
+    <% if (it.user) { %><li><a href="/dashboard/groups">Your groups</a></li><% } %>
+    <li><a href="/explore/groups" aria-current="page">Explore public groups</a></li>
+  </ul></nav>
+  <form method="get" class="filter-bar" role="search" aria-label="Filter groups">
+    <label class="sr-only" for="group-filter">Search by name</label>
+    <input type="search" id="group-filter" name="filter" value="<%= it.q %>" placeholder="Search by name">
+    <select name="sort" aria-label="Sort by" data-autosubmit>
+      <% for (const [v, l] of [['name_asc', 'Name'], ['name_desc', 'Name, descending'], ['created_desc', 'Last created'], ['created_asc', 'Oldest created'], ['latest_activity_desc', 'Updated date']]) { %><option value="<%= v %>"<%= it.sort.value === v ? ' selected' : '' %>><%= l %></option><% } %>
+    </select>
+  </form>
+</div>
+<% if (!it.rows.length) { %><div class="empty-state"><h3>No public groups</h3></div><% } else { %>
+<ul class="projects-list">
+<% for (const g of it.rows) { %>
+  <li class="project-row">
+    <span class="project-avatar group" aria-hidden="true"><%= g.name[0].toUpperCase() %></span>
+    <div class="project-details"><h3 class="project-title"><a href="/<%= g.full_path %>"><%= g.name %></a> <span class="badge badge-muted"><%= g.visibility %></span></h3>
+      <% if (g.description) { %><p class="project-description"><%= g.description %></p><% } %></div>
+    <div class="project-stats"><span class="stat" title="Projects"><%= it.plural(g.projects_count, 'project') %></span><span class="stat" title="Members"><%= it.plural(g.members_count, 'member') %></span></div>
+  </li>
+<% } %>
+</ul>
+<%~ include('_pager', { pager: it.pager }) %>
+<% } %>

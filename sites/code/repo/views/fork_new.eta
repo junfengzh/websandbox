@@ -1,0 +1,27 @@
+<% layout('layout') %>
+<% const v = it.values, e = it.errors, p = it.project; %>
+<div class="page-title-row"><h1>Fork project</h1></div>
+<p>A fork is a copy of a project.<br>Forking a repository allows you to make changes without affecting the original project.</p>
+<form method="post" action="/<%= p.full_path %>/-/forks" class="fork-form" aria-label="Fork project" style="max-width:720px">
+  <%~ it.csrfInput() %>
+  <div class="form-group<%= e.name ? ' has-error' : '' %>"><label for="fork-name">Project name</label><input class="form-control" id="fork-name" name="name" value="<%= v.name %>" required><% if (e.name) { %><p class="invalid-feedback"><%= e.name %></p><% } %></div>
+  <div class="row">
+    <div class="col form-group<%= e.namespace_id ? ' has-error' : '' %>"><label for="fork-namespace">Project URL</label>
+      <div class="input-group"><span class="input-group-text"><%= it.req.headers ? '' : '' %>/</span>
+      <select class="form-control" id="fork-namespace" name="namespace_id" required>
+        <option value=""<%= !v.namespace_id ? ' selected' : '' %>>Select a namespace</option>
+        <% for (const t of it.targets) { %><option value="<%= t.id %>"<%= String(t.id) === String(v.namespace_id) ? ' selected' : '' %>><%= t.full_path %></option><% } %>
+      </select></div><% if (e.namespace_id) { %><p class="invalid-feedback"><%= e.namespace_id %></p><% } %></div>
+    <div class="col form-group<%= e.path ? ' has-error' : '' %>"><label for="fork-path">Project slug</label><input class="form-control" id="fork-path" name="path" value="<%= v.path %>" required><% if (e.path) { %><p class="invalid-feedback"><%= e.path %></p><% } %></div>
+  </div>
+  <p class="form-text">Want to house several dependent projects under the same namespace? <a href="/groups/new">Create a group.</a></p>
+  <div class="form-group"><label for="fork-description">Project description (optional)</label><textarea class="form-control" id="fork-description" name="description" rows="3"><%= v.description %></textarea></div>
+  <fieldset><legend>Visibility level</legend>
+    <ul class="radio-list">
+    <% for (const [k, l, h] of [['private', 'Private', 'Project access must be granted explicitly to each user. If this project is part of a group, access is granted to members of the group.'], ['internal', 'Internal', 'The project can be accessed by any logged in user.'], ['public', 'Public', 'The project can be accessed without any authentication.']]) { const dis = ({ private: 0, internal: 1, public: 2 })[k] > ({ private: 0, internal: 1, public: 2 })[p.visibility]; %>
+      <li><label><input type="radio" name="visibility" value="<%= k %>"<%= v.visibility === k ? ' checked' : '' %><%= dis ? ' disabled' : '' %>> <%= l %></label><div class="help"><%= h %></div></li>
+    <% } %></ul>
+    <% if (e.visibility) { %><p class="invalid-feedback"><%= e.visibility %></p><% } %>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="btn btn-confirm">Fork project</button><a class="btn" href="/<%= p.full_path %>">Cancel</a></div>
+</form>

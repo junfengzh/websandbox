@@ -1,0 +1,14 @@
+<% layout('layout') %>
+<% const p = it.project, enc = it.enc, base = '/' + p.full_path; %>
+<div class="page-title-row"><h1>Find file</h1><span class="ref-name"><%= it.ref %></span></div>
+<form method="get" class="filter-bar" role="search" aria-label="Find file">
+  <label class="sr-only" for="file-finder">Find by path</label>
+  <input type="search" id="file-finder" name="q" value="<%= it.q %>" placeholder="Find by path" autofocus style="flex:1">
+  <button class="btn" type="submit">Find</button>
+</form>
+<% if (!it.available) { %><div class="history-banner">History truncated: the files of this commit are not available in this sandbox.</div><% } else { %>
+<p class="muted"><%= it.q ? it.plural(it.files.length, 'match', 'matches') + (it.files.length >= 300 ? ' (first 300)' : '') : it.plural(it.total, 'file') + (it.total > 300 ? ', showing the first 300' : '') %></p>
+<ul class="diff-files-list" aria-label="Files">
+<% for (const f of it.files) { %><li><a href="<%= base %>/-/blob/<%= enc(it.ref) %>/<%= enc(f) %>"><%= f %></a></li><% } %>
+</ul>
+<% } %>

@@ -1,0 +1,33 @@
+<%/* include('_event', {e, time}) : one activity row from code.loadEvents() */%>
+<%
+  const e = it.e, P = e.project_path ? '/' + e.project_path : null;
+  const author = { id: e.author_id, username: e.author_username, name: e.author_name, avatar: e.author_avatar };
+  const enc = (s) => String(s).split('/').map(encodeURIComponent).join('/');
+  const typeLabel = { issue: 'issue', merge_request: 'merge request', milestone: 'milestone', note: 'comment', project: 'project', wiki_page: 'wiki page', design: 'design' }[e.target_type] || '';
+  let targetHref = null, targetText = e.target_title || '';
+  if (P && e.target_iid != null) { targetHref = P + (e.target_type === 'issue' ? '/-/issues/' : e.target_type === 'merge_request' ? '/-/merge_requests/' : '/-/milestones/') + e.target_iid; targetText = (e.target_type === 'merge_request' ? '!' : e.target_type === 'issue' ? '#' : '%') + e.target_iid; }
+  let note = null;
+  if (e.note_info) { const [nt, ref, ...rest] = e.note_info.split(':'); note = { nt, ref, body: rest.join(':') }; if (P && ref) { targetHref = P + (nt === 'issue' ? '/-/issues/' + ref : nt === 'merge_request' ? '/-/merge_requests/' + ref : '/-/commit/' + ref); targetText = nt === 'issue' ? '#' + ref : nt === 'merge_request' ? '!' + ref : ref.slice(0, 8); } }
+  const verb = { pushed: e.push_action === 'created' ? 'pushed new' : e.push_action === 'removed' ? 'deleted' : 'pushed to', created: 'created', updated: 'updated', closed: 'closed', reopened: 'opened', commented: 'commented on', merged: 'accepted', joined: 'joined', left: 'left', destroyed: 'destroyed', expired: 'removed due to membership expiration from', approved: 'approved' }[e.action] || e.action;
+%>
+<li class="event-item event-<%= e.action %>">
+  <%~ it.avatar ? it.avatar(author, 32) : '' %>
+  <div class="event-body">
+    <div class="event-title">
+      <% if (e.author_username) { %><a class="event-author" href="/<%= e.author_username %>"><%= e.author_name %></a> <span class="muted">@<%= e.author_username %></span><% } else { %><span class="event-author">Ghost User</span><% } %>
+      <span class="event-action"><%= e.action === 'created' && e.target_type == null ? 'created project' : e.action === 'joined' || e.action === 'left' ? verb + ' project' : verb %></span>
+      <% if (e.action === 'pushed') { %>
+        <%= e.push_ref_type === 'tag' ? 'tag' : 'branch' %> <% if (P && e.push_action !== 'removed') { %><a class="ref-name" href="<%= P %>/-/<%= e.push_ref_type === 'tag' ? 'tags' : 'commits' %>/<%= enc(e.push_ref || '') %>"><%= e.push_ref %></a><% } else { %><span class="ref-name"><%= e.push_ref %></span><% } %> at
+      <% } else if (typeLabel && e.target_type !== 'project') { %>
+        <%= typeLabel === 'comment' && note ? 'comment on ' + (note.nt === 'merge_request' ? 'merge request' : note.nt) : typeLabel %>
+        <% if (targetHref) { %><a href="<%= targetHref %>" title="<%= e.target_title || '' %>"><%= targetText %></a><% } else if (targetText) { %><span><%= targetText %></span><% } %>
+        <% if (e.target_type !== 'note' && e.target_title && targetHref) { %><span class="event-target-title">"<%= e.target_title %>"</span><% } %> at
+      <% } else if (e.target_type == null || e.target_type === 'project') { %><% } %>
+      <% if (P) { %><a class="event-project" href="<%= P %>"><%= e.ns_name %> / <%= e.project_name %></a><% } %>
+      <span class="event-time"><%~ it.time ? it.time(e.created_at) : e.created_at %></span>
+    </div>
+    <% if (e.action === 'pushed' && e.push_commit_to && P) { %>
+    <div class="event-detail"><a class="commit-sha" href="<%= P %>/-/commit/<%= e.push_commit_to %>"><%= e.push_commit_to.slice(0, 8) %></a> · <%= e.push_commit_title || '' %><% if (e.push_commit_count > 1) { %> <span class="muted">… and <%= e.push_commit_count - 1 %> more commit<%= e.push_commit_count - 1 === 1 ? '' : 's' %></span><% } %></div>
+    <% } else if (note && note.body) { %><div class="event-detail event-note"><%= note.body.length >= 200 ? note.body + '…' : note.body %></div><% } %>
+  </div>
+</li>

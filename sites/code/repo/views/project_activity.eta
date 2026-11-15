@@ -1,0 +1,10 @@
+<% layout('layout') %>
+<div class="page-title-row"><h1>Activity</h1></div>
+<nav aria-label="Event filter"><ul class="nav-tabs">
+  <% for (const [k, l] of [['all', 'All'], ['push', 'Push events'], ['merged', 'Merge events'], ['issue', 'Issue events'], ['comments', 'Comments'], ['wiki', 'Wiki'], ['team', 'Team']]) { %>
+  <li><a href="<%= it.url({ event_filter: k === 'all' ? null : k, page: null }) %>"<%~ it.filter === k ? ' aria-current="page"' : '' %>><%= l %></a></li><% } %>
+</ul></nav>
+<% if (!it.events.length) { %><div class="empty-state"><h3>No activity</h3></div><% } else { %>
+<ul class="event-list"><% for (const e of it.events) { %><%~ include('_event', { e, time: it.time, avatar: it.avatar }) %><% } %></ul>
+<%~ include('_pager', { pager: it.pager }) %>
+<% } %>

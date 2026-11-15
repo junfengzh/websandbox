@@ -1,0 +1,16 @@
+<% layout('layout') %>
+<div class="page-title-row">
+  <h1>Projects</h1>
+  <a class="btn btn-confirm" href="/projects/new">New project</a>
+</div>
+<div class="top-area">
+  <nav aria-label="Project lists"><ul class="nav-tabs">
+    <li><a href="/dashboard/projects"<%~ it.tab === 'yours' ? ' aria-current="page"' : '' %>>Your projects <span class="badge badge-pill"><%= it.counts.yours %></span></a></li>
+    <li><a href="/dashboard/projects/starred"<%~ it.tab === 'starred' ? ' aria-current="page"' : '' %>>Starred projects <span class="badge badge-pill"><%= it.counts.starred %></span></a></li>
+    <li><a href="/explore/projects">Explore projects</a></li>
+  </ul></nav>
+</div>
+<% if (it.tab === 'yours') { %>
+<nav aria-label="Ownership" class="nav-controls"><a class="btn btn-sm<%= it.personal ? '' : ' btn-confirm' %>" href="/dashboard/projects">All</a><a class="btn btn-sm<%= it.personal ? ' btn-confirm' : '' %>" href="/dashboard/projects/personal">Personal</a></nav>
+<% } %>
+<%~ include('repo/_projects_list', { ...it, emptyText: it.tab === 'starred' ? "You haven't starred any projects yet" : 'Welcome to GitLab', emptyHelp: it.tab === 'starred' ? 'Projects you star appear here. Star a project from its overview page.' : '<a href="/projects/new">Create a project</a> or <a href="/explore/projects">explore public projects</a>.' }) %>

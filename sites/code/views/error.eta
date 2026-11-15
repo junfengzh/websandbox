@@ -1,0 +1,8 @@
+<% layout('layout') %>
+<section class="error-page">
+  <p class="error-code" aria-hidden="true"><%= it.status %></p>
+  <h1><%= it.status === 404 ? 'Page Not Found' : it.status === 403 ? 'Access denied' : it.status === 401 ? 'Sign in required' : it.status >= 500 ? 'Something went wrong' : 'Error' %></h1>
+  <p><%= it.status === 404 ? "Make sure the address is correct and the page hasn't moved." : it.message %></p>
+  <% if (it.status === 404 && it.message && it.message !== 'Page not found') { %><p class="muted"><%= it.message %></p><% } %>
+  <p><a class="btn btn-default" href="/">Go to the home page</a><% if (it.status === 401) { %> <a class="btn btn-confirm" href="/users/sign_in?next=<%= encodeURIComponent(it.req.url) %>">Sign in</a><% } %></p>
+</section>

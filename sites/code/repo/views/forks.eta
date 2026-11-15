@@ -1,0 +1,3 @@
+<% layout('layout') %>
+<div class="page-title-row"><h1>Forks</h1><a class="btn btn-confirm" href="/<%= it.project.full_path %>/-/forks/new">Fork</a></div>
+<%~ include('repo/_projects_list', { ...it, emptyText: 'No forks yet' }) %>

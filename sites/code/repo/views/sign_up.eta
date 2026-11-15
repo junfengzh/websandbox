@@ -1,0 +1,20 @@
+<% layout('layout') %>
+<%
+  const v = it.values || {}, e = it.errors || {};
+  const fld = (name, label, type, auto) => `<div class="form-group${e[name] ? ' has-error' : ''}"><label for="new_user_${name}">${label}</label><input class="form-control" type="${type}" id="new_user_${name}" name="${name}" value="${it.h(type === 'password' ? '' : v[name] || '')}" autocomplete="${auto}" required${e[name] ? ` aria-invalid="true" aria-describedby="err_${name}"` : ''}>${e[name] ? `<p class="invalid-feedback" id="err_${name}">${it.h(e[name])}</p>` : ''}</div>`;
+%>
+<div class="auth-page">
+  <h1>Register for <%= it.site.title %></h1>
+  <div class="auth-box">
+    <form method="post" action="/users/sign_up" aria-label="Register">
+      <%~ it.csrfInput() %>
+      <div class="row"><div class="col" style="min-width:140px"><%~ fld('first_name', 'First name', 'text', 'given-name') %></div><div class="col" style="min-width:140px"><%~ fld('last_name', 'Last name', 'text', 'family-name') %></div></div>
+      <%~ fld('username', 'Username', 'text', 'username') %>
+      <%~ fld('email', 'Email', 'email', 'email') %>
+      <%~ fld('password', 'Password', 'password', 'new-password') %>
+      <p class="form-text">Minimum length is 8 characters.</p>
+      <button type="submit" class="btn btn-confirm">Register</button>
+    </form>
+  </div>
+  <p class="auth-footer">Already have an account? <a href="/users/sign_in">Sign in</a></p>
+</div>

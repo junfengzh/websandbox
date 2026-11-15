@@ -1,0 +1,23 @@
+<% layout('layout') %>
+<div class="auth-page">
+  <div class="auth-logo"><svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path fill="#e24329" d="M12 22.2 16.4 8.6H7.6z"/><path fill="#fc6d26" d="M12 22.2 7.6 8.6H1.4z"/><path fill="#fca326" d="M1.4 8.6.1 12.7c-.1.4 0 .8.4 1L12 22.2z"/><path fill="#e24329" d="M1.4 8.6h6.2L4.9.4c-.1-.4-.7-.4-.9 0z"/><path fill="#fc6d26" d="M12 22.2l4.4-13.6h6.2z"/><path fill="#fca326" d="m22.6 8.6 1.3 4.1c.1.4 0 .8-.4 1L12 22.2z"/><path fill="#e24329" d="M22.6 8.6h-6.2L19.1.4c.1-.4.7-.4.9 0z"/></svg></div>
+  <h1><%= it.site.title %></h1>
+  <div class="auth-box">
+    <% if (it.error) { %><div class="flash flash-alert" role="alert"><%= it.error %></div><% } %>
+    <form method="post" action="/users/sign_in" id="new_user" aria-label="Sign in">
+      <%~ it.csrfInput() %>
+      <input type="hidden" name="next" value="<%= it.next %>">
+      <div class="form-group">
+        <label for="user_login">Username or email</label>
+        <input class="form-control" type="text" id="user_login" name="login" value="<%= it.values.login || '' %>" autocomplete="username" autofocus required>
+      </div>
+      <div class="form-group">
+        <label for="user_password">Password</label>
+        <input class="form-control" type="password" id="user_password" name="password" autocomplete="current-password" required>
+      </div>
+      <div class="form-group"><label class="checkbox-label" style="font-weight:400"><input type="checkbox" name="remember_me" value="1"> Remember me</label></div>
+      <button type="submit" class="btn btn-confirm" data-testid="sign-in-button">Sign in</button>
+    </form>
+  </div>
+  <p class="auth-footer">Don't have an account yet? <a href="/users/sign_up">Register now</a></p>
+</div>

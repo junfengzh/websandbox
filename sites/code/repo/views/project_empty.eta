@@ -1,0 +1,13 @@
+<% layout('layout') %>
+<%~ include('repo/_project_header', it) %>
+<div class="card" style="margin-top:16px">
+  <div class="card-header">The repository for this project is empty</div>
+  <div class="card-body">
+    <p>You can get started by cloning the repository or start adding files to it with one of the following options.</p>
+    <% if (it.user && (it.project.access || 0) >= 30) { %>
+      <p><a class="btn btn-confirm" href="/<%= it.project.full_path %>/-/new/main/?file_name=README.md">Add README</a>
+      <a class="btn" href="/<%= it.project.full_path %>/-/new/main/">New file</a></p>
+    <% } %>
+    <%~ include('repo/_clone', it) %>
+  </div>
+</div>

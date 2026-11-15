@@ -1,0 +1,63 @@
+<% layout('layout') %>
+<%
+  const p = it.project, enc = it.enc, ref = it.ref, path = it.path || '';
+  const base = '/' + p.full_path;
+  const icon = (e) => e.type === 'tree' ? '<span class="ficon ficon-folder" aria-hidden="true">▸</span>' : e.type === 'commit' ? '<span class="ficon" aria-hidden="true">⊚</span>' : e.type === 'link' ? '<span class="ficon" aria-hidden="true">↪</span>' : '<span class="ficon" aria-hidden="true">▤</span>';
+%>
+<% if (it.overview) { %>
+<%~ include('repo/_project_header', it) %>
+<div class="project-stats-bar" aria-label="Repository statistics">
+  <a href="<%= base %>/-/commits/<%= enc(ref) %>"><strong><%= it.num(p.commit_count) %></strong> <%= p.commit_count === 1 ? 'Commit' : 'Commits' %></a>
+  <a href="<%= base %>/-/branches"><strong><%= it.num(it.counts.branches || 0) %></strong> <%= it.counts.branches === 1 ? 'Branch' : 'Branches' %></a>
+  <a href="<%= base %>/-/tags"><strong><%= it.num(it.counts.tags || 0) %></strong> <%= it.counts.tags === 1 ? 'Tag' : 'Tags' %></a>
+  <span><strong><%= it.bytes(p.repository_size) %></strong> Project Storage</span>
+  <% if (p.objects_policy === 'recent') { %><span class="muted" title="<%= 'Only the newest commits of this large repository keep their files in this sandbox.' %>">Recent files only</span><% } %>
+</div>
+<% } %>
+<div class="tree-controls">
+  <%~ include('repo/_ref_switch', { refs: it.refs, ref, pattern: base + '/-/tree/{ref}' + (path ? '/' + enc(path) : '') }) %>
+  <%~ include('repo/_repo_crumb', { p, ref, path }) %>
+  <% if (it.user && it.canCommitNew && !it.truncated) { %>
+  <details class="dropdown">
+    <summary class="btn btn-sm" aria-label="Add to this repository">＋ <span class="caret" aria-hidden="true"></span></summary>
+    <div class="dropdown-panel" role="menu">
+      <h2 class="menu-heading">This directory</h2>
+      <a role="menuitem" href="<%= base %>/-/new/<%= enc(ref) %>/<%= path ? enc(path) + '/' : '' %>">New file</a>
+      <h2 class="menu-heading">This repository</h2>
+      <a role="menuitem" href="<%= base %>/-/branches/new?ref=<%= encodeURIComponent(ref) %>">New branch</a>
+      <a role="menuitem" href="<%= base %>/-/tags/new?ref=<%= encodeURIComponent(ref) %>">New tag</a>
+    </div>
+  </details>
+  <% } %>
+  <span class="spacer"></span>
+  <a class="btn btn-sm" href="<%= base %>/-/find_file/<%= enc(ref) %>">Find file</a>
+  <a class="btn btn-sm" href="<%= base %>/-/commits/<%= enc(ref) %><%= path ? '/' + enc(path) : '' %>">History</a>
+  <% if (it.overview) { %><%~ include('repo/_clone', it) %><% } %>
+</div>
+<% if (it.truncated) { %>
+  <div class="history-banner" role="note"><strong>History truncated.</strong> <%= it.truncatedMsg %></div>
+  <%~ include('repo/_last_commit', { c: it.last, p, time: it.time, avatar: it.avatar }) %>
+  <p><a href="<%= base %>/-/commits/<%= enc(ref) %>">Browse the commit history</a> · <a href="<%= base %>/-/tree/<%= enc(p.default_branch || '') %>">Go to the latest files on <%= p.default_branch %></a></p>
+<% } else { %>
+<%~ include('repo/_last_commit', { c: it.last, p, time: it.time, avatar: it.avatar }) %>
+<table class="tree-table" aria-label="Files">
+  <thead><tr><th scope="col">Name</th><th scope="col">Last commit</th><th scope="col" style="text-align:right">Last update</th></tr></thead>
+  <tbody>
+  <% if (path) { const up = path.split('/').slice(0, -1).join('/'); %><tr><td colspan="3"><a href="<%= base %>/-/tree/<%= enc(ref) %><%= up ? '/' + enc(up) : '' %>" aria-label="Parent directory">..</a></td></tr><% } %>
+  <% for (const e of it.entries) { const fp = (path ? path + '/' : '') + e.name; const lc = it.lastCommits[e.name]; %>
+    <tr class="tree-item">
+      <td class="tree-item-file-name"><% if (e.type === 'commit') { %><span><%~ icon(e) %> <%= e.name %> @ <span class="commit-sha"><%= e.sha.slice(0, 8) %></span></span><% } else { %><a href="<%= base %>/-/<%= e.type === 'tree' ? 'tree' : 'blob' %>/<%= enc(ref) %>/<%= enc(fp) %>"><%~ icon(e) %><span><%= e.name %></span></a><% } %></td>
+      <td class="tree-commit"><% if (lc) { %><a href="<%= base %>/-/commit/<%= lc.sha %>" title="<%= lc.title %>"><%= lc.title.length > 70 ? lc.title.slice(0, 70) + '…' : lc.title %></a><% } %></td>
+      <td class="tree-time"><% if (lc) { %><%~ it.time(lc.committed_at) %><% } %></td>
+    </tr>
+  <% } %>
+  <% if (!it.entries.length) { %><tr><td colspan="3" class="muted">This directory is empty.</td></tr><% } %>
+  </tbody>
+</table>
+<% if (it.readme) { %>
+<section class="readme-holder" aria-labelledby="readme-title">
+  <div class="card-header"><h2 id="readme-title" style="font-size:14px;margin:0"><a href="<%= base %>/-/blob/<%= enc(ref) %>/<%= enc(it.readme.path) %>"><%= it.readme.name %></a></h2></div>
+  <div class="md"><%~ it.readme.html %></div>
+</section>
+<% } %>
+<% } %>

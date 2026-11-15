@@ -1,0 +1,9 @@
+<details class="dropdown clone-dropdown">
+  <summary class="btn btn-confirm">Clone <span class="caret" aria-hidden="true"></span></summary>
+  <div class="dropdown-panel dropdown-right clone-panel">
+    <label for="ssh_project_clone">Clone with SSH</label>
+    <div class="clipboard"><input id="ssh_project_clone" class="form-control" type="text" readonly value="<%= it.sshUrl %>"><button type="button" class="btn" data-clipboard-target="#ssh_project_clone" title="Copy URL" aria-label="Copy SSH clone URL"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>
+    <label for="http_project_clone">Clone with HTTP</label>
+    <div class="clipboard"><input id="http_project_clone" class="form-control" type="text" readonly value="<%= it.httpUrl %>"><button type="button" class="btn" data-clipboard-target="#http_project_clone" title="Copy URL" aria-label="Copy HTTP clone URL"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>
+  </div>
+</details>

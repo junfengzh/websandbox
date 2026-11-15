@@ -1,0 +1,127 @@
+<!doctype html>
+<%
+  const u = it.user, P = it.project, G = it.group, q = it.req.query || {};
+  const nav = it.nav || '';
+  const hasSidebar = !!(it.sidebar || P || G);
+%>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="<%= it.csrf() %>">
+<title><%= it.title ? it.title + ' · ' : '' %><% if (P) { %><%= P.name %> · <% } else if (G) { %><%= G.name %> · <% } %><%= it.site.title %></title>
+<link rel="stylesheet" href="/static/code.css">
+<% if (it.styles) { for (const s of [].concat(it.styles)) { %><link rel="stylesheet" href="<%= s %>">
+<% } } %><% if (it.skin.css) { %><style><%~ it.skin.css %></style><% } %>
+</head>
+<body class="skin-<%= it.skin.name %> theme-<%= it.skin.theme || 'light' %><%= hasSidebar ? ' has-sidebar' : '' %>">
+<a class="skip-link" href="#content-body">Skip to main content</a>
+<header class="navbar" role="banner">
+  <div class="navbar-left">
+    <a class="brand" href="/" aria-label="<%= it.site.title %> home">
+      <svg class="brand-logo" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="#e24329" d="M12 22.2 16.4 8.6H7.6z"/><path fill="#fc6d26" d="M12 22.2 7.6 8.6H1.4z"/><path fill="#fca326" d="M1.4 8.6.1 12.7c-.1.4 0 .8.4 1L12 22.2z"/><path fill="#e24329" d="M1.4 8.6h6.2L4.9.4c-.1-.4-.7-.4-.9 0z"/><path fill="#fc6d26" d="M12 22.2l4.4-13.6h6.2z"/><path fill="#fca326" d="m22.6 8.6 1.3 4.1c.1.4 0 .8-.4 1L12 22.2z"/><path fill="#e24329" d="M22.6 8.6h-6.2L19.1.4c.1-.4.7-.4.9 0z"/></svg>
+      <span class="brand-name"><%= it.site.title %></span>
+    </a>
+    <details class="dropdown nav-menu">
+      <summary>Menu</summary>
+      <div class="dropdown-panel menu-panel" role="menu">
+        <div class="menu-col">
+          <h2 class="menu-heading">Projects</h2>
+          <% if (u) { %><a role="menuitem" href="/dashboard/projects">Your projects</a>
+          <a role="menuitem" href="/dashboard/projects/starred">Starred projects</a><% } %>
+          <a role="menuitem" href="/explore/projects">Explore projects</a>
+          <% if (u) { %><a role="menuitem" href="/projects/new">Create new project</a><% } %>
+        </div>
+        <div class="menu-col">
+          <h2 class="menu-heading">Groups</h2>
+          <% if (u) { %><a role="menuitem" href="/dashboard/groups">Your groups</a><% } %>
+          <a role="menuitem" href="/explore/groups">Explore groups</a>
+          <% if (u) { %><a role="menuitem" href="/groups/new">Create group</a><% } %>
+        </div>
+        <div class="menu-col">
+          <h2 class="menu-heading">More</h2>
+          <% if (u) { %><a role="menuitem" href="/dashboard/activity">Activity</a><% } %>
+          <a role="menuitem" href="/explore/users">Users</a>
+          <a role="menuitem" href="/search">Search</a>
+        </div>
+      </div>
+    </details>
+  </div>
+  <form class="navbar-search" role="search" action="/search" method="get">
+    <label class="sr-only" for="search-global">Search GitLab</label>
+    <input id="search-global" type="search" name="search" placeholder="<%= P ? 'Search this project' : 'Search GitLab' %>" value="<%= it.req.path === '/search' ? (q.search || '') : '' %>" autocomplete="off">
+    <% if (P) { %><input type="hidden" name="project_id" value="<%= P.id %>"><% } else if (G) { %><input type="hidden" name="group_id" value="<%= G.id %>"><% } %>
+  </form>
+  <nav class="navbar-right" aria-label="Your account">
+  <% if (u) { %>
+    <details class="dropdown">
+      <summary class="icon-btn" aria-label="Create new..." title="Create new..."><span aria-hidden="true">＋</span><span class="caret" aria-hidden="true"></span></summary>
+      <div class="dropdown-panel dropdown-right" role="menu">
+        <% if (P) { %><h2 class="menu-heading">This project</h2>
+        <a role="menuitem" href="<%= P.url || '/' + P.full_path %>/-/issues/new">New issue</a>
+        <a role="menuitem" href="<%= P.url || '/' + P.full_path %>/-/merge_requests/new">New merge request</a>
+        <% if (P.default_branch) { %><a role="menuitem" href="<%= P.url || '/' + P.full_path %>/-/new/<%= it.enc(it.ref || P.default_branch) %>/">New file</a><% } %>
+        <a role="menuitem" href="<%= P.url || '/' + P.full_path %>/-/branches/new">New branch</a>
+        <h2 class="menu-heading">GitLab</h2><% } %>
+        <a role="menuitem" href="/projects/new">New project/repository</a>
+        <a role="menuitem" href="/groups/new">New group</a>
+      </div>
+    </details>
+    <a class="icon-btn" href="/dashboard/issues?assignee_username=<%= encodeURIComponent(u.username) %>" title="Issues assigned to you" aria-label="Issues assigned to you: <%= it.counts ? it.counts.issues : 0 %>">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/></svg>
+      <% if (it.counts && it.counts.issues) { %><span class="badge-count"><%= it.counts.issues %></span><% } %></a>
+    <a class="icon-btn" href="/dashboard/merge_requests?assignee_username=<%= encodeURIComponent(u.username) %>" title="Merge requests" aria-label="Merge requests: <%= it.counts ? it.counts.mrs : 0 %>">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="3.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="4" cy="12.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 5.3v5.4M12 10.7V6.5c0-1.2-.8-2-2-2H7.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      <% if (it.counts && it.counts.mrs) { %><span class="badge-count"><%= it.counts.mrs %></span><% } %></a>
+    <a class="icon-btn" href="/dashboard/todos" title="To-Do List" aria-label="To-Do List: <%= it.counts ? it.counts.todos : 0 %> pending">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m5 8 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      <% if (it.counts && it.counts.todos) { %><span class="badge-count todos-count"><%= it.counts.todos %></span><% } %></a>
+    <details class="dropdown user-menu">
+      <summary class="user-summary" aria-label="User menu for <%= u.username %>"><%~ it.avatar(u, 24) %><span class="caret" aria-hidden="true"></span></summary>
+      <div class="dropdown-panel dropdown-right" role="menu">
+        <div class="user-menu-head"><strong><%= u.name %></strong><span class="muted">@<%= u.username %></span>
+          <% if (it.counts && it.counts.status && (it.counts.status.message || it.counts.status.availability === 'busy')) { %><span class="user-status muted"><%= it.counts.status.message || '' %><% if (it.counts.status.availability === 'busy') { %> (Busy)<% } %></span><% } %></div>
+        <a role="menuitem" href="/-/profile#status">Set status</a>
+        <a role="menuitem" href="/<%= u.username %>">Profile</a>
+        <a role="menuitem" href="/-/profile">Edit profile</a>
+        <a role="menuitem" href="/-/profile/preferences">Preferences</a>
+        <hr>
+        <form method="post" action="/users/sign_out"><%~ it.csrfInput() %><button type="submit" class="menu-button" role="menuitem">Sign out</button></form>
+      </div>
+    </details>
+  <% } else { %>
+    <a class="btn btn-default btn-sm" href="/users/sign_in?next=<%= encodeURIComponent(it.req.url) %>">Sign in</a>
+    <a class="btn btn-confirm btn-sm" href="/users/sign_up">Register</a>
+  <% } %>
+  </nav>
+</header>
+<div class="layout-page">
+<% if (it.sidebar) { %><%~ include(it.sidebar, it) %>
+<% } else if (P) { %><%~ include('_sidebar_project', { P, nav, it }) %>
+<% } else if (G) { %><%~ include('_sidebar_group', { G, nav, it }) %>
+<% } %>
+  <div class="content-wrapper<%= it.wide ? ' wide' : '' %>">
+    <% const crumbs = [];
+       if (P) { crumbs.push([P.ns_name || P.ns_path, '/' + (P.ns_path || P.full_path.split('/')[0])]); crumbs.push([P.name, '/' + P.full_path]); }
+       else if (G) { crumbs.push([G.name, '/' + G.full_path]); }
+       for (const c of (it.crumbs || [])) crumbs.push(c);
+    %>
+    <% if (crumbs.length) { %>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><ol>
+      <% crumbs.forEach((c, i) => { const last = i === crumbs.length - 1; %><li><% if (c[1] && !last) { %><a href="<%= c[1] %>"><%= c[0] %></a><% } else { %><span<% if (last) { %> aria-current="page"<% } %>><%= c[0] %></span><% } %></li><% }) %>
+    </ol></nav>
+    <% } %>
+    <div class="flash-container" aria-live="polite">
+    <% for (const f of it.flashes) { %><div class="flash flash-<%= f.type === 'error' ? 'alert' : f.type %>" role="<%= f.type === 'error' ? 'alert' : 'status' %>"><%= f.msg %></div><% } %>
+    </div>
+    <main id="content-body" class="content" tabindex="-1">
+<%~ it.body %>
+    </main>
+  </div>
+</div>
+<script src="/_kit/kit.js" defer></script>
+<script src="/static/code.js" defer></script>
+<% if (it.scripts) { for (const s of [].concat(it.scripts)) { %><script src="<%= s %>" defer></script>
+<% } } %>
+</body>
+</html>

@@ -1,0 +1,8 @@
+<%/* include('_pager', {pager}) : kit.paginate() result, or {prev, next} for keyset/"load more" lists */%>
+<% const p = it.pager; if (p && (p.prev || p.next)) { %>
+<nav class="gl-pagination" aria-label="Pagination">
+  <% if (p.prev) { %><a class="page-link" href="<%= p.prev %>" rel="prev">‹ Prev</a><% } else { %><span class="page-link disabled" aria-disabled="true">‹ Prev</span><% } %>
+  <% for (const l of p.links || []) { if (l.gap) { %><span class="page-link gap">…</span><% } else if (l.current) { %><span class="page-link current" aria-current="page"><%= l.n %></span><% } else { %><a class="page-link" href="<%= l.href %>"><%= l.n %></a><% } } %>
+  <% if (p.next) { %><a class="page-link" href="<%= p.next %>" rel="next">Next ›</a><% } else { %><span class="page-link disabled" aria-disabled="true">Next ›</span><% } %>
+</nav>
+<% } %>

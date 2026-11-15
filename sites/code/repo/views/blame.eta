@@ -1,0 +1,24 @@
+<% layout('layout') %>
+<% const p = it.project, enc = it.enc, bl = it.bl, base = '/' + p.full_path; %>
+<div class="tree-controls">
+  <%~ include('repo/_repo_crumb', { p, ref: it.ref, path: it.path }) %>
+  <span class="spacer"></span>
+  <a class="btn btn-sm" href="<%= base %>/-/blob/<%= enc(it.ref) %>/<%= enc(it.path) %>">Normal view</a>
+  <a class="btn btn-sm" href="<%= base %>/-/commits/<%= enc(it.ref) %>/<%= enc(it.path) %>">History</a>
+</div>
+<div class="file-holder">
+  <div class="file-title"><h1 class="file-name" style="margin:0">Blame: <%= it.path.split('/').pop() %></h1></div>
+  <% if (bl.truncated) { %><div class="history-banner" role="note"><strong>History truncated.</strong> <%= bl.msg %></div>
+  <% } else if (bl.binary || bl.tooLarge) { %><div class="blob-viewer-msg">Blame is not available for this file.</div>
+  <% } else { %>
+  <% if (bl.partial) { %><div class="history-banner" role="note">Showing the newest 60 versions of this file; older lines are attributed to the oldest of them.</div><% } %>
+  <div class="blob-content"><table class="code blame" aria-label="Blame"><tbody>
+  <% for (const g of bl.groups) { g.lines.forEach((i, k) => { %>
+    <tr id="LC<%= i + 1 %>"<%~ k === 0 ? ' class="blame-first"' : '' %>>
+      <% if (k === 0) { %><td class="blame-commit" rowspan="<%= g.lines.length %>"><a href="<%= base %>/-/commit/<%= g.commit.sha %>"><%= (g.commit.title || '').slice(0, 60) %></a><br><span class="muted"><%= g.commit.author_name %> committed <%~ it.time(g.commit.committed_at) %></span></td><% } %>
+      <td class="line-num"><a href="#L<%= i + 1 %>" id="L<%= i + 1 %>"><%= i + 1 %></a></td><td class="line"><%~ bl.hl[i] || '' %></td>
+    </tr>
+  <% }) } %>
+  </tbody></table></div>
+  <% } %>
+</div>

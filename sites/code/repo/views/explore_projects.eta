@@ -1,0 +1,14 @@
+<% layout('layout') %>
+<div class="page-title-row">
+  <h1>Explore projects</h1>
+  <% if (it.user) { %><a class="btn btn-confirm" href="/projects/new">New project</a><% } %>
+</div>
+<div class="top-area">
+  <nav aria-label="Explore"><ul class="nav-tabs">
+    <% if (it.user) { %><li><a href="/dashboard/projects">Your projects</a></li><li><a href="/dashboard/projects/starred">Starred projects</a></li><% } %>
+    <li><a href="/explore/projects"<%~ it.tab === 'all' ? ' aria-current="page"' : '' %>>All</a></li>
+    <li><a href="/explore/projects/trending"<%~ it.tab === 'trending' ? ' aria-current="page"' : '' %>>Trending</a></li>
+    <li><a href="/explore/projects/starred"<%~ it.tab === 'starred' ? ' aria-current="page"' : '' %>>Most stars</a></li>
+  </ul></nav>
+</div>
+<%~ include('repo/_projects_list', it) %>

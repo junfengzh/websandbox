@@ -1,0 +1,9 @@
+<%/* ref switcher: it.refs {branches, tags}, it.ref current, it.pattern '/ns/p/-/tree/{ref}/path' */%>
+<div class="ref-switch">
+  <label class="sr-only" for="ref-switcher">Switch branch/tag</label>
+  <select id="ref-switcher" data-ref-switch="<%= it.pattern %>">
+    <optgroup label="Branches"><% for (const b of it.refs.branches) { %><option value="<%= b %>"<%= b === it.ref ? ' selected' : '' %>><%= b %></option><% } %></optgroup>
+    <% if (it.refs.tags.length) { %><optgroup label="Tags"><% for (const t of it.refs.tags) { %><option value="<%= t %>"<%= t === it.ref && !it.refs.branches.includes(t) ? ' selected' : '' %>><%= t %></option><% } %></optgroup><% } %>
+    <% if (!it.refs.branches.includes(it.ref) && !it.refs.tags.includes(it.ref)) { %><option value="<%= it.ref %>" selected><%= it.ref.length === 40 ? it.ref.slice(0, 8) : it.ref %></option><% } %>
+  </select>
+</div>

@@ -1,0 +1,30 @@
+<%/* project overview header: star / fork / clone; it = page locals */%>
+<% const p = it.project; %>
+<div class="project-home-panel">
+  <span class="project-avatar lg" aria-hidden="true"><%= p.name[0].toUpperCase() %></span>
+  <div class="project-meta">
+    <h1 class="project-name"><%= p.name %>
+      <span class="visibility-icon badge badge-muted" title="<%= p.visibility === 'public' ? 'Public - The project can be accessed without any authentication.' : p.visibility === 'internal' ? 'Internal - The project can be accessed by any logged in user.' : 'Private - Project access must be granted explicitly to each user.' %>"><%= p.visibility[0].toUpperCase() + p.visibility.slice(1) %></span>
+      <% if (p.archived) { %><span class="badge badge-warning">Archived</span><% } %>
+    </h1>
+    <div class="project-id">Project ID: <span data-project-id><%= p.id %></span>
+      <button type="button" class="btn-link" data-clipboard-text="<%= p.id %>" title="Copy project ID" aria-label="Copy project ID"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>
+    <% if (it.forkedFrom) { %><p class="muted" style="margin:4px 0 0">Forked from <a href="/<%= it.forkedFrom.full_path %>"><%= it.forkedFrom.ns_name %> / <%= it.forkedFrom.name %></a></p><% } %>
+  </div>
+  <div class="project-home-actions">
+    <% if (it.user) { %>
+    <div class="count-btn">
+      <form method="post" action="/<%= p.full_path %>/-/toggle_star" class="star-form"><%~ it.csrfInput() %><input type="hidden" name="star" value="<%= it.starred ? '0' : '1' %>">
+        <button type="submit" class="btn star-btn" aria-pressed="<%= it.starred ? 'true' : 'false' %>"><span aria-hidden="true"><%= it.starred ? '★' : '☆' %></span> <%= it.starred ? 'Unstar' : 'Star' %></button></form>
+      <a class="count star-count" href="/<%= p.full_path %>/-/starrers" title="Starrers" aria-label="<%= p.star_count %> stars"><%= p.star_count %></a>
+    </div>
+    <% } else { %>
+    <div class="count-btn"><a class="btn" href="/users/sign_in?next=<%= encodeURIComponent('/' + p.full_path) %>"><span aria-hidden="true">☆</span> Star</a><a class="count star-count" href="/<%= p.full_path %>/-/starrers"><%= p.star_count %></a></div>
+    <% } %>
+    <div class="count-btn">
+      <% if (p.forking_enabled) { %><a class="btn fork-btn" href="/<%= p.full_path %>/-/forks/new"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="3" r="1.6"/><circle cx="12" cy="3" r="1.6"/><circle cx="8" cy="13" r="1.6"/><path d="M4 4.6V6a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V4.6M8 8v3.4"/></svg> Fork</a><% } else { %><span class="btn" aria-disabled="true">Fork</span><% } %>
+      <a class="count forks-count" href="/<%= p.full_path %>/-/forks" title="Forks" aria-label="<%= p.forks_count %> forks"><%= p.forks_count %></a>
+    </div>
+  </div>
+</div>
+<% if (p.description) { %><p class="project-description-lg"><%= p.description %></p><% } %>
