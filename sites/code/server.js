@@ -136,7 +136,7 @@ function locals(req) {
     counts.status = req.tenant.sql('SELECT * FROM user_statuses WHERE user_id = ?').get(u.id) || null;
   }
   return {
-    code, counts,
+    code, counts, navCounts: counts, // navCounts: top bar (pages may pass their own `counts`)
     md: code.md,
     ago: (s) => code.relTime(s, now),
     abs: (s) => code.absTime(s),

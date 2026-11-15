@@ -67,20 +67,20 @@
         <a role="menuitem" href="/groups/new">New group</a>
       </div>
     </details>
-    <a class="icon-btn" href="/dashboard/issues?assignee_username=<%= encodeURIComponent(u.username) %>" title="Issues assigned to you" aria-label="Issues assigned to you: <%= it.counts ? it.counts.issues : 0 %>">
+    <a class="icon-btn" href="/dashboard/issues?assignee_username=<%= encodeURIComponent(u.username) %>" title="Issues assigned to you" aria-label="Issues assigned to you: <%= it.navCounts ? it.navCounts.issues : 0 %>">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/></svg>
-      <% if (it.counts && it.counts.issues) { %><span class="badge-count"><%= it.counts.issues %></span><% } %></a>
-    <a class="icon-btn" href="/dashboard/merge_requests?assignee_username=<%= encodeURIComponent(u.username) %>" title="Merge requests" aria-label="Merge requests: <%= it.counts ? it.counts.mrs : 0 %>">
+      <% if (it.navCounts && it.navCounts.issues) { %><span class="badge-count"><%= it.navCounts.issues %></span><% } %></a>
+    <a class="icon-btn" href="/dashboard/merge_requests?assignee_username=<%= encodeURIComponent(u.username) %>" title="Merge requests" aria-label="Merge requests: <%= it.navCounts ? it.navCounts.mrs : 0 %>">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="3.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="4" cy="12.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 5.3v5.4M12 10.7V6.5c0-1.2-.8-2-2-2H7.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-      <% if (it.counts && it.counts.mrs) { %><span class="badge-count"><%= it.counts.mrs %></span><% } %></a>
-    <a class="icon-btn" href="/dashboard/todos" title="To-Do List" aria-label="To-Do List: <%= it.counts ? it.counts.todos : 0 %> pending">
+      <% if (it.navCounts && it.navCounts.mrs) { %><span class="badge-count"><%= it.navCounts.mrs %></span><% } %></a>
+    <a class="icon-btn" href="/dashboard/todos" title="To-Do List" aria-label="To-Do List: <%= it.navCounts ? it.navCounts.todos : 0 %> pending">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m5 8 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
-      <% if (it.counts && it.counts.todos) { %><span class="badge-count todos-count"><%= it.counts.todos %></span><% } %></a>
+      <% if (it.navCounts && it.navCounts.todos) { %><span class="badge-count todos-count"><%= it.navCounts.todos %></span><% } %></a>
     <details class="dropdown user-menu">
       <summary class="user-summary" aria-label="User menu for <%= u.username %>"><%~ it.avatar(u, 24) %><span class="caret" aria-hidden="true"></span></summary>
       <div class="dropdown-panel dropdown-right" role="menu">
         <div class="user-menu-head"><strong><%= u.name %></strong><span class="muted">@<%= u.username %></span>
-          <% if (it.counts && it.counts.status && (it.counts.status.message || it.counts.status.availability === 'busy')) { %><span class="user-status muted"><%= it.counts.status.message || '' %><% if (it.counts.status.availability === 'busy') { %> (Busy)<% } %></span><% } %></div>
+          <% if (it.navCounts && it.navCounts.status && (it.navCounts.status.message || it.navCounts.status.availability === 'busy')) { %><span class="user-status muted"><%= it.navCounts.status.message || '' %><% if (it.navCounts.status.availability === 'busy') { %> (Busy)<% } %></span><% } %></div>
         <a role="menuitem" href="/-/profile#status">Set status</a>
         <a role="menuitem" href="/<%= u.username %>">Profile</a>
         <a role="menuitem" href="/-/profile">Edit profile</a>
