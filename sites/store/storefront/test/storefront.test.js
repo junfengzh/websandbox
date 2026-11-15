@@ -43,15 +43,15 @@ class Client {
 const ctrl = (base, p, body) => fetch(base + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body || {}) }).then((r) => r.json());
 const query = async (base, sql, params) => (await ctrl(base, '/__rl/query', { sql, params })).rows;
 
-let s; let base;
+let s; let base; let up;
 test.before(async () => {
   const site = require('../../server.js');
-  const up = fs.mkdtempSync(path.join((process.env.WSB_TMP || os.tmpdir()), 'wsb-store-test-'));
+  up = fs.mkdtempSync(path.join((process.env.WSB_TMP || os.tmpdir()), 'wsb-store-test-'));
   s = await site.start({ tenants: 2, port: 0, data: DATA, bind: 'ports', uploads: up, jobTickMs: 50 });
   base = s.url(0);
   await ctrl(base, '/__rl/reset', { frozen: true, now: '2023-06-12T16:00:00Z' });
 });
-test.after(async () => { if (s) await s.close(); });
+test.after(async () => { if (s) await s.close(); if (up) fs.rmSync(up, { recursive: true, force: true }); });
 
 test('home, category, product, CMS', async () => {
   const c = new Client(base);
