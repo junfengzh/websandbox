@@ -85,3 +85,10 @@ entry per target article.
 `default` (Vector-like, side navigation), `dark`, `compact` (top navigation, relabelled
 "Surprise me" / "Backlinks" / "About this page" / search placeholder). Set per tenant with
 `POST /__rl/reset {"skin": "dark"}`.
+
+## Grading ([grade.js](grade.js))
+
+The kit grader plus wiki URL canonicalisation (Kiwix `/wikipedia_en_all_maxi_2022-05/A/<T>` and
+`/w/index.php?title=<T>` -> `/wiki/<T>`, spaces -> underscores, upper-case first letter, `rdfrom`
+dropped). A reference URL with a fragment (`/wiki/Pittsburgh#Climate`) is a section check: the
+final URL's fragment must name that section (as the TOC links set it); without one, fragments are ignored.
