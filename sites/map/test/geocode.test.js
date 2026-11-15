@@ -109,6 +109,8 @@ test('state codes, comma segments, colloquial names', opt, () => {
   assert.match(g.search('Bridgeport, CT', { center: CMU, limit: 1 })[0].display_name, /^Bridgeport, Greater Bridgeport/);
   assert.match(g.search('Portland, ME', { center: CMU, limit: 1 })[0].display_name, /^Portland, Cumberland County, Maine/);
   assert.match(g.search('Carnegie Hall NYC', { center: CMU, limit: 1 })[0].display_name, /^Carnegie Hall, .*Manhattan/);
+  // task 760: the city, not the Allentown neighbourhood of Pittsburgh next to the map view
+  assert.match(g.search('Allentown, PA', { center: CMU, limit: 1 })[0].display_name, /^Allentown, Lehigh County/);
 });
 
 test('name words + place words ("AMC theatre pittsburgh", "CMU Hunt library")', opt, () => {

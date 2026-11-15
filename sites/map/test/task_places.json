@@ -763,8 +763,8 @@
    ]
   },
   {
-   "q": "Allentown",
-   "expect": "Allentown",
+   "q": "Allentown, PA",
+   "expect": "Allentown, Lehigh County",
    "tasks": [
     760
    ]

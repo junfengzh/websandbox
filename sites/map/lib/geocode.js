@@ -434,7 +434,10 @@ class Geocoder {
       if (ref) {
         dist = hav(ref[0], ref[1], r.lon, r.lat);
         const km = opts.proximityKm || 15;
-        s += 0.6 * Math.exp(-dist / 1000 / km);
+        // a qualified settlement name ("Allentown, PA") names the place itself: the map view
+        // must not pull a same-named neighbourhood nearby (Allentown, Pittsburgh) above the city
+        const qualified = seg0 && exact === 1 && (r.class === 'boundary' || r.class === 'place');
+        s += (qualified ? 0.2 : 0.6) * Math.exp(-dist / 1000 / km);
       }
       if (viewbox && r.lon >= viewbox[0] && r.lon <= viewbox[2] && r.lat >= viewbox[1] && r.lat <= viewbox[3]) s += 0.3;
       const f = this._fmt(r, ref);
