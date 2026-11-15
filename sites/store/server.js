@@ -62,8 +62,8 @@ const site = kit.site({
   siteIndex: kit.SITE_INDEX.shopping, // 127.10.<i>.2; main() also listens on 127.10.<i>.3 (shopping_admin) with --bind rl
   dir: __dirname,
   db: { mode: 'overlay', file: 'base.db', cacheMB: 64 },
-  // "today" for the store: the day after the last order in the data (2023-05-31).
-  clock: { start: '2023-06-01T14:00:00Z' },
+  // "today" for the store: the WebArena shopping tasks say "Today is 6/12/2023" (last order 2023-05-31).
+  clock: { start: '2023-06-12T16:00:00Z' },
   auth: {
     get loginPath() {
       const r = ctxReq();

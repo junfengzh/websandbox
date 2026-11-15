@@ -143,3 +143,39 @@ Builder notes for the store site (`sites/store/`). Schema:
   exists. Magento's own search showed different result sets; tasks whose
   answers came from Magento search results (e.g. 124 price range of
   "wireless earphone") must be re-derived.
+
+## Storefront (2026-11-15)
+
+Server and routes: `sites/store/server.js` (storefront + `/admin` mount, contract at the
+top), `sites/store/storefront/`, [../sites/store/ROUTES.md](../sites/store/ROUTES.md).
+
+- **Luma product images: not recoverable.** The WebArena admin docker tar
+  (`shopping_admin_final_0719.tar`, Magento root `/var/www/magento2`) holds only ~100
+  md5-named product images (layers `ed902127...`, `3206c30c...`) and no Luma sample files
+  (`m/b/mb01-blue-0.jpg` etc.); the shopping tar has none under `m/` either, and the live
+  reference admin (:7780) returns a 1692-byte placeholder for every Luma path. Luma products
+  render with a "No image" placeholder; base.db/media are unchanged (no image step edit).
+- **Clock**: `2023-06-12 16:00 UTC` ("Today is 6/12/2023" in the shop tasks). Dates show in
+  America/New_York like Magento (order history `6/12/23`, order page "June 12, 2023").
+- **Prices**: final price = special price when lower and in its date window; configurables
+  show "As low as" the cheapest child. **Catalog price rules are not applied** on the
+  storefront: admin rule 2 "Spring sale" (20% off everything for group General from
+  2023-05-01) would change every shop price the shop tasks quote.
+- **Cart price rules are applied** (one store): the Luma rules "Spend $50 or more - shipping is
+  free!" and "20% OFF Every $200-plus purchase!" (both no coupon, all groups) now affect shop
+  checkouts, and `H20` works. Orders placed in WebArena's shop had neither; only totals of
+  *new* orders differ.
+- **Shipping**: Flat Rate $5.00 per item (what all 497 source orders used) and the table rate.
+- **Listing performance**: rows of `products` are large (descriptions), so reading 20k of them
+  per category page cost 0.5-2 s. `storefront/lib/pindex.js` keeps the listing fields of all
+  products and category memberships in process memory (built from base.db at start, ~5-10 s
+  on a loaded box, shared by all tenants of a worker); temp triggers on `products`,
+  `product_categories`, `product_variants` report each tenant's changes, which are read from
+  the tenant DB (cleared at reset). Category rows/facets/sort orders and search results are
+  cached per day while the tenant has no catalog changes. Single client, 234 mixed URLs:
+  p50 13 ms, p95 80 ms (load average ~6).
+- Imported carts (active Magento quotes) keep Magento's `info_buyRequest`; their custom
+  option ids are resolved with the shop offset (+10) for display and ordering. Emma's cart
+  starts with 3 items, as in WebArena.
+- New reviews are `pending` (Magento moderation); new orders `pending`/state `new`, numbered
+  after the current maximum (`000001190` is the first new one).
