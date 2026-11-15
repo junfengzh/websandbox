@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 'use strict';
-// Front router of the public websandbox demo (deploy/README.md). One port, routing by Host:
-//   <domain>          landing page (deploy/landing.html) + /__status (JSON, no secrets)
-//   shop.<domain>     store (storefront /, back office /admin)
-//   forum. code. wiki. map.<domain>   those sites
-// The sites listen on 127.0.0.1 (tasks/tools/sites.sh --bind ports) and trust loopback for
-// their control API, and every proxied request comes from loopback -- so /__rl/* is refused
-// here for every host (also percent-encoded), X-WSB-* headers are dropped, and the control
+// Front router of the public websandbox demo (deploy/README.md). One host, one port:
+//   /                 landing page (deploy/landing.html);  /__status  JSON health (no secrets)
+//   /shop/            store (storefront; back office /shop/admin)
+//   /forum/ /code/ /wiki/ /map/   those sites
+// The sites run at their root on 127.0.0.1 (tasks/tools/sites.sh --bind ports, unchanged code);
+// the prefix is added by rewriting their responses (deploy/prefix.js). They trust loopback for
+// their control API and every proxied request comes from loopback -- so any path containing
+// __rl (also percent-encoded) is refused, X-WSB-* request headers are dropped, and the control
 // token is used only by the router's own reset/health calls. Abuse limits: per-IP token
 // buckets (all requests, writes, large uploads), in-flight cap, request body cap.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const X = require('./prefix');
 
 const env = process.env;
 const PORT = +env.WSB_PORT || 8080;
@@ -20,19 +22,20 @@ const BASE = +env.WSB_BASE_PORT || 7700;
 const TOKEN = fs.readFileSync(env.WSB_CONTROL_TOKEN_FILE || '/srv/state/control-token', 'utf8').trim();
 const RESET_MIN = +env.WSB_RESET_MINUTES || 60;
 const MAX_BODY = (+env.WSB_MAX_BODY_MB || 5) * 2 ** 20;
+const MAX_REWRITE = 32 * 2 ** 20;                 // larger text responses are streamed unchanged
 const BIG_BODY = 256 * 1024;                      // bodies above this count against the upload bucket
 const UPSTREAM_TIMEOUT = 60e3;
 
-// site key -> subdomain, sites.sh index (port BASE + 10k), label
+// site key -> path prefix, sites.sh index (port BASE + 10k), label; ownsPrefix: the site has
+// its own paths under /<prefix>/ (the wiki's /wiki/<Article>)
 const SITES = [
-  { key: 'store', sub: 'shop', idx: 0, name: 'Store' },
-  { key: 'forum', sub: 'forum', idx: 1, name: 'Forum' },
-  { key: 'code', sub: 'code', idx: 2, name: 'Code' },
-  { key: 'wiki', sub: 'wiki', idx: 3, name: 'Wiki' },
-  { key: 'map', sub: 'map', idx: 4, name: 'Map' },
-].map((s) => ({ ...s, port: BASE + s.idx * 10, host: `${s.sub}.${DOMAIN}`, health: null, fails: 0 }));
-const BY_HOST = new Map(SITES.map((s) => [s.host, s]));
-const BY_SUB = new Map(SITES.map((s) => [s.sub, s]));
+  { key: 'store', prefix: '/shop', idx: 0, name: 'Store' },
+  { key: 'forum', prefix: '/forum', idx: 1, name: 'Forum' },
+  { key: 'code', prefix: '/code', idx: 2, name: 'Code' },
+  { key: 'wiki', prefix: '/wiki', idx: 3, name: 'Wiki', ownsPrefix: true },
+  { key: 'map', prefix: '/map', idx: 4, name: 'Map' },
+].map((s) => ({ ...s, port: BASE + s.idx * 10, health: null, fails: 0 }));
+const siteOf = (p) => SITES.find((s) => X.under(p, s.prefix)) || null;
 
 const log = (...a) => console.log(`[router ${new Date().toISOString().slice(11, 19)}]`, ...a);
 const agent = new http.Agent({ keepAlive: true, maxSockets: 64 });
@@ -95,7 +98,7 @@ function take(ip, kind, n = 1) {
 }
 setInterval(() => { const now = Date.now() / 1000; for (const [ip, b] of buckets) if (!b.inflight && now - b.t > 3600) buckets.delete(ip); }, 600e3).unref();
 
-const counters = { req: 0, limited: 0, blocked: 0, errors: 0 };
+const counters = { req: 0, limited: 0, blocked: 0, errors: 0, escaped: 0 };
 setInterval(() => { if (counters.req) log(`last 10 min: ${JSON.stringify(counters)} ips=${buckets.size}`); for (const k in counters) counters[k] = 0; }, 600e3).unref();
 
 function clientIp(req) {
@@ -114,12 +117,10 @@ function blockedPath(url) {
 // ---------------------------------------------------------------- landing page
 const LANDING = path.join(__dirname, 'landing.html');
 function landing(req, res) {
-  const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
-  const url = (s) => `${proto}://${s.host}`;
   const fmt = (iso) => (iso ? iso.slice(11, 16) + ' UTC' : 'n/a');
   const vars = {
     DOMAIN, COMMIT: state.commit, RESET_MIN: String(RESET_MIN), NEXT_RESET: fmt(state.nextReset), LAST_RESET: fmt(state.lastReset),
-    ...Object.fromEntries(SITES.flatMap((s) => [[`URL_${s.key.toUpperCase()}`, url(s)], [`ST_${s.key.toUpperCase()}`, s.health || 'starting']])),
+    ...Object.fromEntries(SITES.flatMap((s) => [[`URL_${s.key.toUpperCase()}`, s.prefix], [`ST_${s.key.toUpperCase()}`, s.health || 'starting']])),
   };
   const html = fs.readFileSync(LANDING, 'utf8').replace(/\{\{(\w+)\}\}/g, (m, k) => (k in vars ? vars[k] : m));
   send(res, 200, html, 'text/html; charset=utf-8', { 'content-security-policy': "default-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:", 'x-content-type-options': 'nosniff' });
@@ -127,39 +128,40 @@ function landing(req, res) {
 
 // ---------------------------------------------------------------- proxy
 const HOP = ['connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'te', 'trailer', 'upgrade', 'proxy-authorization'];
-// responses whose bodies carry absolute http://<host> URLs (map style -> tile URLs; wiki opensearch)
-const REWRITE = { map: /^\/style\.json(\?|$)/, wiki: /^\/w\/api\.php(\?|$)/ };
 
-function proxy(site, req, res, ip) {
+function proxy(site, req, res, ip, host) {
   const proto = req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+  const P = site.prefix;
+  const sitePath = req.url.slice(P.length) || '/';
   const headers = {};
   for (const [k, v] of Object.entries(req.headers)) if (!HOP.includes(k) && !k.startsWith('x-wsb-')) headers[k] = v;
-  headers.host = site.host;
   headers['x-forwarded-for'] = ip; headers['x-forwarded-proto'] = proto;
-  const rewrite = proto === 'https' && REWRITE[site.key] && REWRITE[site.key].test(req.url);
-  if (rewrite) headers['accept-encoding'] = 'identity';
+  headers['accept-encoding'] = 'identity';                                // bodies are rewritten
+  if (headers.referer) {                                                  // the site sees its own paths
+    try { const r = new URL(headers.referer); if (r.host === host && X.under(r.pathname, P)) { r.pathname = r.pathname.slice(P.length) || '/'; headers.referer = r.href; } } catch {}
+  }
 
   const b = buckets.get(ip); if (b) b.inflight++;
   let done = false;
   const finish = () => { if (!done) { done = true; if (b) b.inflight--; } };
   res.on('close', finish);
 
-  const up = http.request({ host: '127.0.0.1', port: site.port, method: req.method, path: req.url, headers, agent, timeout: UPSTREAM_TIMEOUT }, (ur) => {
+  const up = http.request({ host: '127.0.0.1', port: site.port, method: req.method, path: sitePath, headers, agent, timeout: UPSTREAM_TIMEOUT }, (ur) => {
     const h = { ...ur.headers };
     for (const k of HOP) delete h[k];
-    if (proto === 'https' && h.location) h.location = String(h.location).replace(new RegExp(`^http://(${site.host.replace(/\./g, '\\.')})`, 'i'), 'https://$1');
-    if (rewrite) {
-      const chunks = [];
-      ur.on('data', (c) => chunks.push(c));
-      ur.on('end', () => {
-        const body = Buffer.concat(chunks).toString('utf8').split(`http://${site.host}`).join(`https://${site.host}`);
-        delete h['content-length']; delete h['content-encoding'];
-        res.writeHead(ur.statusCode, h); res.end(body);
-      });
-      return;
-    }
-    res.writeHead(ur.statusCode, h);
-    ur.pipe(res);
+    if (h.location) h.location = X.rewriteLocation(String(h.location), site, host, proto);
+    if (h['set-cookie']) h['set-cookie'] = [].concat(h['set-cookie']).map((c) => X.rewriteCookie(c, P));
+    const kind = !h['content-encoding'] && req.method !== 'HEAD' && +(h['content-length'] || 0) <= MAX_REWRITE ? X.bodyKind(h['content-type'], sitePath.split('?')[0]) : null;
+    if (!kind) { res.writeHead(ur.statusCode, h); ur.pipe(res); return; }
+    const chunks = [];
+    ur.on('data', (c) => chunks.push(c));
+    ur.on('error', () => res.destroy());
+    ur.on('end', () => {
+      const body = Buffer.from(X.rewriteBody(kind, Buffer.concat(chunks).toString('utf8'), P, host, proto), 'utf8');
+      h['content-length'] = body.length;
+      delete h.etag;                                                      // the body is not the site's any more
+      res.writeHead(ur.statusCode, h); res.end(body);
+    });
   });
   up.on('timeout', () => up.destroy(new Error('upstream timeout')));
   up.on('error', (e) => {
@@ -178,23 +180,32 @@ function proxy(site, req, res, ip) {
 
 const server = http.createServer((req, res) => {
   counters.req++;
-  const host = String(req.headers.host || '').toLowerCase().replace(/:\d+$/, '');
+  const host = String(req.headers.host || DOMAIN);
   const ip = clientIp(req);
   if (blockedPath(req.url)) { counters.blocked++; return send(res, 404, 'Not found.\n'); }
-  const site = BY_HOST.get(host) || (host.endsWith('.localhost') ? BY_SUB.get(host.split('.')[0]) : null);
-
   if (!take(ip, 'all')) { counters.limited++; return send(res, 429, 'Too many requests; slow down.\n', undefined, { 'retry-after': '10' }); }
+  const p = req.url.split('?')[0];
+  const site = siteOf(p);
+
   if (!site) {
-    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Method not allowed.\n');
-    const p = req.url.split('?')[0];
-    if (p === '/__status') {
-      return send(res, 200, JSON.stringify({ ok: SITES.every((s) => s.health === 'ok'), sites: Object.fromEntries(SITES.map((s) => [s.key, s.health])), ...state }, null, 1), 'application/json');
-    }
-    if (p === '/favicon.ico' || p === '/robots.txt') return send(res, 404, '');
-    if (host !== DOMAIN && !/^[\d.]+$|^localhost$/.test(host)) return send(res, 404, `Unknown host. See https://${DOMAIN}/\n`);
-    return landing(req, res);
+    if (p === '/__status') return send(res, 200, JSON.stringify({ ok: SITES.every((s) => s.health === 'ok'), sites: Object.fromEntries(SITES.map((s) => [s.key, s.health])), ...state }, null, 1), 'application/json');
+    if (p === '/' && (req.method === 'GET' || req.method === 'HEAD')) return landing(req, res);
+    if (p === '/robots.txt') return send(res, 200, 'User-agent: *\nDisallow: /\n');
+    if (p === '/favicon.ico') return send(res, 204, '');
+    // a URL that escaped its prefix (client JS the rewriting missed): send it back under the
+    // prefix of the page it came from (307 keeps method and body), and count it
+    try {
+      const r = new URL(req.headers.referer || '');
+      const from = r.host === host && siteOf(r.pathname);
+      if (from) {
+        counters.escaped++;
+        log(`escaped: ${req.method} ${req.url.slice(0, 200)} from ${from.prefix}`);
+        return send(res, 307, '', undefined, { location: from.prefix + req.url });
+      }
+    } catch {}
+    return send(res, 404, `Not found. See https://${DOMAIN}/\n`);
   }
-  if (req.url.split('?')[0] === '/robots.txt') return send(res, 200, 'User-agent: *\nDisallow: /\n');
+  if (p === site.prefix) return send(res, 301, '', undefined, { location: site.prefix + '/' + req.url.slice(p.length) });
 
   const len = +req.headers['content-length'] || 0;
   if (len > MAX_BODY) return send(res, 413, 'Request body too large.\n');
@@ -202,7 +213,7 @@ const server = http.createServer((req, res) => {
   if ((len > BIG_BODY || (!len && req.headers['transfer-encoding'])) && !take(ip, 'big')) { counters.limited++; return send(res, 429, 'Upload limit reached; try again later.\n', undefined, { 'retry-after': '600' }); }
   const b = buckets.get(ip);
   if (b && b.inflight >= 32) { counters.limited++; return send(res, 429, 'Too many parallel requests.\n', undefined, { 'retry-after': '5' }); }
-  proxy(site, req, res, ip);
+  proxy(site, req, res, ip, host);
 });
 server.headersTimeout = 20e3;
 server.requestTimeout = 120e3;
@@ -211,7 +222,7 @@ server.on('clientError', (e, sock) => { try { sock.end('HTTP/1.1 400 Bad Request
 server.on('upgrade', (req, sock) => sock.destroy());                    // the sites use no websockets
 
 server.listen(PORT, '0.0.0.0', async () => {
-  log(`listening on :${PORT}; ${DOMAIN} -> landing, ${SITES.map((s) => `${s.sub}->${s.key}:${s.port}`).join(' ')}; reset every ${RESET_MIN} min; commit ${state.commit}`);
+  log(`listening on :${PORT}; / -> landing, ${SITES.map((s) => `${s.prefix}/ -> ${s.key}:${s.port}`).join(' ')}; reset every ${RESET_MIN} min; commit ${state.commit}`);
   await checkHealth();
   setInterval(checkHealth, 30e3);
   scheduleReset();
