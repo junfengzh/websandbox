@@ -22,8 +22,22 @@ tasks/          converted WebArena tasks, generated tasks, verification log
 docs/           plan and design notes
 ```
 
-Data (SQLite databases and image archives) is not in this repo; it is
-published as a Hugging Face dataset.
+## Data
+
+Data (SQLite databases, map tiles, routing graph and image archives, ~21 GB)
+is not in this repo; it is published as the Hugging Face dataset
+[junfengzhou/websandbox](https://huggingface.co/datasets/junfengzhou/websandbox),
+one folder per site (`store`, `forum`, `code`, `wiki`, `map`) with a
+`manifest.json`, `SHA256SUMS` and `SOURCES.md` each.
+
+```bash
+huggingface-cli download junfengzhou/websandbox --repo-type dataset --local-dir data
+for s in store forum code wiki; do tar -xf data/$s/media.tar -C data/$s; done
+zstd -dc data/map/static.tar.zst | tar -x -C data/map
+
+(cd kit && npm install); for s in forum code wiki map; do (cd sites/$s && npm install); done
+tasks/tools/sites.sh up --data-root data     # all five sites; `sites.sh urls` prints them
+```
 
 ## Licence
 
