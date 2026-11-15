@@ -125,6 +125,7 @@ textarea { width: 100%; }
 .catalog-product-view .page-main > .breadcrumbs, .catalog-product-view .page-main > .page.messages, .catalog-product-view .product.info.detailed, .catalog-product-view .block.related { grid-column: 1 / -1; }
 .catalog-product-view .product.media { grid-column: 1; grid-row: 3; }
 .catalog-product-view .product-info-main { grid-column: 2; grid-row: 3; }
+.catalog-product-view .product.info.detailed { grid-row: 4; } .catalog-product-view .block.related { grid-row: 5; }
 @media (max-width: 860px) { .catalog-product-view .page-main { display: block; } }
 .product-info-main .page-title { font-size: 2.2rem; margin-bottom: 10px; }
 .product-info-price { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 10px; margin: 12px 0; flex-wrap: wrap; }

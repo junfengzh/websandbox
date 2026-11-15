@@ -66,6 +66,15 @@
     };
     wrap.addEventListener('change', update); update();
   }
+  // ---- checkout: the new-address form is only active (validated, submitted) when "New Address" is chosen
+  var na = document.getElementById('new-shipping-address');
+  if (na) document.querySelectorAll('input[name=address_id]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      var isNew = document.querySelector('input[name=address_id]:checked').value === 'new';
+      na.disabled = !isNew; na.hidden = !isNew;
+      document.querySelectorAll('.shipping-address-item').forEach(function (l) { l.classList.toggle('selected-item', !!l.querySelector('input:checked')); });
+    });
+  });
   // ---- region list follows the country select
   var country = document.getElementById('country_id'); var region = document.getElementById('region_id');
   if (country && region) {

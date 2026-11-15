@@ -217,3 +217,34 @@ test('cart, coupon, checkout creates an order; reset restores', async () => {
   r = await c.get('/customer/account/');
   assert.equal(r.status, 302, 'sessions reset too');
 });
+
+test('customer and admin sessions are separate on one host', async (t) => {
+  const pw = emmaPassword();
+  const f = path.join(__dirname, '../../../../../3rd-party/webarena/browser_env/env_config.py');
+  const am = fs.existsSync(f) && /"shopping_admin":\s*\{\s*"username":\s*"([^"]+)",\s*"password":\s*"([^"]+)"/.exec(fs.readFileSync(f, 'utf8'));
+  if (!pw || !am || !fs.existsSync(path.join(__dirname, '../../admin/index.js'))) return t.skip('needs the back office and demo passwords');
+  const c = new Client(base);
+  let _csrf = await c.csrf('/customer/account/login/');
+  let r = await c.post('/customer/account/loginPost/', { form: { 'login[username]': EMMA, 'login[password]': pw, _csrf } });
+  assert.equal(r.status, 302);
+  assert.ok(c.jar.has('wsb_sid'));
+  r = await c.get('/admin/dashboard/');
+  assert.equal(r.status, 302, 'a customer is not signed in to the admin');
+  const lp = await c.get('/admin/admin/auth/login/');
+  _csrf = (/name="csrf-token" content="([^"]+)"/.exec(lp.text) || /name="_csrf" value="([^"]+)"/.exec(lp.text) || [])[1];
+  r = await c.post('/admin/admin/auth/login/', { form: { 'login[username]': am[1], 'login[password]': am[2], _csrf } });
+  assert.equal(r.status, 302);
+  assert.ok(c.jar.has('wsb_admin_sid'), 'admin session cookie');
+  r = await c.get('/admin/dashboard/');
+  assert.equal(r.status, 200);
+  r = await c.get('/customer/account/');
+  assert.equal(r.status, 200, 'still signed in as the customer');
+  assert.match(r.text, /Emma Lopez/);
+  // customer logout keeps the admin session
+  r = await c.get('/customer/account/logout/');
+  r = await c.get('/admin/dashboard/');
+  assert.equal(r.status, 200);
+  r = await c.get('/customer/account/');
+  assert.equal(r.status, 302);
+  await ctrl(base, '/__rl/reset', { frozen: true, now: '2023-06-12T16:00:00Z' });
+});

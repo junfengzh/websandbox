@@ -42,6 +42,7 @@ function renameSessionCookie(reply, from, to) {
   if (!h) return;
   const re = new RegExp(`^${from}=`);
   h = [].concat(h).map((c) => String(c).replace(re, `${to}=`));
+  reply.removeHeader('set-cookie'); // reply.header() appends to set-cookie
   reply.header('set-cookie', h);
 }
 

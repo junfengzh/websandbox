@@ -60,11 +60,32 @@ function lines(cartId) {
     FROM cart_items ci JOIN products p ON p.id = ci.product_id WHERE ci.cart_id = ? AND ci.parent_item_id IS NULL ORDER BY ci.id`).all(cartId);
   for (const r of rows) {
     r.opts = parse(r.options_json);
+    if (!r.opts.options && !r.opts.attributes_info) r.opts = { ...r.opts, ...importedOptions(db, r) };
     r.image = r.image || r.parent_image;
     r.url = r.url_key ? `/${r.url_key}.html` : `/catalog/product/view/id/${r.product_id}`;
     r.plain = S.plainName(r.name);
   }
   return rows;
+}
+
+// Carts imported from Magento keep only info_buyRequest (custom option ids of the source
+// store; shop ids were shifted +10 like product_options.id): resolve them for display/ordering.
+function importedOptions(db, line) {
+  let br = line.opts.info_buyRequest;
+  if (typeof br === 'string') br = parse(br);
+  if (!br || !br.options || typeof br.options !== 'object') return {};
+  const out = [];
+  for (const [oid, vid] of Object.entries(br.options)) {
+    for (const shift of [10, 0]) {
+      const o = db.prepare('SELECT * FROM product_options WHERE id = ? AND product_id = ?').get(+oid + shift, line.product_id);
+      if (!o) continue;
+      const v = db.prepare('SELECT * FROM product_option_values WHERE id = ? AND option_id = ?').get(+vid + shift, o.id);
+      if (v) out.push({ label: o.title, value: v.title, print_value: v.title, option_id: String(o.id), option_type: o.type, option_value: String(v.id), price: Number(v.price || 0) });
+      else if (!/^\d+$/.test(String(vid))) out.push({ label: o.title, value: String(vid), print_value: String(vid), option_id: String(o.id), option_type: o.type, option_value: String(vid), price: Number(o.price || 0) });
+      break;
+    }
+  }
+  return out.length ? { options: out } : {};
 }
 
 // Unit price of a line: configurable -> the chosen child's final price; + custom option prices.

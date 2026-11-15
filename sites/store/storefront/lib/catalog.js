@@ -303,7 +303,24 @@ function searchRowsUncached(db, q) {
       mode = 'substring';
     } catch { rows = []; }
   }
+  if (mode !== 'substring') boostNames(rows, q);
   return { rows, q, mode, match: s.match };
+}
+
+// Relevance: bm25 (name-weighted) scaled up when the product NAME has every query word
+// (x2) and the exact phrase (x2 more) -- e.g. "usb wifi" puts USB WiFi adapters before TV boxes
+// that mention both words somewhere.
+function boostNames(rows, q) {
+  const words = (String(q).toLowerCase().match(/[\p{L}\p{N}]+/gu) || []).map((w) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w));
+  if (!words.length) return;
+  const phrase = words.join(' ');
+  for (const r of rows) {
+    const n = r.lname || '';
+    let k = 1;
+    if (words.every((w) => n.includes(w))) k *= 2;
+    if (words.length > 1 && n.replace(/[^\p{L}\p{N}]+/gu, ' ').includes(phrase)) k *= 2;
+    r.rank = r.rank * k; // bm25 is negative: more negative = better
+  }
 }
 
 // Rows of a category listing (anchor: the whole subtree). Base rows are cached per process

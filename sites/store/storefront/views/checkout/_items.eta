@@ -1,6 +1,6 @@
 <div class="block items-in-cart"><div class="title"><strong role="heading" aria-level="2"><%= it.t.qty %> Item<%= it.t.qty === 1 ? '' : 's' %> in Cart</strong></div>
 <ol class="minicart-items"><% for (const l of it.t.lines) { const o = l.opts || {}; const opts = [...(o.attributes_info || []), ...(o.options || [])]; %><li class="product-item">
-  <% if (l.image) { %><img src="/media/<%= l.image %>" alt="" width="60" height="60" loading="lazy"><% } %>
+  <% if (l.image) { %><img src="/media/<%= l.image %>" alt="" width="60" height="60"><% } %>
   <div class="product-item-details"><strong class="product-item-name"><%~ it.htmlName(l.name) %></strong><div class="details-qty"><span class="label">Qty</span> <span class="value"><%= l.qty %></span></div>
   <div class="subtotal"><span class="price"><%= it.money(l.row_total) %></span></div>
   <% if (opts.length) { %><dl class="item-options"><% for (const x of opts) { %><dt><%= x.label %></dt><dd><%= x.print_value || x.value %></dd><% } %></dl><% } %></div></li><% } %></ol></div>
