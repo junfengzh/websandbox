@@ -30,6 +30,8 @@ for (const [k, v] of Object.entries(CATS)) for (const p of k.split('|')) CAT.set
 const KEY_RANK = { neighbourhood: 24, quarter: 22, suburb: 20, hamlet: 20, borough: 20, city_district: 19, village: 19,
   town: 18, island: 17, city: 16, municipality: 14, county: 12, state_district: 10, state: 8 };
 const LOW_CLASSES = new Set(['public_transport', 'railway', 'highway:bus_stop', 'man_made']);
+const CAT_WORDS = new Set(['theatre', 'theater', 'cinema', 'movie', 'restaurant', 'cafe', 'coffee', 'hotel', 'store', 'shop',
+  'market', 'supermarket', 'station', 'museum', 'park', 'library', 'hospital', 'pharmacy', 'bar', 'pub', 'mall', 'center', 'ctr']);
 const MAX_CAT_WORDS = Math.max(...[...CAT.keys()].map((k) => k.split(' ').length));
 
 function hav(lon1, lat1, lon2, lat2) {
@@ -57,9 +59,9 @@ class Geocoder {
                  ORDER BY rank LIMIT ?`),
       box: P(`SELECT p.* FROM places_rtree r JOIN places p ON p.id = r.id
               WHERE r.minlon >= ? AND r.maxlon <= ? AND r.minlat >= ? AND r.maxlat <= ?`),
-      addrByStreet: P('SELECT * FROM addresses WHERE street_id = ? AND hn_norm = ?'),
+      addrByStreet: P('SELECT * FROM addresses WHERE street_id = ? AND hn_key = ?'),
       addrNumbers: P('SELECT * FROM addresses WHERE street_id = ?'),
-      addrCell: P('SELECT * FROM addresses WHERE cell = ?'),
+      addrById: P('SELECT * FROM addresses WHERE street_id = ? AND id = ?'),
       ways: P(`SELECT w.id, w.street_id, w.coords FROM street_ways_rtree r JOIN street_ways w ON w.id = r.id
                WHERE r.maxlon >= ? AND r.minlon <= ? AND r.maxlat >= ? AND r.minlat <= ?`),
       meta: P("SELECT value FROM meta WHERE key = 'info'"),
@@ -114,7 +116,9 @@ class Geocoder {
   }
   _fmtAddress(a, ref) {
     const street = a.street_id ? this.st.place.get(a.street_id) : null;
-    const c = this.combo(a.combo);
+    const c = this.combo(a.combo != null ? a.combo : street ? street.combo : -1);
+    const lat = a.lat_e7 / 1e7, lon = a.lon_e7 / 1e7;
+    a = { ...a, lat, lon, postcode: a.postcode || (street && a.combo == null ? street.postcode : null) };
     const streetName = a.street || (street && street.name) || '';
     if (a.place_id) {
       const p = this.st.place.get(a.place_id);
@@ -130,7 +134,7 @@ class Geocoder {
     if (c.country) address.country = c.country;
     if (c.country_code) address.country_code = c.country_code;
     const out = {
-      place_id: -a.id, address_id: a.id, osm_type: OSM_TYPE[a.osm[0]] || 'node', osm_id: +a.osm.slice(1),
+      place_id: `a:${a.street_id}:${a.id}`, osm_type: null, osm_id: null,
       lat: a.lat, lon: a.lon, class: 'place', type: 'house', category: 'place', place_rank: 30, importance: 0,
       addresstype: 'place', name: '', display_name: parts.filter(Boolean).join(', '),
       boundingbox: [a.lat, a.lat, a.lon, a.lon], address, extratags: {}, namedetails: {},
@@ -142,8 +146,9 @@ class Geocoder {
 
   // ------------------------------------------------------------------ lookups
   get(placeId) {
-    if (placeId < 0) {
-      const a = this.db.prepare('SELECT * FROM addresses WHERE id = ?').get(-placeId);
+    const m = String(placeId).match(/^a:(\d+):(\d+)$/);   // house-number results
+    if (m) {
+      const a = this.st.addrById.get(+m[1], +m[2]);
       return a ? this._fmtAddress(a) : null;
     }
     const r = this.st.place.get(placeId);
@@ -204,6 +209,16 @@ class Geocoder {
     let res = this._search(qs, opts, limit);
     if (!res.length && !opts.autocomplete) res = this._search(qs, { ...opts, autocomplete: true }, limit);
     if (!res.length && cat) return this.nearby((ref || [0, 0])[1], (ref || [0, 0])[0], { classes: cat, limit, radius: 5000 });
+    if (!res.length) {
+      // "AMC theatre pittsburgh": drop category words the name does not contain, keep them as a preference
+      const words = toks.filter((t) => !CAT_WORDS.has(t));
+      if (words.length && words.length < toks.length) {
+        const catHits = toks.map((t) => CAT.get(t)).filter(Boolean).flat();
+        res = this._search(words.join(' '), opts, limit * 3);
+        if (catHits.length) res.sort((a, b) => (catHits.some(([c, t]) => a.class === c && a.type === t) ? 0 : 1)
+          - (catHits.some(([c, t]) => b.class === c && b.type === t) ? 0 : 1));
+      }
+    }
     return res.slice(0, limit).map(clean);
   }
 
@@ -317,7 +332,11 @@ class Geocoder {
       });
       const mainToks = tokens(r.name);
       const cov = inName / qset.length;
-      const exact = norm(r.name) === qset.join(' ') ? 1 : 0;
+      const qn = qset.join(' ');
+      let exact = norm(r.name) === qn ? 1 : 0;
+      if (!exact && r.names) {
+        for (const v of Object.values(JSON.parse(r.names))) if (String(v).split(';').some((x) => norm(x) === qn)) { exact = 0.9; break; }
+      }
       const extra = Math.max(0, mainToks.length - inName);
       let s = 2 * cov + 1.2 * exact - 0.08 * extra + 1.5 * r.importance;
       if (LOW_CLASSES.has(r.class) || LOW_CLASSES.has(r.class + ':' + r.type)) s -= 0.2;
@@ -329,6 +348,9 @@ class Geocoder {
       }
       if (viewbox && r.lon >= viewbox[0] && r.lon <= viewbox[2] && r.lat >= viewbox[1] && r.lat <= viewbox[3]) s += 0.3;
       const f = this._fmt(r, ref);
+      // big settlements before same-named states/counties (Nominatim gets this from Wikipedia importance)
+      if ((r.class === 'boundary' || r.class === 'place') && r.rank >= 10 && r.rank <= 18 &&
+          +String(f.extratags.population || '0').replace(/[^0-9]/g, '') >= 100000) s += 0.15;
       f._score = s;
       f._cov = cov;
       scored.push(f);
@@ -377,7 +399,7 @@ class Geocoder {
     // rank streets: proximity to ref, then importance
     if (ref) streets.sort((a, b) => hav(ref[0], ref[1], a.lon, a.lat) - hav(ref[0], ref[1], b.lon, b.lat));
     else streets.sort((a, b) => b.importance - a.importance);
-    const hnn = norm(hn);
+    const hnn = String(hn).toLowerCase().replace(/ /g, '');
     const out = [];
     for (const s of streets.slice(0, 30)) {
       for (const a of this.st.addrByStreet.all(s.id, hnn)) out.push(this._fmtAddress(a, ref));
@@ -389,6 +411,7 @@ class Geocoder {
       for (const s of streets.slice(0, 10)) {
         for (const a of this.st.addrNumbers.all(s.id)) {
           const v = parseInt(a.housenumber, 10);
+          if (a.place_id) continue;
           if (Number.isNaN(v)) continue;
           const d = Math.abs(v - target) + ((v - target) % 2 ? 1000 : 0);
           if (!best || d < best.d) best = { d, a, s };
@@ -455,10 +478,10 @@ class Geocoder {
         if (!best || dd < best.d) best = { d: dd, row: r };
       }
       let bestA = null;
-      const r0 = Math.floor((lat + 90) / 0.002), c0 = Math.floor((lon + 180) / 0.002);
-      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-        for (const a of this.st.addrCell.all((r0 + dr) * 200000 + (c0 + dc))) {
-          const dd = hav(lon, lat, a.lon, a.lat);
+      // house numbers on the streets around the point
+      for (const sid of this._streetsNear(lat, lon, 120)) {
+        for (const a of this.st.addrNumbers.all(sid)) {
+          const dd = hav(lon, lat, a.lon_e7 / 1e7, a.lat_e7 / 1e7);
           if (!bestA || dd < bestA.d) bestA = { d: dd, a };
         }
       }
@@ -484,6 +507,13 @@ class Geocoder {
     const rows = this.search(nm, { center: ref, limit: 5 }).filter((x) => x.name === nm && (x.class === 'boundary' || x.class === 'place'));
     if (rows.length) return rows[0];
     return { place_id: null, lat, lon, class: 'place', type: k, name: nm, display_name: [...parts.map((x) => x[1]), c.country].filter(Boolean).join(', '), address: { [k]: nm, country: c.country } };
+  }
+
+  _streetsNear(lat, lon, m) {
+    const d = m / 111320, dl = d / Math.cos(lat * Math.PI / 180);
+    const ids = new Set();
+    for (const w of this.st.ways.all(lon - dl, lon + dl, lat - d, lat + d)) ids.add(w.street_id);
+    return [...ids].slice(0, 40);
   }
 
   _nearestStreet(lat, lon, maxM) {

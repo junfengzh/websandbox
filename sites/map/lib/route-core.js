@@ -172,6 +172,7 @@ class RouteEngine {
     let settled = 0;
     while (heap.size) {
       if (heap.topKey() >= best) break;
+      if (settled > 4000000) break; // safety cap (whole-region exploration)
       const v = heap.pop();
       if (done.has(v)) continue;
       done.add(v);
@@ -208,11 +209,19 @@ class RouteEngine {
 
   // ------------------------------------------------------------ snapping
   snap(lon, lat, profile, maxRadiusM = 3000) {
+    const c = this.snapCandidates(lon, lat, profile, maxRadiusM);
+    return c.length ? c[0] : null;
+  }
+
+  /** nearest edges of the profile, best first (large components preferred); several, so that a
+   * query can fall back when the nearest edge is a one-way trap (e.g. an exit-only driveway). */
+  snapCandidates(lon, lat, profile, maxRadiusM = 3000, k = 4) {
     const P = this.profiles[profile];
     const ew = P.ew, comp = P.comp;
     const kx = Math.cos(lat * Math.PI / 180);
     const r0 = Math.floor((lat + 90) / CELL), c0 = Math.floor((lon + 180) / CELL);
     let best = null, bestBig = null;
+    const all = [];
     const seen = new Set();
     const maxRing = Math.ceil(maxRadiusM / (CELL * 111000 * Math.max(kx, 0.2))) + 1;
     for (let ring = 0; ring <= maxRing; ring++) {
@@ -228,6 +237,8 @@ class RouteEngine {
             seen.add(e);
             if (ew[4 * e] === INF && ew[4 * e + 1] === INF) continue;
             const c = this._nearestOnEdge(e, lon, lat, kx);
+            all.push(c);
+            c.big = !!comp[e];
             if (!best || c.dist < best.dist) best = c;
             if (comp[e] && (!bestBig || c.dist < bestBig.dist)) bestBig = c;
           }
@@ -239,8 +250,9 @@ class RouteEngine {
       if (best && !bestBig && ringDist > best.dist + 2000) break;
     }
     const c = bestBig && (!best || bestBig.dist < best.dist + 1000) ? bestBig : best;
-    if (!c || c.dist > maxRadiusM) return null;
-    return c;
+    if (!c || c.dist > maxRadiusM) return [];
+    const rest = all.filter((x) => x !== c && x.big === c.big && x.dist <= c.dist + 150).sort((a, b) => a.dist - b.dist);
+    return [c, ...rest.slice(0, k - 1)];
   }
   _cell(key) {
     const K = this.gridKeys;
@@ -358,9 +370,24 @@ class RouteEngine {
     const P = this.profiles[profile];
     if (!P) throw new Error('unknown profile ' + profile);
     const t0 = Date.now();
-    const src = this.snap(from[0], from[1], profile);
-    const dst = this.snap(to[0], to[1], profile);
-    if (!src || !dst) return { code: 'NoSegment', message: `could not snap ${!src ? 'origin' : 'destination'} to the ${profile} network` };
+    const srcs = this.snapCandidates(from[0], from[1], profile);
+    const dsts = this.snapCandidates(to[0], to[1], profile);
+    if (!srcs.length || !dsts.length) return { code: 'NoSegment', message: `could not snap ${!srcs.length ? 'origin' : 'destination'} to the ${profile} network` };
+    // regions are disconnected islands of data (Northeast, London, SF, Singapore)
+    if (hav(from[0], from[1], to[0], to[1]) > 1500000) return { code: 'NoRoute', message: 'no route found (different regions)' };
+    // nearest pair first; fall back to the next candidates if the nearest edge cannot reach / be reached
+    const pairs = [];
+    for (const a of srcs) for (const b of dsts) pairs.push([a, b]);
+    pairs.sort((x, y) => (x[0].dist + x[1].dist) - (y[0].dist + y[1].dist));
+    let last = null;
+    for (const [src, dst] of pairs.slice(0, 6)) {
+      last = this._routeSnapped(P, profile, src, dst, from, to, t0);
+      if (last.code === 'Ok') return last;
+    }
+    return last;
+  }
+
+  _routeSnapped(P, profile, src, dst, from, to, t0) {
     if (P.astar) {
       const a = this._astarSearch(P, src, dst);
       if (!a) return { code: 'NoRoute', message: 'no route found' };

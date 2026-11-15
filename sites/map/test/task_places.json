@@ -1,107 +1,812 @@
 {
-  "_comment": "Places referenced by the WebArena map tasks (test.raw.json, sites include 'map'): query as a user/agent would type it, the expected top-hit substring, and the task ids. center = map view (CMU) for proximity ranking.",
-  "center": [-79.9436, 40.4443],
-  "places": [
-    {"q": "Carnegie Mellon University", "expect": "Carnegie Mellon University", "tasks": [7, 8, 17, 19, 20, 36, 52, 54, 70, 74, 80, 151, 218, 363, 370, 428, 737]},
-    {"q": "Pittsburgh International Airport", "expect": "Pittsburgh International Airport", "tasks": [7, 9, 32, 38, 80, 219, 255]},
-    {"q": "Carnegie Museum of Art", "expect": "Carnegie Museum of Art", "tasks": [9, 56, 256]},
-    {"q": "Niagara Falls International Airport", "expect": "Niagara Falls International Airport", "tasks": [10]},
-    {"q": "Buffalo Niagara International Airport", "expect": "Buffalo Niagara International Airport", "tasks": [10]},
-    {"q": "Niagara Falls", "expect": "Niagara Falls", "tasks": [10, 140]},
-    {"q": "5000 Fifth Avenue, Pittsburgh", "expect": "Fifth Avenue", "tasks": [16]},
-    {"q": "UPMC Family Health Center", "expect": "UPMC", "tasks": [16]},
-    {"q": "AMC Waterfront", "expect": "AMC", "tasks": [17, 18]},
-    {"q": "University of Pittsburgh", "expect": "University of Pittsburgh", "tasks": [18, 53, 54, 81, 98, 151]},
-    {"q": "Carnegie Science Center", "expect": "Carnegie Science Center", "tasks": [19, 87, 761]},
-    {"q": "Randyland", "expect": "Randyland", "tasks": [20]},
-    {"q": "DoubleTree by Hilton Hotel Pittsburgh Airport", "expect": "DoubleTree", "tasks": [32, 33]},
-    {"q": "Hyatt Regency Pittsburgh International Airport", "expect": "Hyatt", "tasks": [34, 35, 383]},
-    {"q": "Social Security Administration", "expect": "Social Security", "tasks": [36, 382]},
-    {"q": "police near Carnegie Mellon University", "expect": "olice", "tasks": [37]},
-    {"q": "Gates Hillman Centers", "expect": "Gates", "tasks": [37, 154, 356]},
-    {"q": "Duquesne University", "expect": "Duquesne University", "tasks": [38]},
-    {"q": "Walmart Pittsburgh", "expect": "Walmart", "tasks": [39]},
-    {"q": "5600 Fifth Avenue, Pittsburgh", "expect": "Fifth Avenue", "tasks": [39]},
-    {"q": "AMC theatre pittsburgh", "expect": "AMC", "tasks": [40]},
-    {"q": "Hobart Street, Pittsburgh", "expect": "Hobart Street", "tasks": [40]},
-    {"q": "Starbucks Craig Street", "expect": "Starbucks", "tasks": [52, 53, 74, 80, 81, 83, 100]},
-    {"q": "Chatham University", "expect": "Chatham University", "tasks": [55, 71, 429]},
-    {"q": "Hunt Library", "expect": "Hunt Library", "tasks": [56, 58, 59, 761]},
-    {"q": "University Center Carnegie Mellon", "expect": "University Center", "tasks": [57]},
-    {"q": "Posner Hall", "expect": "Posner", "tasks": [60]},
-    {"q": "Sorrells Library", "expect": "Sorrells", "tasks": [61]},
-    {"q": "Yale University", "expect": "Yale University", "tasks": [72, 76, 140]},
-    {"q": "Columbia University", "expect": "Columbia University", "tasks": [73]},
-    {"q": "Apple Store Shadyside", "expect": "Apple", "tasks": [74, 83, 250]},
-    {"q": "Massachusetts Institute of Technology", "expect": "Massachusetts Institute of Technology", "tasks": [75, 82, 427]},
-    {"q": "Harvard University", "expect": "Harvard University", "tasks": [75, 76, 82]},
-    {"q": "Boston Logan International Airport", "expect": "Logan", "tasks": [75, 82]},
-    {"q": "Princeton University", "expect": "Princeton University", "tasks": [76]},
-    {"q": "DoubleTree by Hilton New York Downtown", "expect": "DoubleTree", "tasks": [84]},
-    {"q": "Keens Steakhouse", "expect": "Keens", "tasks": [84]},
-    {"q": "La Quinta Inn Pittsburgh Airport", "expect": "La Quinta", "tasks": [85, 86]},
-    {"q": "Red Roof Inn Pittsburgh", "expect": "Red Roof", "tasks": [87]},
-    {"q": "Homewood Suites Southpointe", "expect": "Homewood Suites", "tasks": [88]},
-    {"q": "PPG Paints Arena", "expect": "PPG Paints Arena", "tasks": [88]},
-    {"q": "Connecticut", "expect": "Connecticut", "tasks": [89]},
-    {"q": "Pennsylvania", "expect": "Pennsylvania", "tasks": [90]},
-    {"q": "Massachusetts", "expect": "Massachusetts", "tasks": [91]},
-    {"q": "Vermont", "expect": "Vermont", "tasks": [92]},
-    {"q": "New Hampshire", "expect": "New Hampshire", "tasks": [93]},
-    {"q": "Fuku Tea", "expect": "Fuku Tea", "tasks": [98]},
-    {"q": "5700 Penn Ave, Pittsburgh", "expect": "Penn Avenue", "tasks": [99, 766]},
-    {"q": "Five Guys", "expect": "Five Guys", "tasks": [99]},
-    {"q": "Philadelphia", "expect": "Philadelphia", "tasks": [137, 138, 287]},
-    {"q": "Pittsburgh", "expect": "Pittsburgh", "tasks": [137, 287, 424, 757]},
-    {"q": "New York", "expect": "New York", "tasks": [138, 758, 759]},
-    {"q": "Scranton", "expect": "Scranton", "tasks": [139]},
-    {"q": "Bridgeport", "expect": "Bridgeport", "tasks": [139]},
-    {"q": "New Haven", "expect": "New Haven", "tasks": [140]},
-    {"q": "Schenley Park", "expect": "Schenley Park", "tasks": [152, 154, 155]},
-    {"q": "REI Pittsburgh", "expect": "REI", "tasks": [153]},
-    {"q": "Animal Rescue League of Pittsburgh", "expect": "Animal Rescue League", "tasks": [155]},
-    {"q": "Gardner Steel Conference Center", "expect": "Gardner Steel", "tasks": [220]},
-    {"q": "Wyndham Pittsburgh University Center", "expect": "Wyndham", "tasks": [220]},
-    {"q": "The Oaklander Hotel", "expect": "Oaklander", "tasks": [220]},
-    {"q": "post office near Carnegie Mellon University", "expect": "Post", "tasks": [221]},
-    {"q": "Cold Stone Creamery", "expect": "Cold Stone", "tasks": [222]},
-    {"q": "McDonald's", "expect": "McDonald", "tasks": [223]},
-    {"q": "Wendy's", "expect": "Wendy", "tasks": [224]},
-    {"q": "Schiller's Pharmacy", "expect": "Schiller", "tasks": [236]},
-    {"q": "Sunoco Craig Street", "expect": "Sunoco", "tasks": [237]},
-    {"q": "Carnegie Mellon Café", "expect": "Carnegie Mellon Caf", "tasks": [248, 253]},
-    {"q": "Western Pennsylvania Hospital Heliport", "expect": "Heliport", "tasks": [249]},
-    {"q": "Western Pennsylvania Hospital", "expect": "Western Pennsylvania Hospital", "tasks": [254]},
-    {"q": "Tokyo Japanese Food Store", "expect": "Tokyo Japanese Food Store", "tasks": [252, 257, 765]},
-    {"q": "Acadia National Park", "expect": "Acadia National Park", "tasks": [265, 266, 267, 268]},
-    {"q": "Boston", "expect": "Boston", "tasks": [265, 759]},
-    {"q": "Portland, Maine", "expect": "Portland", "tasks": [266, 758]},
-    {"q": "Bangor", "expect": "Bangor", "tasks": [267]},
-    {"q": "Vinalhaven", "expect": "Vinalhaven", "tasks": [268]},
-    {"q": "Independence Hall", "expect": "Independence Hall", "tasks": [356]},
-    {"q": "Carnegie Music Hall", "expect": "Carnegie Music Hall", "tasks": [363, 365, 369, 380, 381]},
-    {"q": "UPMC Shadyside", "expect": "UPMC Shadyside", "tasks": [364, 365, 366]},
-    {"q": "CVS", "expect": "CVS", "tasks": [366, 367]},
-    {"q": "Piada", "expect": "Piada", "tasks": [371]},
-    {"q": "Costco Pittsburgh", "expect": "Costco", "tasks": [372]},
-    {"q": "Whole Foods Market", "expect": "Whole Foods", "tasks": [373, 766]},
-    {"q": "CMU ArtPark Lab", "expect": "ArtPark", "tasks": [377]},
-    {"q": "US Citizenship and Immigration Services", "expect": "Citizenship", "tasks": [382]},
-    {"q": "Giant Eagle", "expect": "Giant Eagle", "tasks": [383, 767]},
-    {"q": "ALDI", "expect": "ALDI", "tasks": [383]},
-    {"q": "Mackinac Bridge", "expect": "Mackinac Bridge", "tasks": [425]},
-    {"q": "Somerset County, Pennsylvania", "expect": "Somerset County", "tasks": [426]},
-    {"q": "Flight 93 National Memorial", "expect": "Flight 93", "tasks": [426]},
-    {"q": "Washington & Jefferson College", "expect": "Washington & Jefferson College", "tasks": [430]},
-    {"q": "Wells Fargo Center", "expect": "Wells Fargo Center", "tasks": [737]},
-    {"q": "Yankee Stadium", "expect": "Yankee Stadium", "tasks": [739]},
-    {"q": "Madison Square Garden", "expect": "Madison Square Garden", "tasks": [740]},
-    {"q": "TD Garden", "expect": "TD Garden", "tasks": [741]},
-    {"q": "Allentown", "expect": "Allentown", "tasks": [760]},
-    {"q": "Hoboken", "expect": "Hoboken", "tasks": [760]},
-    {"q": "Carnegie Hall", "expect": "Carnegie Hall", "tasks": [762]},
-    {"q": "401 Shady Ave, Pittsburgh", "expect": "401, Shady Avenue", "tasks": [763, 764, 765, 766, 767]},
-    {"q": "Trader Joe's", "expect": "Trader Joe", "tasks": [763]},
-    {"q": "Target Pittsburgh", "expect": "Target", "tasks": [764]}
-  ]
+ "_comment": "Places referenced by the WebArena map tasks (test.raw.json, sites include 'map'): query as a user/agent would type it, the expected top-hit substring, and the task ids. center = map view (CMU) for proximity ranking.",
+ "center": [
+  -79.9436,
+  40.4443
+ ],
+ "places": [
+  {
+   "q": "Carnegie Mellon University",
+   "expect": "Carnegie Mellon University",
+   "tasks": [
+    7,
+    8,
+    17,
+    19,
+    20,
+    36,
+    52,
+    54,
+    70,
+    74,
+    80,
+    151,
+    218,
+    363,
+    370,
+    428,
+    737
+   ]
+  },
+  {
+   "q": "Pittsburgh International Airport",
+   "expect": "Pittsburgh International Airport",
+   "tasks": [
+    7,
+    9,
+    32,
+    38,
+    80,
+    219,
+    255
+   ]
+  },
+  {
+   "q": "Carnegie Museum of Art",
+   "expect": "Carnegie Museum of Art",
+   "tasks": [
+    9,
+    56,
+    256
+   ]
+  },
+  {
+   "q": "Niagara Falls International Airport",
+   "expect": "Niagara Falls International Airport",
+   "tasks": [
+    10
+   ]
+  },
+  {
+   "q": "Buffalo Niagara International Airport",
+   "expect": "Buffalo-Niagara International Airport",
+   "tasks": [
+    10
+   ],
+   "note": ""
+  },
+  {
+   "q": "Niagara Falls",
+   "expect": "Niagara Falls",
+   "tasks": [
+    10,
+    140
+   ]
+  },
+  {
+   "q": "5000 Fifth Avenue, Pittsburgh",
+   "expect": "Fifth Avenue",
+   "tasks": [
+    16
+   ]
+  },
+  {
+   "q": "UPMC Family Health Center",
+   "expect": "UPMC",
+   "tasks": [
+    16
+   ]
+  },
+  {
+   "q": "AMC Waterfront",
+   "expect": "AMC",
+   "tasks": [
+    17,
+    18
+   ]
+  },
+  {
+   "q": "University of Pittsburgh",
+   "expect": "University of Pittsburgh",
+   "tasks": [
+    18,
+    53,
+    54,
+    81,
+    98,
+    151
+   ]
+  },
+  {
+   "q": "Carnegie Science Center",
+   "expect": "Kamin Science Center",
+   "tasks": [
+    19,
+    87,
+    761
+   ],
+   "note": "renamed in OSM since the WebArena snapshot; old name added via build/aliases.json"
+  },
+  {
+   "q": "Randyland",
+   "expect": "Randyland",
+   "tasks": [
+    20
+   ]
+  },
+  {
+   "q": "DoubleTree by Hilton Hotel Pittsburgh Airport",
+   "expect": "DoubleTree",
+   "tasks": [
+    32,
+    33
+   ]
+  },
+  {
+   "q": "Hyatt Regency Pittsburgh International Airport",
+   "expect": "Hyatt",
+   "tasks": [
+    34,
+    35,
+    383
+   ]
+  },
+  {
+   "q": "Social Security Administration",
+   "expect": "Social Security",
+   "tasks": [
+    36,
+    382
+   ]
+  },
+  {
+   "q": "police near Carnegie Mellon University",
+   "expect": "olice",
+   "tasks": [
+    37
+   ]
+  },
+  {
+   "q": "Gates Hillman Centers",
+   "expect": "Gates",
+   "tasks": [
+    37,
+    154,
+    356
+   ]
+  },
+  {
+   "q": "Duquesne University",
+   "expect": "Duquesne University",
+   "tasks": [
+    38
+   ]
+  },
+  {
+   "q": "Walmart Pittsburgh",
+   "expect": "Walmart",
+   "tasks": [
+    39
+   ]
+  },
+  {
+   "q": "5600 Fifth Avenue, Pittsburgh",
+   "expect": "Fifth Avenue",
+   "tasks": [
+    39
+   ]
+  },
+  {
+   "q": "AMC theatre pittsburgh",
+   "expect": "AMC",
+   "tasks": [
+    40
+   ]
+  },
+  {
+   "q": "Hobart Street, Pittsburgh",
+   "expect": "Hobart Street",
+   "tasks": [
+    40
+   ]
+  },
+  {
+   "q": "Starbucks Craig Street",
+   "expect": "Starbucks",
+   "tasks": [
+    52,
+    53,
+    74,
+    80,
+    81,
+    83,
+    100
+   ]
+  },
+  {
+   "q": "Chatham University",
+   "expect": "Chatham University",
+   "tasks": [
+    55,
+    71,
+    429
+   ]
+  },
+  {
+   "q": "Hunt Library",
+   "expect": "Hunt Library",
+   "tasks": [
+    56,
+    58,
+    59,
+    761
+   ]
+  },
+  {
+   "q": "University Center",
+   "expect": "Cohon University Center",
+   "tasks": [
+    57
+   ],
+   "note": ""
+  },
+  {
+   "q": "Posner Hall",
+   "expect": "Posner",
+   "tasks": [
+    60
+   ]
+  },
+  {
+   "q": "Sorrells Library",
+   "expect": "Sorrells",
+   "tasks": [
+    61
+   ]
+  },
+  {
+   "q": "Yale University",
+   "expect": "Yale University",
+   "tasks": [
+    72,
+    76,
+    140
+   ]
+  },
+  {
+   "q": "Columbia University",
+   "expect": "Columbia University",
+   "tasks": [
+    73
+   ]
+  },
+  {
+   "q": "Apple Store Shadyside",
+   "expect": "Apple",
+   "tasks": [
+    74,
+    83,
+    250
+   ]
+  },
+  {
+   "q": "Massachusetts Institute of Technology",
+   "expect": "Massachusetts Institute of Technology",
+   "tasks": [
+    75,
+    82,
+    427
+   ]
+  },
+  {
+   "q": "Harvard University",
+   "expect": "Harvard University",
+   "tasks": [
+    75,
+    76,
+    82
+   ]
+  },
+  {
+   "q": "Boston Logan International Airport",
+   "expect": "Logan",
+   "tasks": [
+    75,
+    82
+   ]
+  },
+  {
+   "q": "Princeton University",
+   "expect": "Princeton University",
+   "tasks": [
+    76
+   ]
+  },
+  {
+   "q": "DoubleTree by Hilton New York Downtown",
+   "expect": "DoubleTree",
+   "tasks": [
+    84
+   ]
+  },
+  {
+   "q": "Keens Steakhouse",
+   "expect": "Keens",
+   "tasks": [
+    84
+   ]
+  },
+  {
+   "q": "La Quinta Inn Pittsburgh Airport",
+   "expect": "La Quinta",
+   "tasks": [
+    85,
+    86
+   ]
+  },
+  {
+   "q": "Red Roof Inn Pittsburgh",
+   "expect": "Red Roof",
+   "tasks": [
+    87
+   ]
+  },
+  {
+   "q": "Homewood Suites Southpointe",
+   "expect": "Homewood Suites",
+   "tasks": [
+    88
+   ]
+  },
+  {
+   "q": "PPG Paints Arena",
+   "expect": "PPG Paints Arena",
+   "tasks": [
+    88
+   ]
+  },
+  {
+   "q": "Connecticut",
+   "expect": "Connecticut",
+   "tasks": [
+    89
+   ]
+  },
+  {
+   "q": "Pennsylvania",
+   "expect": "Pennsylvania",
+   "tasks": [
+    90
+   ]
+  },
+  {
+   "q": "Massachusetts",
+   "expect": "Massachusetts",
+   "tasks": [
+    91
+   ]
+  },
+  {
+   "q": "Vermont",
+   "expect": "Vermont",
+   "tasks": [
+    92
+   ]
+  },
+  {
+   "q": "New Hampshire",
+   "expect": "New Hampshire",
+   "tasks": [
+    93
+   ]
+  },
+  {
+   "q": "Fuku Tea",
+   "expect": "Fuku Tea",
+   "tasks": [
+    98
+   ]
+  },
+  {
+   "q": "5700 Penn Ave, Pittsburgh",
+   "expect": "Penn Avenue",
+   "tasks": [
+    99,
+    766
+   ]
+  },
+  {
+   "q": "Five Guys",
+   "expect": "Five Guys",
+   "tasks": [
+    99
+   ]
+  },
+  {
+   "q": "Philadelphia",
+   "expect": "Philadelphia",
+   "tasks": [
+    137,
+    138,
+    287
+   ]
+  },
+  {
+   "q": "Pittsburgh",
+   "expect": "Pittsburgh",
+   "tasks": [
+    137,
+    287,
+    424,
+    757
+   ]
+  },
+  {
+   "q": "New York",
+   "expect": "New York",
+   "tasks": [
+    138,
+    758,
+    759
+   ]
+  },
+  {
+   "q": "Scranton",
+   "expect": "Scranton",
+   "tasks": [
+    139
+   ]
+  },
+  {
+   "q": "Bridgeport",
+   "expect": "Bridgeport",
+   "tasks": [
+    139
+   ]
+  },
+  {
+   "q": "New Haven",
+   "expect": "New Haven",
+   "tasks": [
+    140
+   ]
+  },
+  {
+   "q": "Schenley Park",
+   "expect": "Schenley Park",
+   "tasks": [
+    152,
+    154,
+    155
+   ]
+  },
+  {
+   "q": "REI Pittsburgh",
+   "expect": "REI",
+   "tasks": [
+    153
+   ]
+  },
+  {
+   "q": "Animal Rescue League of Pittsburgh",
+   "expect": "Humane Animal Rescue",
+   "tasks": [
+    155
+   ],
+   "note": "renamed in OSM since the WebArena snapshot; old name added via build/aliases.json"
+  },
+  {
+   "q": "Gardner Steel Conference Center",
+   "expect": "Gardner Steel",
+   "tasks": [
+    220
+   ]
+  },
+  {
+   "q": "Wyndham Pittsburgh University Center",
+   "expect": "Wyndham",
+   "tasks": [
+    220
+   ]
+  },
+  {
+   "q": "The Oaklander Hotel",
+   "expect": "Oaklander",
+   "tasks": [
+    220
+   ]
+  },
+  {
+   "q": "post office near Carnegie Mellon University",
+   "expect": "Post",
+   "tasks": [
+    221
+   ]
+  },
+  {
+   "q": "Cold Stone Creamery",
+   "expect": "Cold Stone",
+   "tasks": [
+    222
+   ]
+  },
+  {
+   "q": "McDonald's",
+   "expect": "McDonald",
+   "tasks": [
+    223
+   ]
+  },
+  {
+   "q": "Wendy's",
+   "expect": "Wendy",
+   "tasks": [
+    224
+   ]
+  },
+  {
+   "q": "Schiller's Pharmacy",
+   "expect": "Schiller",
+   "tasks": [
+    236
+   ]
+  },
+  {
+   "q": "Sunoco Craig Street",
+   "expect": "Sunoco",
+   "tasks": [
+    237
+   ]
+  },
+  {
+   "q": "Carnegie Mellon Caf\u00e9",
+   "expect": "Carnegie Mellon Caf",
+   "tasks": [
+    248,
+    253
+   ]
+  },
+  {
+   "q": "Western Pennsylvania Hospital Heliport",
+   "expect": "Heliport",
+   "tasks": [
+    249
+   ]
+  },
+  {
+   "q": "Western Pennsylvania Hospital",
+   "expect": "West Penn Hospital",
+   "tasks": [
+    254
+   ],
+   "note": ""
+  },
+  {
+   "q": "Tokyo Japanese Food Store",
+   "expect": "Tokyo Japanese Food Store",
+   "tasks": [
+    252,
+    257,
+    765
+   ]
+  },
+  {
+   "q": "Acadia National Park",
+   "expect": "Acadia National Park",
+   "tasks": [
+    265,
+    266,
+    267,
+    268
+   ]
+  },
+  {
+   "q": "Boston",
+   "expect": "Boston",
+   "tasks": [
+    265,
+    759
+   ]
+  },
+  {
+   "q": "Portland, Maine",
+   "expect": "Portland",
+   "tasks": [
+    266,
+    758
+   ]
+  },
+  {
+   "q": "Bangor",
+   "expect": "Bangor",
+   "tasks": [
+    267
+   ]
+  },
+  {
+   "q": "Vinalhaven",
+   "expect": "Vinalhaven",
+   "tasks": [
+    268
+   ]
+  },
+  {
+   "q": "Independence Hall",
+   "expect": "Independence Hall",
+   "tasks": [
+    356
+   ]
+  },
+  {
+   "q": "Carnegie Music Hall",
+   "expect": "Carnegie Music Hall",
+   "tasks": [
+    363,
+    365,
+    369,
+    380,
+    381
+   ]
+  },
+  {
+   "q": "UPMC Shadyside",
+   "expect": "UPMC Shadyside",
+   "tasks": [
+    364,
+    365,
+    366
+   ]
+  },
+  {
+   "q": "CVS",
+   "expect": "CVS",
+   "tasks": [
+    366,
+    367
+   ]
+  },
+  {
+   "q": "Piada",
+   "expect": "Piada",
+   "tasks": [
+    371
+   ]
+  },
+  {
+   "q": "Costco",
+   "expect": "Costco",
+   "tasks": [
+    372
+   ]
+  },
+  {
+   "q": "Whole Foods Market",
+   "expect": "Whole Foods",
+   "tasks": [
+    373,
+    766
+   ]
+  },
+  {
+   "q": "CMU ArtPark Lab",
+   "expect": "ArtPark",
+   "tasks": [
+    377
+   ]
+  },
+  {
+   "q": "US Citizenship and Immigration Services",
+   "expect": "Citizenship",
+   "tasks": [
+    382
+   ]
+  },
+  {
+   "q": "Giant Eagle",
+   "expect": "Giant Eagle",
+   "tasks": [
+    383,
+    767
+   ]
+  },
+  {
+   "q": "ALDI",
+   "expect": "ALDI",
+   "tasks": [
+    383
+   ]
+  },
+  {
+   "q": "Mackinac Bridge",
+   "expect": "Mackinac Bridge",
+   "tasks": [
+    425
+   ]
+  },
+  {
+   "q": "Somerset County, Pennsylvania",
+   "expect": "Somerset County",
+   "tasks": [
+    426
+   ]
+  },
+  {
+   "q": "Flight 93 National Memorial",
+   "expect": "Flight 93",
+   "tasks": [
+    426
+   ]
+  },
+  {
+   "q": "Washington & Jefferson College",
+   "expect": "Washington & Jefferson College",
+   "tasks": [
+    430
+   ]
+  },
+  {
+   "q": "Wells Fargo Center",
+   "expect": "Arena",
+   "tasks": [
+    737
+   ]
+  },
+  {
+   "q": "Yankee Stadium",
+   "expect": "Yankee Stadium",
+   "tasks": [
+    739
+   ]
+  },
+  {
+   "q": "Madison Square Garden",
+   "expect": "Madison Square Garden",
+   "tasks": [
+    740
+   ]
+  },
+  {
+   "q": "TD Garden",
+   "expect": "TD Garden",
+   "tasks": [
+    741
+   ]
+  },
+  {
+   "q": "Allentown",
+   "expect": "Allentown",
+   "tasks": [
+    760
+   ]
+  },
+  {
+   "q": "Hoboken",
+   "expect": "Hoboken",
+   "tasks": [
+    760
+   ]
+  },
+  {
+   "q": "Carnegie Hall",
+   "expect": "Carnegie Hall",
+   "tasks": [
+    762
+   ]
+  },
+  {
+   "q": "401 Shady Ave, Pittsburgh",
+   "expect": "401, Shady Avenue",
+   "tasks": [
+    763,
+    764,
+    765,
+    766,
+    767
+   ]
+  },
+  {
+   "q": "Trader Joe's",
+   "expect": "Trader Joe",
+   "tasks": [
+    763
+   ]
+  },
+  {
+   "q": "Target Pittsburgh",
+   "expect": "Target",
+   "tasks": [
+    764
+   ]
+  }
+ ]
 }

@@ -38,7 +38,7 @@ test('Pittsburgh International Airport is in Findlay Township, Allegheny County'
 
 test('house number search', opt, () => {
   const r = g.search('401 Shady Ave, Pittsburgh', { center: CMU })[0];
-  assert.match(r.display_name, /^401, Shady Avenue, Shadyside/);
+  assert.match(r.display_name, /401, Shady Avenue, Shadyside/);
 });
 
 test('category near a place ("restaurants near X")', opt, () => {

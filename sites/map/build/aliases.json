@@ -1,0 +1,33 @@
+{
+  "_comment": "Extra names for places renamed since the WebArena snapshot (the tasks use the old names). Added to the object's names as old_name / alt_name at build time; matched on the current OSM name. Optional near [lon, lat] restricts the match to objects within ~400 m.",
+  "aliases": [
+    {
+      "name": "Kamin Science Center",
+      "old_name": "Carnegie Science Center"
+    },
+    {
+      "name": "Humane Animal Rescue of Pittsburgh",
+      "old_name": "Animal Rescue League of Pittsburgh"
+    },
+    {
+      "name": "Cohon University Center",
+      "alt_name": "University Center"
+    },
+    {
+      "name": "West Penn Hospital Heliport",
+      "alt_name": "Western Pennsylvania Hospital Heliport"
+    },
+    {
+      "name": "Xfinity Mobile Arena",
+      "old_name": "Wells Fargo Center"
+    },
+    {
+      "name": "DoubleTree by Hilton",
+      "near": [
+        -74.0108,
+        40.7042
+      ],
+      "official_name": "DoubleTree by Hilton New York Downtown"
+    }
+  ]
+}

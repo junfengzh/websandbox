@@ -23,8 +23,9 @@ PLACE_RANK = {'country': 4, 'state': 8, 'province': 8, 'region': 18, 'county': 1
               'archipelago': 17}
 # radius (deg) within which a place *node* without polygon is used as an address part
 PLACE_NODE_RADIUS = {16: 0.08, 17: 0.04, 18: 0.04, 19: 0.02, 20: 0.012, 22: 0.008, 24: 0.006}
+NON_ADDRESS_PLACES = {'region', 'island', 'islet', 'archipelago', 'locality', 'square'}
 ADDRESSABLE_PLACES = {'city', 'town', 'village', 'hamlet', 'suburb', 'quarter', 'neighbourhood', 'borough',
-                      'city_district', 'municipality', 'county', 'state', 'island', 'isolated_dwelling',
+                      'city_district', 'municipality', 'county', 'state', 'isolated_dwelling',
                       'farm', 'locality'}
 ROAD_FOR_POI = {'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential',
                 'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link',
@@ -106,8 +107,10 @@ class Hierarchy:
         self.bounds = bounds
         self.place_nodes = place_nodes
         self.regions = regions
-        geoms = shapely.from_wkb([b['wkb'] for b in bounds]) if bounds else np.array([], dtype=object)
-        self.pieces, self.piece_owner = split_big(list(geoms), list(range(len(bounds))))
+        use = [i for i, b in enumerate(bounds)
+               if not (b.get('boundary') != 'administrative' and b.get('place') in NON_ADDRESS_PLACES)]
+        geoms = shapely.from_wkb([bounds[i]['wkb'] for i in use]) if use else np.array([], dtype=object)
+        self.pieces, self.piece_owner = split_big(list(geoms), use)
         self.tree = shapely.STRtree(self.pieces)
         self.node_trees = {}
         by_rank = defaultdict(list)
@@ -258,6 +261,11 @@ def label(cls, typ):
     return typ.replace('_', ' ').capitalize() if typ not in ('yes',) else cls.replace('_', ' ').capitalize()
 
 
+def hn_key(hn):
+    """House-number match key: lower case, no spaces (also used by lib/geocode.js)."""
+    return (hn or '').lower().replace(' ', '')
+
+
 def compose(name, hn, street, combo, postcode, skip_name_dupes=True, own_rank=30):
     parts = []
     if name:
@@ -326,6 +334,20 @@ def main():
     print(f'loaded {len(pois)} pois {len(addrs)} addrs {len(roads)} roads {len(bounds)} bounds '
           f'{len(places)} place nodes in {time.time()-t0:.0f}s', flush=True)
     regions, region_polys = load_regions()
+    aliases = defaultdict(list)
+    for a in json.load(open(os.path.join(HERE, 'aliases.json')))['aliases']:
+        aliases[a['name']].append(a)
+    nal = 0
+    for rec in pois + bounds:
+        for a in aliases.get(rec['names'].get('name') or rec.get('name'), []):
+            if 'near' in a and rec.get('lon') is not None and \
+                    abs(rec['lon'] - a['near'][0]) + abs(rec['lat'] - a['near'][1]) > 0.004:
+                continue
+            for k, v in a.items():
+                if k not in ('name', 'near'):
+                    rec['names'][k] = rec['names'][k] + ';' + v if rec['names'].get(k) else v
+            nal += 1
+    print(f'{nal} aliases applied', flush=True)
 
     # --- boundaries: ranks, keys, de-dup by osm id
     seen = set()
@@ -565,7 +587,7 @@ def main():
     db.executescript(open(os.path.join(HERE, 'geocode_schema.sql')).read())
     combo_json = []
     for cid, c in enumerate(H.combo_rows):
-        combo_json.append((cid, json.dumps([[k, nm] for r, k, nm in c['parts']]), c['country'], c['cc'],
+        combo_json.append((cid, json.dumps([[k, nm, r] for r, k, nm in c['parts']]), c['country'], c['cc'],
                            c['region'], c.get('postcode')))
     db.executemany('INSERT INTO combos VALUES (?,?,?,?,?,?)', combo_json)
 
@@ -580,8 +602,9 @@ def main():
             dn = (label(cls, typ) + ', ' + dn) if dn else label(cls, typ)
         osm_type, osm_id = osm[0], int(osm[1:])
         place_rows.append((pid, osm_type, osm_id, cls, typ, name, hn, street, postcode, combo, dn,
-                           round(lat, 7), round(lon, 7), round(bbox[0], 7), round(bbox[1], 7), round(bbox[2], 7),
-                           round(bbox[3], 7), rank, imp, json.dumps(extra) if extra else None,
+                           round(lat, 7), round(lon, 7), *((None,) * 4 if bbox[0] == bbox[2] and bbox[1] == bbox[3]
+                                                           else (round(bbox[0], 7), round(bbox[1], 7), round(bbox[2], 7), round(bbox[3], 7))),
+                           rank, imp, json.dumps(extra) if extra else None,
                            json.dumps({k: v for k, v in names.items() if k != 'name'}) if len(names) > 1 else None))
         allnames = ' '.join(dict.fromkeys(norm(v) for v in names.values())) if names else ''
         addr = ' '.join([norm(street or ''), norm(hn or '')] +
@@ -658,11 +681,17 @@ def main():
         st_txt = None if sid >= 0 and norm(streets[sid]['name']) == norm(a['addr'].get('addr:street') or streets[sid]['name']) \
             else (a['addr'].get('addr:street') or a['addr'].get('addr:place'))
         poi = int(poi_pid[a['poi']]) if a.get('poi') is not None else None
-        cell = int(math.floor((a['lat'] + 90) / 0.002)) * 200000 + int(math.floor((a['lon'] + 180) / 0.002))
-        rows.append((i + 1, int(street_pid[sid]) if sid >= 0 else None, st_txt, hn, norm(hn),
-                     a_pc_full[i], int(addr_combo[i]), round(a['lat'], 7), round(a['lon'], 7), poi, cell,
-                     a['osm'], a.get('interpolated', 0)))
-    db.executemany('INSERT INTO addresses VALUES (' + ','.join('?' * 13) + ')', rows)
+        st_pid = int(street_pid[sid]) if sid >= 0 else 0
+        pc, cmb = a_pc_full[i], int(addr_combo[i])
+        if sid >= 0:  # inherit from the street row when equal
+            if pc == s_pc_full[sid]:
+                pc = None
+            if cmb == streets[sid]['combo']:
+                cmb = None
+        rows.append((st_pid, hn_key(hn), i + 1, st_txt, hn, pc, cmb, int(round(a['lat'] * 1e7)),
+                     int(round(a['lon'] * 1e7)), poi, 1 if a.get('interpolated') else None))
+    rows.sort(key=lambda r: (r[0], r[1], r[2]))
+    db.executemany('INSERT INTO addresses VALUES (' + ','.join('?' * 11) + ')', rows)
     del rows
     print(f'addresses written, {time.time()-t0:.0f}s', flush=True)
 
@@ -670,7 +699,7 @@ def main():
     rows, rrows = [], []
     for j, i in enumerate(hw_idx.tolist()):
         r = roads[i]
-        line = shapely.simplify(road_lines[j], 0.00002)
+        line = shapely.simplify(road_lines[j], 0.00004)
         cs = np.round(np.array(line.coords) * 1e7).astype('<i4')
         x0, y0, x1, y1 = line.bounds
         rows.append((j + 1, int(street_pid[road_street[i]]), cs.tobytes()))
