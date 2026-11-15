@@ -84,7 +84,6 @@
         <a role="menuitem" href="/-/profile#status">Set status</a>
         <a role="menuitem" href="/<%= u.username %>">Profile</a>
         <a role="menuitem" href="/-/profile">Edit profile</a>
-        <a role="menuitem" href="/-/profile/preferences">Preferences</a>
         <hr>
         <form method="post" action="/users/sign_out"><%~ it.csrfInput() %><button type="submit" class="menu-button" role="menuitem">Sign out</button></form>
       </div>

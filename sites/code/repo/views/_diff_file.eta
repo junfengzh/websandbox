@@ -1,0 +1,26 @@
+<%/* one changed file: it.f {path, oldPath, change, additions, deletions, diff}, it.p, it.ref (commit sha), it.i */%>
+<% const f = it.f, d = f.diff || null, enc = (s) => String(s).split('/').map(encodeURIComponent).join('/'), base = '/' + it.p.full_path; %>
+<section class="diff-file" id="diff-<%= it.i %>" aria-label="<%= f.path %>">
+  <div class="file-title">
+    <span class="change-<%= f.change %>" title="<%= ({ A: 'Added', D: 'Deleted', M: 'Modified', R: 'Renamed', T: 'Type changed' })[f.change] || f.change %>"><%= f.change %></span>
+    <h3 class="file-name" style="margin:0"><% if (f.oldPath && f.oldPath !== f.path) { %><%= f.oldPath %> → <% } %><%= f.path %></h3>
+    <% if (f.additions != null) { %><span class="file-size"><span class="cgreen">+<%= f.additions %></span> <span class="cred">−<%= f.deletions %></span></span><% } %>
+    <div class="file-actions"><% if (f.change !== 'D' && it.ref) { %><a class="btn btn-sm" href="<%= base %>/-/blob/<%= it.ref %>/<%= enc(f.path) %>">View file @ <%= it.ref.slice(0, 8) %></a><% } %></div>
+  </div>
+  <% if (!d) { %><div class="diff-msg">The diff of this file is not available in this sandbox (history truncated).</div>
+  <% } else if (d.collapsed) { %><div class="diff-msg">This diff is collapsed (too many changes on this page). <a href="<%= base %>/-/blob/<%= it.ref %>/<%= enc(f.path) %>">View the file</a>.</div>
+  <% } else if (d.binary) { %><div class="diff-msg">Binary file</div>
+  <% } else if (d.omitted) { %><div class="diff-msg">File too large to be stored in this sandbox (<%= it.bytes ? it.bytes(d.size) : d.size %>).</div>
+  <% } else if (d.tooLarge) { %><div class="diff-msg">The diff is too large to be displayed.</div>
+  <% } else if (d.unavailable) { %><div class="diff-msg">The diff of this file is not available in this sandbox (history truncated).</div>
+  <% } else if (d.submodule) { %><div class="diff-msg">Submodule updated</div>
+  <% } else if (!d.hunks.length) { %><div class="diff-msg"><%= f.change === 'A' ? 'Empty file added' : f.change === 'D' ? 'Empty file deleted' : 'File mode or rename only' %></div>
+  <% } else { %>
+  <div class="blob-content"><table class="diff"><tbody>
+  <% for (const h of d.hunks) { %>
+    <tr class="hunk"><td class="ln"></td><td class="ln"></td><td class="txt" colspan="2"><%= h.header %></td></tr>
+    <% for (const l of h.lines) { %><tr class="<%= l.t === '+' ? 'add' : l.t === '-' ? 'del' : 'ctx' %>"><td class="ln"><%= l.o || '' %></td><td class="ln"><%= l.n || '' %></td><td class="sign" aria-hidden="true"><%= l.t %></td><td class="txt"><span class="sr-only"><%= l.t === '+' ? 'added: ' : l.t === '-' ? 'removed: ' : '' %></span><%= l.s %></td></tr><% } %>
+  <% } %>
+  </tbody></table></div>
+  <% } %>
+</section>

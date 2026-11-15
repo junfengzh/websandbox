@@ -1,0 +1,18 @@
+<% layout('layout') %>
+<%~ include('repo/_user_header', it) %>
+<% if (!it.hidden) { %>
+<% if (it.events) { %>
+  <% if (!it.events.length) { %><div class="empty-state"><p>No activity yet.</p></div><% } else { %><ul class="event-list"><% for (const e of it.events) { %><%~ include('_event', { e, time: it.time, avatar: it.avatar }) %><% } %></ul><%~ include('_pager', { pager: it.pager }) %><% } %>
+<% } else if (it.list) { %>
+  <%~ include('repo/_projects_list', { ...it, emptyText: it.tab === 'starred' ? (it.isMe ? "You haven't starred any projects yet" : 'This user has not starred any projects') : it.tab === 'contributed' ? 'This user has not contributed to any projects' : 'This user does not have any personal projects' }) %>
+<% } else if (it.groups) { %>
+  <% if (!it.groups.length) { %><div class="empty-state"><p>This user is not a member of any public group.</p></div><% } else { %>
+  <ul class="projects-list"><% for (const g of it.groups) { %><li class="project-row"><span class="project-avatar group" aria-hidden="true"><%= g.name[0].toUpperCase() %></span><div class="project-details"><h3 class="project-title"><a href="/<%= g.full_path %>"><%= g.name %></a> <span class="badge badge-muted"><%= it.code.ACCESS_NAMES[g.access_level] || '' %></span></h3><% if (g.description) { %><p class="project-description"><%= g.description %></p><% } %></div></li><% } %></ul><% } %>
+<% } else if (it.people) { %>
+  <% if (!it.people.length) { %><div class="empty-state"><p><%= it.tab === 'followers' ? 'This user does not have any followers.' : 'This user is not following anyone.' %></p></div><% } else { %>
+  <ul class="user-list"><% for (const u of it.people) { %><li class="user-card"><%~ it.avatar(u, 40) %><div><a class="name" href="/<%= u.username %>"><%= u.name %></a><div class="username">@<%= u.username %></div></div></li><% } %></ul>
+  <%~ include('_pager', { pager: it.pager }) %><% } %>
+<% } else if (it.snippets) { %>
+  <div class="empty-state"><p>This user has no snippets.</p></div>
+<% } %>
+<% } %>

@@ -1,0 +1,11 @@
+<% layout('layout') %>
+<% const p = it.project, v = it.values, e = it.errors; %>
+<div class="page-title-row"><h1>New branch</h1></div>
+<form method="post" action="/<%= p.full_path %>/-/branches" aria-label="New branch" style="max-width:640px">
+  <%~ it.csrfInput() %>
+  <div class="form-group<%= e.branch_name ? ' has-error' : '' %>"><label for="branch_name">Branch name</label><input class="form-control" id="branch_name" name="branch_name" value="<%= v.branch_name %>" required autofocus><% if (e.branch_name) { %><p class="invalid-feedback"><%= e.branch_name %></p><% } %></div>
+  <div class="form-group<%= e.ref ? ' has-error' : '' %>"><label for="ref">Create from</label><input class="form-control" id="ref" name="ref" value="<%= v.ref %>" list="branch-refs" required>
+    <datalist id="branch-refs"><% for (const b of it.refs.branches) { %><option value="<%= b %>"><% } %><% for (const t of it.refs.tags) { %><option value="<%= t %>"><% } %></datalist>
+    <p class="form-text">Existing branch name, tag, or commit SHA</p><% if (e.ref) { %><p class="invalid-feedback"><%= e.ref %></p><% } %></div>
+  <div class="form-actions"><button type="submit" class="btn btn-confirm">Create branch</button><a class="btn" href="/<%= p.full_path %>/-/branches">Cancel</a></div>
+</form>

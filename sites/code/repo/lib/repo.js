@@ -62,6 +62,15 @@ function lastCommitsCached(p, ref, dir, names) {
   }
   return v;
 }
+// Rendered markdown of a blob, cached (output depends only on the text and the link context).
+const mdCache = new git.LRU(32 * 1024 * 1024);
+function blobMarkdown(sha, text, p, ref, dir) {
+  const key = `${sha}|${p.full_path}|${ref}|${dir}`;
+  const c = mdCache.get(key);
+  if (c != null) return c;
+  const html = code.md(text, { project: p, ref, dir });
+  return mdCache.set(key, html, html.length + 64);
+}
 const README_RE = /^readme(\.(md|markdown|mdown|mkd|txt|rst|adoc|org))?$/i;
 
 // Tree page model: {entries, lastCommits, last, readme, ...} | {redirect} | throws 404.
@@ -81,7 +90,7 @@ function treeView(req, p, ref, path) {
   if (rm) {
     const b = git.readBlob(rm.sha);
     const rpath = (path ? path + '/' : '') + rm.name;
-    if (b.text != null) readme = { name: rm.name, path: rpath, html: /\.(md|markdown|mdown|mkd)$/i.test(rm.name) || !/\./.test(rm.name) ? code.md(b.text, { project: p, ref: ref.name, dir: path }) : `<pre>${kit.escapeHtml(b.text)}</pre>` };
+    if (b.text != null) readme = { name: rm.name, path: rpath, html: /\.(md|markdown|mdown|mkd)$/i.test(rm.name) || !/\./.test(rm.name) ? blobMarkdown(rm.sha, b.text, p, ref.name, path) : `<pre>${kit.escapeHtml(b.text)}</pre>` };
     else readme = { name: rm.name, path: rpath, html: '<p class="muted">The README is too large to be displayed.</p>' };
   }
   return { ref: ref.name, refInfo: ref, path, entries, lastCommits, last, readme, refs: refOptions(p), counts: refCounts(p), canPush: canPush(req.user, p, ref), canCommitNew: canPush(req.user, p, null) };
@@ -149,4 +158,4 @@ function blame(p, ref, path) {
   return { groups, hl, partial: versions.length >= 60 };
 }
 
-module.exports = { treeUrl, blobUrl, rawUrl, commitsUrl, commitUrl, isProtected, canPush, suggestBranch, refOptions, refCounts, truncatedView, treeView, fuzzy, blame, TRUNCATED_MSG };
+module.exports = { blobMarkdown, treeUrl, blobUrl, rawUrl, commitsUrl, commitUrl, isProtected, canPush, suggestBranch, refOptions, refCounts, truncatedView, treeView, fuzzy, blame, TRUNCATED_MSG };

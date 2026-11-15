@@ -1,0 +1,42 @@
+<% layout('layout') %>
+<%
+  const P = it.project, q = it.q, enc = it.enc;
+  const label = { projects: 'Projects', issues: 'Issues', merge_requests: 'Merge requests', users: 'Users', commits: 'Commits', blobs: 'Code' };
+  const hl = (s) => { const t = it.h(s || ''); if (!q) return t; const re = new RegExp(it.h(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); return t.replace(re, (m) => '<mark>' + m + '</mark>'); };
+%>
+<div class="page-title-row"><h1>Search<%= P ? ' in ' + P.name : '' %></h1></div>
+<form method="get" action="/search" class="filter-bar" role="search" aria-label="Search">
+  <label class="sr-only" for="dashboard_search">Search for</label>
+  <input type="search" id="dashboard_search" name="search" value="<%= q %>" placeholder="Search for projects, issues, etc." style="flex:1;min-width:280px" autofocus>
+  <input type="hidden" name="scope" value="<%= it.scope %>">
+  <% if (P) { %><input type="hidden" name="project_id" value="<%= P.id %>"><% } %>
+  <button type="submit" class="btn btn-confirm">Search</button>
+  <% if (P) { %><a class="btn btn-link" href="/search?search=<%= encodeURIComponent(q) %>">Search all of GitLab</a><% } %>
+</form>
+<% if (q) { %>
+<nav aria-label="Search scopes"><ul class="nav-tabs">
+  <% for (const s of it.scopes) { %><li><a href="<%= it.url({ scope: s, page: null }) %>"<%~ s === it.scope ? ' aria-current="page"' : '' %>><%= label[s] %><% if (it.counts[s] != null) { %> <span class="badge badge-pill"><%= it.counts[s] >= 1000 ? '1,000+' : it.num(it.counts[s]) %></span><% } %></a></li><% } %>
+</ul></nav>
+<p class="muted" style="margin-top:12px"><% if (it.total) { %>Showing <%= it.plural(it.total, 'result') %> for <strong><%= q %></strong><% } else { %>We couldn't find any <%= label[it.scope].toLowerCase() %> matching <strong><%= q %></strong><% } %></p>
+<ul class="search-results">
+<% for (const r of it.results) { %>
+  <li class="search-result">
+  <% if (it.scope === 'projects') { %>
+    <h3><a href="/<%= r.full_path %>"><%= r.ns_name %> / <%~ hl(r.name) %></a></h3><% if (r.description) { %><p class="snippet"><%~ hl(r.description) %></p><% } %><span class="muted">☆ <%= r.star_count %> · Updated <%~ it.time(r.last_activity_at) %></span>
+  <% } else if (it.scope === 'issues' || it.scope === 'merge_requests') { const isMr = it.scope === 'merge_requests'; %>
+    <h3><a href="/<%= r.full_path %>/-/<%= isMr ? 'merge_requests' : 'issues' %>/<%= r.iid %>"><%~ hl(r.title) %></a> <span class="badge <%= r.state === 'opened' ? 'badge-success' : r.state === 'merged' ? 'badge-info' : 'badge-danger' %>"><%= r.state === 'opened' ? 'Open' : r.state[0].toUpperCase() + r.state.slice(1) %></span></h3>
+    <div class="muted"><%= r.ns_name %> / <%= r.project_name %> <%= isMr ? '!' : '#' %><%= r.iid %> · updated <%~ it.time(r.updated_at) %></div>
+    <% if (r.snippet) { %><p class="snippet"><%~ hl(r.snippet) %></p><% } %>
+  <% } else if (it.scope === 'users') { %>
+    <div style="display:flex;gap:10px;align-items:center"><%~ it.avatar(r, 32) %><div><a href="/<%= r.username %>"><strong><%~ hl(r.name) %></strong></a><div class="muted">@<%~ hl(r.username) %></div></div></div>
+  <% } else if (it.scope === 'commits') { %>
+    <h3><a href="/<%= P.full_path %>/-/commit/<%= r.sha %>"><%~ hl(r.title) %></a></h3><div class="muted"><span class="commit-sha"><%= r.sha.slice(0, 8) %></span> · <%= r.author_name %> authored <%~ it.time(r.authored_at) %></div>
+  <% } else if (it.scope === 'blobs') { %>
+    <h3><a href="/<%= P.full_path %>/-/blob/<%= enc(it.blobRef) %>/<%= enc(r.path) %>"><%~ hl(r.path) %></a></h3>
+    <% if (r.lines.length) { %><table class="code" style="border:1px solid var(--line)"><tbody><% for (const l of r.lines) { %><tr><td class="line-num"><a href="/<%= P.full_path %>/-/blob/<%= enc(it.blobRef) %>/<%= enc(r.path) %>#L<%= l.n %>"><%= l.n %></a></td><td class="line"><%~ hl(l.s) %></td></tr><% } %></tbody></table><% } %>
+  <% } %>
+  </li>
+<% } %>
+</ul>
+<%~ include('_pager', { pager: it.pager }) %>
+<% } %>

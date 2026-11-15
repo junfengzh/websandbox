@@ -1,0 +1,17 @@
+<% layout('layout') %>
+<% const p = it.project, base = '/' + p.full_path; const cols = Math.max(1, ...Object.values(it.lanes).map((x) => x + 1)); %>
+<div class="tree-controls">
+  <%~ include('repo/_ref_switch', { refs: it.refs, ref: it.ref, pattern: base + '/-/network/{ref}' }) %>
+</div>
+<h1>Graph</h1>
+<p class="muted">The newest <%= it.commits.length %> commits reachable from <strong><%= it.ref %></strong>.</p>
+<table class="table network" aria-label="Commit graph"><tbody>
+<% for (const c of it.commits) { const col = it.lanes[c.sha] || 0; %>
+<tr>
+  <td style="width:<%= cols * 14 + 10 %>px;padding:4px 8px"><svg width="<%= cols * 14 %>" height="14" aria-hidden="true"><% for (let i = 0; i < cols; i++) { %><line x1="<%= i * 14 + 7 %>" y1="0" x2="<%= i * 14 + 7 %>" y2="14" stroke="#dcdcde"/><% } %><circle cx="<%= col * 14 + 7 %>" cy="7" r="<%= (c.parents || '').includes(' ') ? 5 : 4 %>" fill="<%= ['#6666c4', '#1f75cb', '#108548', '#ab6100', '#dd2b0e'][col % 5] %>"/></svg></td>
+  <td style="padding:4px 8px"><a class="commit-sha" href="<%= base %>/-/commit/<%= c.sha %>"><%= c.sha.slice(0, 8) %></a>
+    <% for (const r of it.labels[c.sha] || []) { %><span class="badge <%= r.kind === 'tag' ? 'badge-warning' : 'badge-info' %>"><%= r.name %></span> <% } %>
+    <%= c.title %> <span class="muted">· <%= c.author_name %> · <%~ it.time(c.committed_at) %></span></td>
+</tr>
+<% } %>
+</tbody></table>

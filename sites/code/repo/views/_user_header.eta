@@ -1,0 +1,30 @@
+<% const u = it.profile, st = it.status; const tabs = [['overview', 'Overview', '/' + u.username], ['activity', 'Activity', '/users/' + u.username + '/activity'], ['groups', 'Groups', '/users/' + u.username + '/groups'], ['contributed', 'Contributed projects', '/users/' + u.username + '/contributed'], ['projects', 'Personal projects', '/users/' + u.username + '/projects'], ['starred', 'Starred projects', '/users/' + u.username + '/starred'], ['snippets', 'Snippets', '/users/' + u.username + '/snippets'], ['followers', 'Followers', '/users/' + u.username + '/followers'], ['following', 'Following', '/users/' + u.username + '/following']]; %>
+<header class="user-profile-header">
+  <%~ it.avatar(u, 96) %>
+  <h1 class="user-name"><%= u.name %></h1>
+  <div class="username">@<%= u.username %></div>
+  <% if (st && (st.message || st.availability === 'busy')) { %><div class="user-status"><span class="badge badge-muted"><%= st.message || '' %><%= st.availability === 'busy' ? (st.message ? ' · ' : '') + 'Busy' : '' %></span></div><% } %>
+  <% if (!it.hidden) { %>
+  <div class="profile-meta">
+    <% if (u.pronouns) { %><span><%= u.pronouns %></span><% } %>
+    <% if (u.job_title || u.organization) { %><span><%= [u.job_title, u.organization].filter(Boolean).join(' at ') %></span><% } %>
+    <% if (u.location) { %><span title="Location"><%= u.location %></span><% } %>
+    <% if (u.public_email) { %><a href="mailto:<%= u.public_email %>"><%= u.public_email %></a><% } %>
+    <% if (u.website_url) { %><a href="<%= /^https?:\/\//.test(u.website_url) ? u.website_url : 'https://' + u.website_url %>" rel="nofollow noreferrer noopener" target="_blank" class="user-website"><%= u.website_url %></a><% } %>
+    <% if (u.twitter) { %><a href="https://twitter.com/<%= u.twitter %>" rel="nofollow noreferrer noopener" target="_blank">Twitter</a><% } %>
+    <span>Member since <%= it.date(u.created_at) %></span>
+  </div>
+  <div class="profile-meta"><a href="/users/<%= u.username %>/followers"><strong><%= it.counts.followers %></strong> <%= it.counts.followers === 1 ? 'follower' : 'followers' %></a><a href="/users/<%= u.username %>/following"><strong><%= it.counts.following %></strong> following</a></div>
+  <% if (u.bio) { %><p class="profile-bio"><%= u.bio %></p><% } %>
+  <% } %>
+  <div class="profile-actions">
+    <% if (it.isMe) { %><a class="btn" href="/-/profile">Edit profile</a>
+    <% } else if (it.user) { %>
+      <form method="post" action="/users/<%= u.username %>/<%= it.following ? 'unfollow' : 'follow' %>"><%~ it.csrfInput() %><button type="submit" class="btn <%= it.following ? '' : 'btn-confirm' %> follow-btn"><%= it.following ? 'Unfollow' : 'Follow' %></button></form>
+    <% } %>
+  </div>
+</header>
+<% if (it.hidden) { %><div class="empty-state"><h3>This user has a private profile</h3></div><% } %>
+<nav aria-label="Profile sections" class="top-area" style="justify-content:center"><ul class="nav-tabs">
+  <% for (const [k, l, h] of tabs) { %><li><a href="<%= h %>"<%~ it.tab === k ? ' aria-current="page"' : '' %>><%= l %><% if (k === 'followers' || k === 'following') { %> <span class="badge badge-pill"><%= it.counts[k] %></span><% } else if (k === 'starred') { %> <span class="badge badge-pill"><%= it.counts.starred %></span><% } %></a></li><% } %>
+</ul></nav>

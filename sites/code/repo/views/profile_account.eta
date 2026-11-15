@@ -1,0 +1,8 @@
+<% layout('layout') %>
+<h1 style="font-size:1.4rem">Account</h1>
+<section class="settings-layout" aria-labelledby="username-title">
+  <div><h2 id="username-title">Username</h2><p class="muted">Your username is part of your profile URL and of your personal projects' URLs.</p></div>
+  <div><label class="label-bold" for="acct-username">Username</label><div class="input-group" style="max-width:420px"><span class="input-group-text">/</span><input class="form-control" id="acct-username" value="<%= it.user.username %>" readonly></div>
+    <p class="form-text">Changing usernames is disabled in this sandbox.</p></div>
+</section>
+<section class="settings-layout"><div><h2>Email</h2></div><div><p><%= it.user.email %></p></div></section>

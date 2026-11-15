@@ -1,0 +1,13 @@
+<% layout('layout') %>
+<% const p = it.project, v = it.values, e = it.errors; %>
+<div class="page-title-row"><h1>New Tag</h1></div>
+<p>Add a tag to a commit, branch or tag.</p>
+<form method="post" action="/<%= p.full_path %>/-/tags" aria-label="New tag" style="max-width:640px">
+  <%~ it.csrfInput() %>
+  <div class="form-group<%= e.tag_name ? ' has-error' : '' %>"><label for="tag_name">Tag name</label><input class="form-control" id="tag_name" name="tag_name" value="<%= v.tag_name %>" required autofocus><% if (e.tag_name) { %><p class="invalid-feedback"><%= e.tag_name %></p><% } %></div>
+  <div class="form-group<%= e.ref ? ' has-error' : '' %>"><label for="ref">Create from</label><input class="form-control" id="ref" name="ref" value="<%= v.ref %>" list="tag-refs" required>
+    <datalist id="tag-refs"><% for (const b of it.refs.branches) { %><option value="<%= b %>"><% } %></datalist>
+    <p class="form-text">Existing branch name, tag, or commit SHA</p><% if (e.ref) { %><p class="invalid-feedback"><%= e.ref %></p><% } %></div>
+  <div class="form-group"><label for="message">Message</label><textarea class="form-control" id="message" name="message" rows="4" placeholder="Optionally, add a message to the tag. Leaving this blank creates a lightweight tag."><%= v.message %></textarea></div>
+  <div class="form-actions"><button type="submit" class="btn btn-confirm">Create tag</button><a class="btn" href="/<%= p.full_path %>/-/tags">Cancel</a></div>
+</form>

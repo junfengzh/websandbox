@@ -192,6 +192,7 @@ function history(project, ref, opts = {}) {
     const where = [];
     const params = [project.id, ref.name];
     if (opts.author) { where.push("(c.author_name LIKE ? ESCAPE '\\' OR c.author_email LIKE ? ESCAPE '\\')"); params.push(`%${likeEsc(opts.author)}%`, `%${likeEsc(opts.author)}%`); }
+    if (opts.search) { where.push("c.message LIKE ? ESCAPE '\\'"); params.push(`%${likeEsc(opts.search)}%`); }
     if (opts.since) { where.push('c.committed_at >= ?'); params.push(opts.since); }
     if (opts.until) { where.push('c.committed_at < ?'); params.push(opts.until); }
     if (pf) { where.push(`instr(c.parents, ' ') = 0 AND EXISTS (SELECT 1 FROM commit_files f WHERE f.commit_id = c.id AND ${pf.sql})`); params.push(...pf.params); }
@@ -207,6 +208,7 @@ function history(project, ref, opts = {}) {
   const pathStmt = pf ? kit.db().prepare(`SELECT 1 FROM commit_files f WHERE f.commit_id = ? AND ${pf.sql} LIMIT 1`) : null;
   for (const c of walk(ref.sha, { max: opts.maxScan || 30000 })) {
     if (auth && !((c.author_name || '').toLowerCase().includes(auth) || (c.author_email || '').toLowerCase().includes(auth))) continue;
+    if (opts.search && !(c.message || '').toLowerCase().includes(String(opts.search).toLowerCase())) continue;
     if (opts.since && c.committed_at < opts.since) continue;
     if (opts.until && c.committed_at >= opts.until) continue;
     if (pathStmt && (isMerge(c) || !pathStmt.get(c.id, ...pf.params))) continue;
@@ -262,8 +264,11 @@ function lastCommitsForDir(project, ref, dir, names, scan = 600) {
   const pre = dir ? dir.replace(/\/+$/, '') + '/' : '';
   const files = kit.db().prepare('SELECT p.path FROM commit_files f JOIN paths p ON p.id = f.path_id WHERE f.commit_id = ?');
   const rows = history(project, ref, { limit: scan, maxScan: scan });
+  const t0 = process.hrtime.bigint();
+  let n = 0;
   for (const c of rows) {
     if (!want.size) break;
+    if ((++n & 31) === 0 && Number(process.hrtime.bigint() - t0) > 60e6) break; // time budget: 60 ms
     if (isMerge(c)) continue;
     for (const { path } of files.all(c.id)) {
       if (!path.startsWith(pre)) continue;

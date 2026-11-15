@@ -1,0 +1,6 @@
+<% layout('layout') %>
+<% const p = it.project, t = it.t, c = it.c, base = '/' + p.full_path; %>
+<div class="page-title-row"><h1><span class="badge badge-warning">Tag</span> <%= t.name %></h1>
+  <div class="btn-group" style="gap:6px"><a class="btn" href="<%= base %>/-/tree/<%= it.enc(t.name) %>">Browse files</a><a class="btn" href="<%= base %>/-/commits/<%= it.enc(t.name) %>">Browse commits</a></div></div>
+<% if (t.tag_message) { %><div class="card"><div class="card-header">Message<% if (t.tagger_name) { %><span class="muted" style="font-weight:400">Tagged by <%= t.tagger_name %> <%~ it.time(t.tagged_at) %></span><% } %></div><div class="card-body"><pre style="margin:0;white-space:pre-wrap"><%= t.tag_message %></pre></div></div><% } %>
+<% if (c) { %><ul class="commit-list"><%~ include('repo/_commit_row', { c, p, ref: t.name, time: it.time, avatar: it.avatar, enc: it.enc }) %></ul><% } %>

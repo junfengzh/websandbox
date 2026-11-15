@@ -4,7 +4,7 @@
   <span class="project-avatar" aria-hidden="true"><%= (p.name || '?')[0].toUpperCase() %></span>
   <div class="project-details">
     <h3 class="project-title"><a href="/<%= p.full_path %>"><span class="namespace-name"><%= p.ns_name || p.full_path.split('/')[0] %> / </span><span class="project-name"><%= p.name %></span></a>
-      <span class="visibility-icon" title="<%= p.visibility[0].toUpperCase() + p.visibility.slice(1) %> - <%= p.visibility === 'public' ? 'The project can be accessed without any authentication.' : p.visibility === 'internal' ? 'The project can be accessed by any logged in user.' : 'Project access must be granted explicitly to each user.' %>"><%= p.visibility === 'public' ? '' : p.visibility === 'internal' ? '◐' : '🔒' %><span class="sr-only"><%= p.visibility %></span></span>
+      <% if (p.visibility !== 'public') { %><span class="badge badge-muted visibility-badge" title="<%= p.visibility === 'internal' ? 'Internal - The project can be accessed by any logged in user.' : 'Private - Project access must be granted explicitly to each user.' %>"><%= p.visibility === 'internal' ? 'Internal' : 'Private' %></span><% } %>
       <% if (p.my_access) { %><span class="badge badge-muted"><%= ({50:'Owner',40:'Maintainer',30:'Developer',20:'Reporter',10:'Guest'})[p.my_access] || '' %></span><% } %>
       <% if (p.archived) { %><span class="badge badge-warning">Archived</span><% } %>
     </h3>

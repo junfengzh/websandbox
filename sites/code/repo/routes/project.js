@@ -10,7 +10,7 @@ module.exports = async function (app, kit, { collab }) {
   const overview = async (req, reply, p) => {
     const starred = req.user ? !!kit.sql('SELECT 1 FROM stars WHERE user_id = ? AND project_id = ?').get(req.user.id, p.id) : false;
     const forkedFrom = p.forked_from_id ? code.projectById(p.forked_from_id) : null;
-    const base = { project: p, nav: 'project', title: p.name, starred, forkedFrom, sshUrl: code.setting('ssh_clone_prefix') + p.full_path + '.git', httpUrl: code.setting('http_clone_prefix') + p.full_path + '.git', overview: true };
+    const base = { project: p, nav: 'project', title: null, starred, forkedFrom, sshUrl: code.setting('ssh_clone_prefix') + p.full_path + '.git', httpUrl: code.setting('http_clone_prefix') + p.full_path + '.git', overview: true };
     if (!p.default_branch) return reply.render('repo/project_empty', base);
     const ref = git.resolveRef(p, p.default_branch);
     if (!ref) return reply.render('repo/project_empty', base);

@@ -1,0 +1,28 @@
+<% layout('layout') %>
+<% const p = it.project, base = '/' + p.full_path, r = it.result; %>
+<div class="page-title-row"><h1>Compare revisions</h1></div>
+<p class="muted">Changes are shown as if the <strong>source</strong> revision was being merged into the <strong>target</strong> revision.</p>
+<form method="get" action="<%= base %>/-/compare" class="filter-bar" aria-label="Compare revisions">
+  <label for="compare-to" class="label-bold" style="margin:0">Source</label>
+  <input type="text" id="compare-to" name="to" value="<%= it.to %>" list="compare-refs" required placeholder="branch, tag or commit">
+  <span aria-hidden="true">…</span>
+  <label for="compare-from" class="label-bold" style="margin:0">Target</label>
+  <input type="text" id="compare-from" name="from" value="<%= it.from %>" list="compare-refs" required placeholder="branch, tag or commit">
+  <datalist id="compare-refs"><% for (const b of it.refs.branches) { %><option value="<%= b %>"><% } %><% for (const t of it.refs.tags) { %><option value="<%= t %>"><% } %></datalist>
+  <button type="submit" class="btn btn-confirm">Compare</button>
+</form>
+<% if (it.error) { %><div class="flash flash-alert" role="alert"><%= it.error %></div><% } %>
+<% if (r) { %>
+  <% if (r.same || !r.commits.length) { %>
+    <div class="empty-state"><h3><%= r.same ? 'These are the same revision.' : 'Source branch is up to date' %></h3><p>There isn't anything to compare.</p></div>
+  <% } else { %>
+    <% if (it.user) { %><p><a class="btn" href="<%= base %>/-/merge_requests/new?merge_request%5Bsource_branch%5D=<%= encodeURIComponent(it.to) %>&merge_request%5Btarget_branch%5D=<%= encodeURIComponent(it.from) %>">Create merge request</a></p><% } %>
+    <h2 style="font-size:1.1rem"><%= it.plural(r.commits.length, 'commit') %><%= r.more ? '+' : '' %></h2>
+    <ul class="commit-list"><% for (const c of r.commits) { %><%~ include('repo/_commit_row', { c, p, ref: it.to, time: it.time, avatar: it.avatar, enc: it.enc }) %><% } %></ul>
+    <% if (!r.diff.treesAvailable) { %><div class="history-banner" role="note"><strong>History truncated.</strong> The files of one of these revisions are not stored in this sandbox, so no diff can be shown.</div>
+    <% } else { const tot = r.diff.files.reduce((a, f) => [a[0] + (f.additions || 0), a[1] + (f.deletions || 0)], [0, 0]); %>
+      <div class="diff-stats"><span>Showing <strong><%= it.plural(r.diff.files.length, 'changed file') %></strong> with <strong class="cgreen"><%= tot[0] %> additions</strong> and <strong class="cred"><%= tot[1] %> deletions</strong></span></div>
+      <% r.diff.files.forEach((f, i) => { %><%~ include('repo/_diff_file', { f, i, p, ref: r.commits[0].sha, bytes: it.bytes }) %><% }) %>
+    <% } %>
+  <% } %>
+<% } %>

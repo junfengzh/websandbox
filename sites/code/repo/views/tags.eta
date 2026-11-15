@@ -1,0 +1,30 @@
+<% layout('layout') %>
+<% const p = it.project, base = '/' + p.full_path, enc = it.enc; %>
+<div class="top-area">
+  <h1 style="margin:12px 0">Tags</h1>
+  <div class="nav-controls">
+    <form method="get" class="filter-bar" role="search" aria-label="Filter tags" style="padding:0">
+      <label class="sr-only" for="tag-search">Filter by tag name</label><input type="search" id="tag-search" name="search" value="<%= it.q %>" placeholder="Filter by tag name">
+      <select name="sort" aria-label="Sort by" data-autosubmit><% for (const [v, l] of [['name_asc', 'Name'], ['name_desc', 'Name, descending'], ['updated_desc', 'Updated date'], ['updated_asc', 'Oldest updated']]) { %><option value="<%= v %>"<%= it.sort === v ? ' selected' : '' %>><%= l %></option><% } %></select>
+    </form>
+    <% if (it.canPush) { %><a class="btn btn-confirm" href="<%= base %>/-/tags/new">New tag</a><% } %>
+  </div>
+</div>
+<% if (!it.rows.length) { %><div class="empty-state"><h3><%= it.q ? 'No tags match your search' : 'There are no tags yet' %></h3><p>Use git tag command to add a new one, or <a href="<%= base %>/-/tags/new">create a tag</a>.</p></div><% } else { %>
+<ul class="ref-list" style="margin-top:16px">
+<% for (const t of it.rows) { %>
+  <li class="ref-row tag-row">
+    <div class="ref-main">
+      <a class="ref-title" href="<%= base %>/-/tags/<%= enc(t.name) %>"><%= t.name %></a>
+      <% if (t.tag_message) { %><div class="muted"><%= t.tag_message.split('\n')[0] %></div><% } %>
+      <div class="ref-commit"><a class="commit-sha" href="<%= base %>/-/commit/<%= t.sha %>"><%= t.sha.slice(0, 8) %></a> · <%= t.title || '' %> · <%~ it.time(t.committed_at) %></div>
+    </div>
+    <div class="btn-group" style="gap:6px">
+      <a class="btn btn-sm" href="<%= base %>/-/tree/<%= enc(t.name) %>">Browse files</a>
+      <% if (it.canAdmin) { %><form method="post" action="<%= base %>/-/tags/delete" data-confirm="Delete tag <%= t.name %>?"><%~ it.csrfInput() %><input type="hidden" name="tag_name" value="<%= t.name %>"><button type="submit" class="btn btn-sm btn-danger-secondary" aria-label="Delete tag <%= t.name %>">Delete</button></form><% } %>
+    </div>
+  </li>
+<% } %>
+</ul>
+<%~ include('_pager', { pager: it.pager }) %>
+<% } %>

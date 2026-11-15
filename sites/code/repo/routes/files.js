@@ -37,7 +37,7 @@ module.exports = async function (app, kit) {
     const plain = req.query.plain === '1' || req.query.plain === 'true';
     let lines = null, rendered = null;
     if (blob.text != null) {
-      if (isMd && !plain) rendered = code.md(blob.text, { project: p, ref: sp.ref.name, dir: sp.path.split('/').slice(0, -1).join('/') });
+      if (isMd && !plain) rendered = R.blobMarkdown(blob.sha, blob.text, p, sp.ref.name, sp.path.split('/').slice(0, -1).join('/'));
       else lines = git.highlightLines(blob.sha, blob.text, sp.path);
     }
     const last = git.lastCommitFor(p, sp.ref, sp.path);

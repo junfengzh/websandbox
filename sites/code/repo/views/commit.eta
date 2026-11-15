@@ -1,0 +1,47 @@
+<% layout('layout') %>
+<% const p = it.project, c = it.c, base = '/' + p.full_path, d = it.diff; const desc = (c.message || '').split('\n').slice(1).join('\n').trim(); %>
+<div class="commit-header">
+  <span class="badge badge-muted">Commit</span>
+  <strong class="commit-sha" title="<%= c.sha %>"><%= c.sha.slice(0, 8) %></strong>
+  <button type="button" class="btn-link" data-clipboard-text="<%= c.sha %>" title="Copy commit SHA" aria-label="Copy commit SHA"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button>
+  <span>authored <%~ it.time(c.authored_at) %> by</span> <%~ it.avatar({ id: (c.author_email || '').length, name: c.author_name }, 20) %> <strong class="commit-author-name"><%= c.author_name %></strong>
+  <span class="spacer"></span>
+  <a class="btn btn-sm" href="<%= base %>/-/tree/<%= c.sha %>">Browse files</a>
+  <details class="dropdown"><summary class="btn btn-sm">Options <span class="caret" aria-hidden="true"></span></summary>
+    <div class="dropdown-panel dropdown-right" role="menu"><a role="menuitem" href="<%= base %>/-/commit/<%= c.sha %>.patch">Email patches</a><a role="menuitem" href="<%= base %>/-/commit/<%= c.sha %>.diff">Plain diff</a><a role="menuitem" href="<%= base %>/-/commits/<%= c.sha %>">Commit history from here</a></div></details>
+</div>
+<div class="commit-box">
+  <h1 class="commit-title"><%= c.title || '(no commit message)' %></h1>
+  <% if (desc) { %><pre class="commit-description"><%= desc %></pre><% } %>
+</div>
+<div class="commit-meta">
+  <% if (it.parents.length) { %><span><%= it.parents.length === 1 ? 'Parent' : 'Parents' %>
+    <% it.parents.forEach((x, i) => { %><% if (x.known) { %><a class="commit-sha" href="<%= base %>/-/commit/<%= x.sha %>"><%= x.sha.slice(0, 8) %></a><% } else { %><span class="commit-sha" title="not imported"><%= x.sha.slice(0, 8) %></span><% } %><%= i < it.parents.length - 1 ? ', ' : '' %><% }) %></span><% } else { %><span>Root commit</span><% } %>
+  <% if (c.committer_name && (c.committer_name !== c.author_name || c.committed_at !== c.authored_at)) { %><span>· Committed by <strong><%= c.committer_name %></strong> <%~ it.time(c.committed_at) %></span><% } %>
+</div>
+<div class="diff-stats">
+  <span>Showing <strong><%= it.plural(c.files_changed != null ? c.files_changed : d.files.length, 'changed file') %></strong>
+  <% if (it.additions != null) { %>with <strong class="cgreen"><%= it.num(it.additions) %> additions</strong> and <strong class="cred"><%= it.num(it.deletions) %> deletions</strong><% } %></span>
+</div>
+<% if (!d.treesAvailable) { %><div class="history-banner" role="note"><strong>History truncated.</strong> <%= it.truncatedMsg %> The list of changed files is shown without diffs.</div><% } %>
+<% if (d.truncated) { %><div class="flash flash-warning" role="note">Too many changes to show. Only the first <%= d.files.length %> files are listed.</div><% } %>
+<% if (d.files.length) { %>
+<ul class="diff-files-list" aria-label="Changed files">
+<% d.files.forEach((f, i) => { %><li><span class="change-<%= f.change %>" aria-label="<%= ({ A: 'added', D: 'deleted', M: 'modified', R: 'renamed', T: 'type changed' })[f.change] %>"><%= f.change %></span><a href="#diff-<%= i %>"><%= f.oldPath && f.oldPath !== f.path ? f.oldPath + ' → ' : '' %><%= f.path %></a><span class="file-stat"><% if (f.additions != null) { %><span class="cgreen">+<%= f.additions %></span> <span class="cred">−<%= f.deletions %></span><% } %></span></li><% }) %>
+</ul>
+<% d.files.forEach((f, i) => { %><%~ include('repo/_diff_file', { f, i, p, ref: d.treesAvailable ? c.sha : null, bytes: it.bytes }) %><% }) %>
+<% } else if (!(c.files_changed > 0)) { %><div class="empty-state"><p>No changes</p></div><% } else { %><div class="diff-msg">The file list of this commit was not imported.</div><% } %>
+<section class="commit-notes" aria-labelledby="notes-title" style="margin-top:24px">
+  <h2 id="notes-title" style="font-size:1.1rem"><%= it.plural(it.notes.length, 'comment') %> on commit <%= c.sha.slice(0, 8) %></h2>
+  <ul class="content-list">
+  <% for (const n of it.notes) { %><li id="note_<%= n.id %>" style="display:flex;gap:10px"><%~ it.avatar({ id: n.author_id, name: n.name, avatar: n.avatar }, 32) %><div style="flex:1"><div><a href="/<%= n.username %>"><strong><%= n.name %></strong></a> <span class="muted">@<%= n.username %> · <%~ it.time(n.created_at) %></span></div><div class="md md-plain"><%~ it.md(n.body, { project: p }) %></div></div></li><% } %>
+  </ul>
+  <% if (it.user) { %>
+  <form method="post" action="<%= base %>/-/commit/<%= c.sha %>/comment" aria-label="Comment on this commit">
+    <%~ it.csrfInput() %>
+    <label for="commit-note" class="label-bold">Add a comment</label>
+    <textarea class="form-control" id="commit-note" name="note" rows="3" placeholder="Write a comment or drag your files here…"></textarea>
+    <p><button type="submit" class="btn btn-confirm">Comment</button></p>
+  </form>
+  <% } %>
+</section>

@@ -1,0 +1,47 @@
+<% layout('layout') %>
+<% const v = it.values, e = it.errors, st = it.st || {}; const fld = (name, label, help, type = 'text') => `<div class="form-group${e[name] ? ' has-error' : ''}"><label for="user_${name}">${label}</label><input class="form-control" type="${type}" id="user_${name}" name="${name}" value="${it.h(v[name] == null ? '' : v[name])}"${e[name] ? ' aria-invalid="true"' : ''}>${e[name] ? `<p class="invalid-feedback">${it.h(e[name])}</p>` : ''}${help ? `<p class="form-text">${help}</p>` : ''}</div>`; %>
+<h1 class="sr-only">Edit Profile</h1>
+<section class="settings-layout" id="status" aria-labelledby="status-title">
+  <div><h2 id="status-title">Current status</h2><p class="muted">This emoji and message will appear on your profile and throughout the interface.</p></div>
+  <form method="post" action="/-/profile/status" aria-label="Set status">
+    <%~ it.csrfInput() %>
+    <div class="form-group"><label for="status_message">Your status</label>
+      <div class="input-group"><span class="input-group-text" aria-hidden="true">💬</span><input class="form-control" id="status_message" name="status_message" maxlength="100" value="<%= st.message || '' %>" placeholder="What's your status?"></div></div>
+    <div class="form-group"><label style="font-weight:400"><input type="checkbox" name="status_busy" value="1"<%= st.availability === 'busy' ? ' checked' : '' %>> Set yourself as busy</label>
+      <p class="form-text">Displays that you are busy or not able to respond</p></div>
+    <div class="form-group"><label for="clear_status_after">Clear status after</label>
+      <select id="clear_status_after" name="clear_status_after"><% for (const [k, l] of [['', 'Never'], ['30m', '30 minutes'], ['3h', '3 hours'], ['8h', '8 hours'], ['1d', 'Today'], ['7d', '1 week'], ['30d', '30 days']]) { %><option value="<%= k %>"><%= l %></option><% } %></select></div>
+    <button type="submit" class="btn btn-confirm">Set status</button>
+    <% if (st.message || st.availability === 'busy') { %><button type="submit" class="btn" name="clear" value="1">Remove status</button><% } %>
+  </form>
+</section>
+<form method="post" action="/-/profile" enctype="multipart/form-data" aria-label="Edit profile">
+  <%~ it.csrfInput() %>
+  <section class="settings-layout" aria-labelledby="avatar-title">
+    <div><h2 id="avatar-title">Public avatar</h2><p class="muted">You can upload your avatar here.</p></div>
+    <div style="display:flex;gap:16px;align-items:center">
+      <%~ it.avatar(it.user, 96) %>
+      <div class="form-group<%= e.avatar ? ' has-error' : '' %>"><label for="user_avatar">Upload new avatar</label><input type="file" id="user_avatar" name="avatar" accept="image/*"><p class="form-text">The maximum file size allowed is 200KB.</p><% if (e.avatar) { %><p class="invalid-feedback"><%= e.avatar %></p><% } %>
+        <% if (it.user.avatar) { %><label style="font-weight:400"><input type="checkbox" name="remove_avatar" value="1"> Remove avatar</label><% } %></div>
+    </div>
+  </section>
+  <section class="settings-layout" aria-labelledby="main-title">
+    <div><h2 id="main-title">Main settings</h2><p class="muted">This information will appear on your profile.</p></div>
+    <div>
+      <%~ fld('name', 'Full name', 'Enter your name, so people you know can recognize you.') %>
+      <div class="form-group"><label for="user_id">User ID</label><input class="form-control" id="user_id" value="<%= it.user.id %>" readonly></div>
+      <%~ fld('pronouns', 'Pronouns', 'Enter your pronouns to let people know how to refer to you.') %>
+      <div class="form-group<%= e.public_email ? ' has-error' : '' %>"><label for="user_public_email">Public email</label>
+        <select class="form-control" id="user_public_email" name="public_email"><option value="">Do not show on profile</option><% for (const em of [...new Set([it.user.email, it.user.commit_email].filter(Boolean))]) { %><option value="<%= em %>"<%= v.public_email === em ? ' selected' : '' %>><%= em %></option><% } %></select>
+        <% if (e.public_email) { %><p class="invalid-feedback"><%= e.public_email %></p><% } %><p class="form-text">This email will be displayed on your public profile.</p></div>
+      <%~ fld('skype', 'Skype') %><%~ fld('linkedin', 'LinkedIn') %><%~ fld('twitter', 'Twitter') %>
+      <%~ fld('website_url', 'Website url', null, 'text') %>
+      <%~ fld('location', 'Location', 'Who you represent or work for.') %>
+      <%~ fld('job_title', 'Job title') %>
+      <%~ fld('organization', 'Organization', 'Who you represent or work for.') %>
+      <div class="form-group<%= e.bio ? ' has-error' : '' %>"><label for="user_bio">Bio</label><textarea class="form-control" id="user_bio" name="bio" rows="4" maxlength="255"><%= v.bio || '' %></textarea><% if (e.bio) { %><p class="invalid-feedback"><%= e.bio %></p><% } %><p class="form-text">Tell us about yourself in fewer than 250 characters.</p></div>
+      <fieldset><legend>Private profile</legend><label style="font-weight:400"><input type="checkbox" name="private_profile" value="1"<%= v.private_profile ? ' checked' : '' %>> Don't display activity-related personal information on your profile</label></fieldset>
+    </div>
+  </section>
+  <div class="form-actions"><button type="submit" class="btn btn-confirm">Update profile settings</button><a class="btn" href="/<%= it.user.username %>">Cancel</a></div>
+</form>

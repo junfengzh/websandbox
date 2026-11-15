@@ -1,0 +1,8 @@
+<% layout('layout') %>
+<% const p = it.project; %>
+<h1>Repository analytics</h1>
+<p>Commit statistics for <strong><%= it.ref %></strong> (newest <%= it.num(it.total) %> non-merge commits).</p>
+<table class="table" style="max-width:640px"><thead><tr><th scope="col">Author</th><th scope="col">Commits</th></tr></thead><tbody>
+<% for (const r of it.rows.slice(0, 30)) { %><tr><td><%= r.author_name %></td><td><%= it.num(r.commits) %></td></tr><% } %>
+</tbody></table>
+<p><a href="/<%= p.full_path %>/-/graphs/<%= it.enc(it.ref) %>">Contributors</a></p>

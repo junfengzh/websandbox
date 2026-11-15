@@ -1,0 +1,23 @@
+<% layout('layout') %>
+<%~ include('repo/_user_header', it) %>
+<% if (!it.hidden) { %>
+<% if (it.cal) { const start = new Date(it.cal.start + 'T00:00:00Z'); const dow = start.getUTCDay(); const cells = []; let max = 1; for (const n of Object.values(it.cal.days)) if (n > max) max = n; const total = Object.values(it.cal.days).reduce((a, b) => a + b, 0);
+  for (let i = 0; i < 365; i++) { const d = new Date(start.getTime() + i * 86400e3); const k = d.toISOString().slice(0, 10); const col = Math.floor((i + dow) / 7), row = (i + dow) % 7; cells.push([col, row, k, it.cal.days[k] || 0]); } %>
+<section class="calendar" aria-label="Contribution calendar: <%= total %> contributions in the last year">
+  <h2 style="font-size:14px"><%= it.plural(total, 'contribution') %> in the last year</h2>
+  <svg width="<%= 54 * 13 %>" height="<%= 7 * 13 %>" role="img" aria-label="<%= total %> contributions">
+    <% for (const [c, r, k, n] of cells) { const lvl = n === 0 ? 0 : Math.min(4, Math.ceil(n / max * 4)); %><rect x="<%= c * 13 %>" y="<%= r * 13 %>" width="11" height="11" rx="2" fill="<%= ['#ececef', '#d2dcff', '#7992f5', '#3e63dd', '#2a4ac7'][lvl] %>"><title><%= n %> contribution<%= n === 1 ? '' : 's' %> on <%= k %></title></rect><% } %>
+  </svg>
+</section>
+<% } %>
+<div class="row">
+  <section class="col" aria-labelledby="ov-activity">
+    <h2 id="ov-activity" style="font-size:1rem">Activity <a href="/users/<%= it.profile.username %>/activity" style="font-size:13px;font-weight:400">View all</a></h2>
+    <% if (!it.events.length) { %><p class="muted">No activity yet.</p><% } else { %><ul class="event-list"><% for (const e of it.events) { %><%~ include('_event', { e, time: it.time, avatar: it.avatar }) %><% } %></ul><% } %>
+  </section>
+  <section class="col" aria-labelledby="ov-projects">
+    <h2 id="ov-projects" style="font-size:1rem">Personal projects <a href="/users/<%= it.profile.username %>/projects" style="font-size:13px;font-weight:400">View all</a></h2>
+    <% if (!it.personal.rows.length) { %><p class="muted">No personal projects.</p><% } else { %><ul class="projects-list"><% for (const p of it.personal.rows) { %><%~ include('_project_row', { p, time: it.time }) %><% } %></ul><% } %>
+  </section>
+</div>
+<% } %>

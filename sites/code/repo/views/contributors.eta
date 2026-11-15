@@ -1,0 +1,31 @@
+<% layout('layout') %>
+<% const p = it.project, base = '/' + p.full_path, W = it.weeks; const maxW = Math.max(1, ...W.map((w) => w[1])); %>
+<div class="tree-controls">
+  <%~ include('repo/_ref_switch', { refs: it.refs, ref: it.ref, pattern: base + '/-/graphs/{ref}' }) %>
+  <span class="spacer"></span>
+  <a class="btn btn-sm" href="<%= base %>/-/commits/<%= it.enc(it.ref) %>">History</a>
+  <a class="btn btn-sm" href="<%= base %>/-/graphs/<%= it.enc(it.ref) %>/charts">Repository analytics</a>
+</div>
+<h1>Contributors</h1>
+<section class="card" aria-labelledby="commits-chart-title">
+  <div class="card-header"><h2 id="commits-chart-title" style="font-size:14px;margin:0">Commits to <%= it.ref %></h2><span class="muted">Excluding merge commits. Limited to 6,000 commits.</span></div>
+  <div class="card-body">
+    <% if (W.length) { const w = 1000, h = 160, bw = w / W.length; %>
+    <svg class="chart" viewBox="0 0 <%= w %> <%= h + 20 %>" preserveAspectRatio="none" role="img" aria-label="Commits per week from <%= W[0][0] %> to <%= W[W.length - 1][0] %>: <%= it.total %> commits">
+      <% W.forEach((x, i) => { const bh = Math.max(1, (x[1] / maxW) * h); %><rect x="<%= (i * bw).toFixed(2) %>" y="<%= (h - bh).toFixed(2) %>" width="<%= Math.max(bw - 0.5, 0.5).toFixed(2) %>" height="<%= bh.toFixed(2) %>" fill="#6666c4"><title><%= x[0] %>: <%= x[1] %></title></rect><% }) %>
+      <text x="0" y="<%= h + 16 %>" font-size="12" fill="currentColor"><%= W[0][0] %></text><text x="<%= w %>" y="<%= h + 16 %>" font-size="12" fill="currentColor" text-anchor="end"><%= W[W.length - 1][0] %></text>
+    </svg>
+    <% } else { %><p class="muted">No commits.</p><% } %>
+  </div>
+</section>
+<ol class="contributors-grid" style="list-style:none;padding:0">
+<% for (const r of it.rows) { %>
+  <li class="contributor-card">
+    <h3 class="contributor-name"><%= r.author_name %></h3>
+    <div class="commits"><strong><%= it.num(r.commits) %></strong> <%= r.commits === 1 ? 'commit' : 'commits' %> <span class="muted">(<a href="mailto:<%= r.author_email %>"><%= r.author_email %></a>)</span></div>
+    <div class="muted" style="font-size:12px"><span class="cgreen"><%= it.num(r.additions) %> ++</span> / <span class="cred"><%= it.num(r.deletions) %> --</span></div>
+    <div class="contrib-bar" aria-hidden="true"><span style="width:<%= Math.max(1, Math.round(r.commits / it.max * 100)) %>%"></span></div>
+  </li>
+<% } %>
+</ol>
+<% if (!it.rows.length) { %><div class="empty-state"><h3>No contributors</h3></div><% } %>

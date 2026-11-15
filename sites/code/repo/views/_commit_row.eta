@@ -1,0 +1,13 @@
+<% const c = it.c, p = it.p, base = '/' + p.full_path; const desc = (c.message || '').split('\n').slice(1).join('\n').trim(); %>
+<li class="commit-row" id="commit-<%= c.sha.slice(0, 8) %>">
+  <%~ it.avatar({ id: (c.author_email || '').length, name: c.author_name }, 32) %>
+  <div class="commit-detail">
+    <a class="commit-row-message" href="<%= base %>/-/commit/<%= c.sha %>"><%= c.title || '(no commit message)' %></a>
+    <% if (desc) { %><details class="commit-more"><summary class="btn-link" style="display:inline;font-size:12px">… <span class="sr-only">Toggle commit description</span></summary><pre class="commit-desc"><%= desc %></pre></details><% } %>
+    <div class="committer"><a class="commit-author-link" href="<%= base %>/-/commits/<%= it.enc(it.ref) %>?author=<%= encodeURIComponent(c.author_name || '') %>"><%= c.author_name %></a> authored <%~ it.time(c.authored_at || c.committed_at) %><% if (c.committer_name && c.committer_name !== c.author_name) { %> · <%= c.committer_name %> committed <%~ it.time(c.committed_at) %><% } %></div>
+  </div>
+  <div class="commit-actions">
+    <div class="btn-group"><a class="btn btn-sm commit-sha" href="<%= base %>/-/commit/<%= c.sha %>" title="<%= c.sha %>"><%= c.sha.slice(0, 8) %></a><button type="button" class="btn btn-sm" data-clipboard-text="<%= c.sha %>" title="Copy commit SHA" aria-label="Copy commit SHA"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>
+    <a class="btn btn-sm" href="<%= base %>/-/tree/<%= c.sha %>" title="Browse files at <%= c.sha.slice(0, 8) %>" aria-label="Browse files at <%= c.sha.slice(0, 8) %>">Browse files</a>
+  </div>
+</li>

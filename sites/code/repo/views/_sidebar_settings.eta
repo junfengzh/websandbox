@@ -1,0 +1,7 @@
+<% const nav = it.nav; const items = [['profile', 'Profile', '/-/profile'], ['account', 'Account', '/-/profile/account'], ['tokens', 'Access Tokens', '/-/profile/personal_access_tokens'], ['password', 'Password', '/-/profile/password/edit']]; %>
+<aside class="sidebar" aria-label="User settings navigation">
+  <a class="sidebar-context" href="/-/profile"><%~ it.avatar(it.user, 32) %><span class="sidebar-context-title">User Settings</span></a>
+  <ul class="sidebar-nav">
+  <% for (const [k, l, h] of items) { %><li class="sidebar-item<%= nav === k ? ' active' : '' %>"><a class="sidebar-top" href="<%= h %>"<%~ nav === k ? ' aria-current="page"' : '' %>><span><%= l %></span></a></li><% } %>
+  </ul>
+</aside>

@@ -1,0 +1,16 @@
+<% layout('layout') %>
+<h1 style="font-size:1.4rem">Access Tokens</h1>
+<section class="settings-layout" aria-labelledby="pat-title">
+  <div><h2 id="pat-title">Personal Access Tokens</h2><p class="muted">You can generate a personal access token for each application you use that needs access to the GitLab API.</p></div>
+  <div><p class="muted">Personal access tokens are not available in this sandbox.</p></div>
+</section>
+<section class="settings-layout" aria-labelledby="feed-title">
+  <div><h2 id="feed-title">Feed token</h2><p class="muted">Your feed token authenticates you when your RSS reader loads a personalized RSS feed or when your calendar application loads a personalized calendar. It is visible in those feed URLs.</p></div>
+  <div>
+    <% if (it.user.feed_token) { %>
+    <label for="feed_token" class="label-bold">Feed token</label>
+    <div class="clipboard" style="max-width:480px"><input class="form-control" id="feed_token" type="text" readonly value="<%= it.user.feed_token %>"><button type="button" class="btn" data-clipboard-target="#feed_token" aria-label="Copy feed token">Copy</button></div>
+    <p class="form-text">Keep this token secret. Anyone who has it can read activity and issue RSS feeds or your calendar feed as if they were you.</p>
+    <% } else { %><p class="muted">No feed token has been generated for your account.</p><% } %>
+  </div>
+</section>
