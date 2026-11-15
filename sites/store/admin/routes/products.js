@@ -259,6 +259,13 @@ module.exports = (r, ctx) => {
     const req = (k, label) => { const v = U.str(B(b, k)); if (!v) errors[`product[${k}]`] = 'This is a required field.'; return v; };
     if (has(b, 'name') || isNew) set.name = req('name');
     if (has(b, 'sku') || isNew) {
+      // Magento's product form copies the name into an untouched SKU field; do the same server-side
+      // for a new product saved with an empty SKU (unique: "-1", "-2", ... on a clash)
+      if (isNew && !U.str(B(b, 'sku')) && set.name) {
+        let sku = set.name.slice(0, 64); let i = 0;
+        while (kit.sql('SELECT 1 FROM products WHERE sku = ?').get(sku)) sku = `${set.name.slice(0, 60)}-${++i}`;
+        b['product[sku]'] = sku;
+      }
       set.sku = req('sku');
       if (set.sku && set.sku.length > 64) errors['product[sku]'] = 'SKU length should be 64 characters maximum.';
       if (set.sku && kit.sql('SELECT 1 FROM products WHERE sku = ? AND id IS NOT ?').get(set.sku, p.id ?? null)) errors['product[sku]'] = 'The value specified in the SKU field is already used by another product.';

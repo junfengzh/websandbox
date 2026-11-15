@@ -9,7 +9,9 @@ const grid = require('./lib/grid');
 const menu = require('./lib/menu');
 const jobs = require('./jobs');
 const shadow = require('./lib/shadow');
-const onOpen = (db) => shadow.onOpen(db);
+// per tenant connection: temp helpers + the admin_local()/admin_local_date() SQL functions (graders'
+// answer_sql use them through /__rl/query, so they must exist before any admin page ran)
+const onOpen = (db) => { U.ensureSqlFunctions(db); shadow.onOpen(db); };
 
 const MODULES = ['auth', 'dashboard', 'products', 'categories', 'orders', 'customers', 'reviews', 'reports', 'marketing', 'content', 'stores', 'system'];
 

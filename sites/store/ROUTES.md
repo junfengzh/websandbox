@@ -205,7 +205,7 @@ actions that take a value; `back_url` returns to the grid.
 | GET | `/catalog/product/edit/id/N/` | Product form: `product[status]`, `product[attribute_set_id]`, `product[name]`, `product[sku]`, `product[price]` (shown `27.00`), `product[tax_class_id]`, `product[quantity_and_stock_status][qty]`, `product[quantity_and_stock_status][is_in_stock]` (1/0), `product[product_has_weight]`, `product[weight]`, `product[category_ids][]`, `product[visibility]`, `product[news_from_date]`/`_to_date`, `product[country_of_manufacture]`, `product[size]` / `product[color]` (option ids, e.g. 167 = S, 50 = Blue); Advanced Pricing (`product[special_price]`, `product[special_from_date]`, `product[special_to_date]`, `product[cost]`, `product[msrp]`, tier prices); Advanced Inventory (`product[stock_data][...]`); Configurations (configurable: variants table + Add Configuration); Content (`product[description]`, `product[short_description]`); Images (labels, base/small/thumbnail roles, hide, remove, upload); SEO (`product[url_key]`, `product[meta_title]`, `product[meta_keyword]`, `product[meta_description]`); Related / Up-Sell / Cross-Sell (`product[links][<type>][add]` = SKUs or ids, `product[links][<type>][remove][]`); Customizable Options (read-only); Attributes (long tail: `product[sale]`, `product[new]`, `product[material][]`, ..., shop `spec_*`) |
 | POST | `/catalog/product/save/id/N/` | Save (only the fields sent change; `back=close\|duplicate\|new`); errors re-render the form (422) |
 | GET | `/catalog/product/new/set/S/type/T/` | New product (T = simple, configurable, virtual, bundle, grouped, downloadable); `/catalog/product/new/` = set 4 simple |
-| POST | `/catalog/product/save/set/S/type/T/` | Create (url key from the name if empty) -> redirect to its edit page |
+| POST | `/catalog/product/save/set/S/type/T/` | Create (url key from the name if empty; an empty SKU becomes the name, `-1`, `-2`, ... on a clash, as Magento's form fills it) -> redirect to its edit page |
 | POST | `/catalog/product/delete/id/N/` | Delete (with its categories, attributes, images, links, variants, options, reviews) |
 | POST | `/catalog/product/addVariant/id/N/` | Add a configuration: `variant[size]`, `variant[color]` (option ids of the product's axes), `variant[price]`, `variant[qty]`, `variant[weight]`, optional `variant[sku]`, `variant[name]` (default `<name>-<size>-<color>`, e.g. `Phoebe Zipper Sweatshirt-S-Brown`) -> new simple child (visibility 1) + `product_variants` |
 | POST | `/catalog/product/removeVariant/id/N/child/C/`, `/catalog/product/variantStatus/id/N/child/C/` | Remove a configuration from the product / enable-disable it |
@@ -236,7 +236,7 @@ actions that take a value; `back_url` returns to the grid.
 
 | Method | Path | What |
 |---|---|---|
-| GET | `/customer/index/` | Customers grid: `entity_id`, `name`, `email`, `group_id`, `billing_telephone` (Phone), `billing_postcode`, `billing_country_id`, `billing_region`, `created_at` (Customer Since), web site, confirmed e-mail; optional addresses, `dob`, `taxvat`, `gender`, street, city, company, account lock, last logged in; keyword = name, e-mail, phone, address |
+| GET | `/customer/index/` | Customers grid: `entity_id`, `name`, `email`, `group_id`, `billing_telephone` (Phone), `billing_postcode`, `billing_country_id`, `billing_region`, `created_at` (Customer Since), web site, confirmed e-mail; optional addresses, `dob`, `taxvat`, `gender`, street, city, company, account lock, last logged in; keyword = name, e-mail, phone, address (a phone-like keyword such as `+1 2058812302` or `555-229-3326` matches by digits) |
 | POST | `/customer/index/massAction/` | `delete` \| `subscribe` \| `unsubscribe` (newsletter) \| `group_<id>` (assign group) |
 | GET | `/customer/index/edit/id/N/` | Customer View; tabs `.../active_tab/account\|addresses\|orders\|cart\|newsletter\|reviews\|wishlist/` |
 | POST | `/customer/index/save/id/N/`, `/customer/index/save/` | Account: `customer[group_id]`, `customer[prefix]`, `customer[firstname]`, `customer[middlename]`, `customer[lastname]`, `customer[suffix]`, `customer[email]`, `customer[dob]`, `customer[taxvat]`, `customer[gender]` (1/2/3), `customer[is_active]`; newsletter tab: `subscription` (1/0) |
@@ -281,7 +281,7 @@ actions that take a value; `back_url` returns to the grid.
 Report pages run on the **background job** `admin.report`: submitting the filter (GET with the
 params) creates a run in `temp.admin_report_runs` and enqueues the job; the page shows "being
 generated" and reloads until the run is `done`, then reads the rows from `temp.admin_report_rows`.
-A run is reused while its params and the underlying data are unchanged. Filter params:
+A run is reused while its params and the underlying data are unchanged; every time a report page shows a run it sets `last_shown` (increasing counter), so graders read the last report the agent looked at with `SELECT ... FROM temp.admin_report_runs ORDER BY last_shown DESC LIMIT 1` (`params` JSON: `from`, `to` as `YYYY-MM-DD`, `period`, `statuses`). Filter params:
 `report_from`, `report_to` (`#sales_report_from` / `#sales_report_to`, shown as `M/D/YY`),
 `report_period` `day|month|year`, sales reports also `report_type` `created_at_order|updated_at_order`,
 `show_order_statuses` 0/1 + `order_statuses` (repeated), `show_empty_rows` 0/1. Sales reports
@@ -319,6 +319,9 @@ Per tenant, in the connection's `temp` schema (created when the tenant opens, so
 or restores them; graders can query them by name): `admin_report_runs`, `admin_report_rows`
 (report jobs), `newsletter_templates`, `newsletter_queue`; helper indexes kept in sync by temp
 triggers: `admin_pgrid` (narrow copy of `products` for the product grid), `admin_rstat`
-(non-approved review ids), `admin_popt` / `admin_povr` (custom-option lookups; base.db has no
-index on `product_options.product_id` / `product_option_values.option_id`). Their initial rows
+(non-approved review ids), `admin_popt` / `admin_povr` (custom-option lookups, left empty now that
+base.db indexes `product_options(product_id)` / `product_option_values(option_id)`). Their initial rows
 come from `/dev/shm/wsb-store-admin-<hash>.db`, built once per base.db version (~5 s).
+SQL functions on every tenant connection (registered at open, so graders' `/__rl/query` can use
+them): `admin_local(ts)` (UTC -> store time `America/New_York`, `YYYY-MM-DD HH:MM:SS`) and
+`admin_local_date(ts)`.

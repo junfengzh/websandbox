@@ -19,7 +19,15 @@ module.exports = (r, ctx) => {
     id: 'customer_listing', url: '/admin/customer/index/', idCol: 'c.id', from: 'customers c', defaultSort: 'entity_id_asc',
     keyword: (q) => {
       const like = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
-      return { where: "((coalesce(c.firstname, '') || ' ' || coalesce(c.lastname, '')) LIKE ? ESCAPE '\\' OR c.email LIKE ? ESCAPE '\\' OR c.id IN (SELECT customer_id FROM customer_addresses WHERE telephone LIKE ? ESCAPE '\\' OR street LIKE ? ESCAPE '\\' OR city LIKE ? ESCAPE '\\' OR postcode LIKE ? ESCAPE '\\'))", params: Array(6).fill(like) };
+      // phone numbers match by their digits, whatever the formatting ("+1 2058812302", "555-229-3326"
+      // find "2058812302", "(555) 229-3326"), like Magento's full-text keyword search on the phone field
+      const digits = q.replace(/\D/g, '');
+      const phone = /^[\d\s()+.-]+$/.test(q) && digits.length >= 7 ? digits.slice(-10).replace(/^1(?=\d{10}$)/, '') : null;
+      const tel = "replace(replace(replace(replace(replace(replace(telephone, ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), '.', '')";
+      return {
+        where: `((coalesce(c.firstname, '') || ' ' || coalesce(c.lastname, '')) LIKE ? ESCAPE '\\' OR c.email LIKE ? ESCAPE '\\' OR c.id IN (SELECT customer_id FROM customer_addresses WHERE telephone LIKE ? ESCAPE '\\' OR street LIKE ? ESCAPE '\\' OR city LIKE ? ESCAPE '\\' OR postcode LIKE ? ESCAPE '\\'${phone ? ` OR ${tel} LIKE ?` : ''}))`,
+        params: [...Array(6).fill(like), ...(phone ? [`%${phone}%`] : [])],
+      };
     },
     columns: [
       { key: 'entity_id', label: 'ID', sql: 'c.id', cls: 'num', filter: { type: 'range' } },

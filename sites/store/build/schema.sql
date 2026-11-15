@@ -107,6 +107,8 @@ CREATE TABLE product_options (
   sku TEXT, max_characters INTEGER, position INTEGER, price REAL, price_type TEXT);
 CREATE TABLE product_option_values (
   id INTEGER PRIMARY KEY, option_id INTEGER, title TEXT, sku TEXT, position INTEGER, price REAL, price_type TEXT);
+CREATE INDEX product_options_p ON product_options(product_id, position);
+CREATE INDEX product_option_values_o ON product_option_values(option_id, position);
 
 CREATE TABLE tier_prices (
   id INTEGER PRIMARY KEY, product_id INTEGER, customer_group_id INTEGER, all_groups INTEGER,

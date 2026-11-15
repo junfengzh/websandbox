@@ -56,6 +56,7 @@ module.exports = (r, ctx) => {
             run = kit.sql('SELECT * FROM temp.admin_report_runs WHERE id = ?').get(id);
           }
           m.run = run;
+          if (run) kit.sql('UPDATE temp.admin_report_runs SET last_shown = (SELECT coalesce(max(last_shown), 0) + 1 FROM temp.admin_report_runs) WHERE id = ?').run(run.id);
           if (run && run.status === 'done') {
             m.state = 'done';
             m.totals = JSON.parse(run.totals || '{}');

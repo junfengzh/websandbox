@@ -244,6 +244,29 @@ test('customers, CMS page, cart price rule, admin user', async () => {
   }
 });
 
+test('task-conversion fixes: phone keyword, SKU from name, last shown report, SQL functions', async () => {
+  await ctrl(base, '/__rl/reset');
+  const c = await adminClient();
+  // formatted phone numbers find the customer (digits compared)
+  for (const q of ['+1 2058812302', '555-229-3326']) {
+    const r = await c.get(`/admin/customer/index/?q=${encodeURIComponent(q)}`);
+    assert.match(r.text, q.startsWith('+') ? /john.smith.xyz@gmail.com/ : /roni_cost@example.com/, q);
+  }
+  // a new product saved without SKU gets its name as SKU (Magento's form fills it)
+  await c.post('/admin/catalog/product/save/set/9/type/simple/', { 'product[name]': 'Energy-Bulk Women Shirt', 'product[sku]': '', 'product[price]': '60', 'product[attribute_set_id]': '9', 'product[quantity_and_stock_status][qty]': '50' }, '/admin/catalog/product/new/set/9/type/simple/');
+  assert.equal(await one(base, "SELECT sku FROM products WHERE name = 'Energy-Bulk Women Shirt'"), 'Energy-Bulk Women Shirt');
+  // report runs record which one was shown last (reused runs too)
+  const rep = (f, t) => `/admin/reports/report_sales/sales/?filter=1&report_from=${f}&report_to=${t}`;
+  await c.get(rep('2/1/23', '2/28/23')); await ctrl(base, '/__rl/jobs/run');
+  await c.get(rep('3/1/23', '3/31/23')); await ctrl(base, '/__rl/jobs/run');
+  await c.get(rep('2/1/23', '2/28/23'));
+  assert.equal(await one(base, "SELECT json_extract(params, '$.from') FROM temp.admin_report_runs ORDER BY last_shown DESC LIMIT 1"), '2023-02-01');
+  assert.equal(await one(base, 'SELECT count(*) FROM temp.admin_report_runs'), 2);
+  // admin_local() is available to graders on a fresh tenant
+  assert.equal(await one(s.url(1), "SELECT admin_local('2023-05-31 06:55:09')"), '2023-05-31 02:55:09');
+  await ctrl(base, '/__rl/reset');
+});
+
 test('/__rl/reset restores every back-office write; tenants are isolated', async () => {
   const c = await adminClient();
   await c.post('/admin/catalog/product/save/id/1481/', { 'product[price]': '27' }, '/admin/catalog/product/edit/id/1481/');
