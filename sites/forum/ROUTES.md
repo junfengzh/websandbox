@@ -136,6 +136,9 @@ Header: unread counts in the bell/envelope links (`aria-label="Notifications (N 
 
 - `type` default `submissions`. FTS5 over `submissions_fts(title, body, url)` (bm25 weights 10/2/1),
   `comments_fts(body)`, `forums_fts`; users by name prefix/substring.
+- Forums: FTS matches, plus forums whose lower-cased name contains the query without spaces or
+  whose name+title contain every word (names are single tokens: `machine learning` and `learning`
+  find `/f/MachineLearning`). Exact name first, then FTS rank, then the rest by name.
 - Words are ANDed; `"quoted phrases"` work; the last word of a post search is prefix-matched
   when it has 4+ letters (comments match whole words, stemmed, like Postmill's tsvector search).
 - `sort=relevance` ranks by bm25 when at most 3,000 posts / 1,500 comments match; above that
@@ -168,3 +171,13 @@ Header: unread counts in the bell/envelope links (`aria-label="Notifications (N 
 The kit's `/__rl/*` (reset, health, clock, query, login, jobs, stats): see
 [../../kit/README.md](../../kit/README.md#control-api-__rl). Reset restores every table above,
 FTS indexes, sessions and uploads.
+
+## Grading
+
+[grade.js](grade.js) canonicalises URLs (forum/user names lower-cased, slugs and default sorts
+dropped) before the kit's URL check, and adds `url_match: 'prefix'`: the final URL's path equals a
+reference path or lies below it (`/f/space/134164/slug` matches `/f/space`). That is WebArena's
+reddit url_match ("GOLD in PRED": `ref_base_path in pred_base_path`); the converted tasks in
+[../../tasks/forum/webarena.jsonl](../../tasks/forum/webarena.jsonl) use it for "post/subscribe in
+forum X" tasks.
+

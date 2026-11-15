@@ -300,6 +300,10 @@ test('search finds posts, comments, forums', async () => {
   assert.match((await c.get('/search?q=bookshop.org+exists')).text, /id="submission-59421"/);
   assert.match((await c.get('/search?q=indie+bookstore+manager&type=comments')).text, /id="comment-1235250"/);
   assert.match((await c.get('/search?q=machinelearning&type=forums')).text, /\/f\/MachineLearning/);
+  // forum names are single tokens: spaced words / parts of the name match by substring
+  assert.match((await c.get('/search?q=machine+learning&type=forums')).text, /\/f\/MachineLearning/);
+  const learning = (await c.get('/search?q=learning&type=forums')).text;
+  assert.match(learning, /\/f\/deeplearning/); assert.match(learning, /\/f\/MachineLearning/);
   assert.match((await c.get('/search?q=marvelsgrant&type=users')).text, /MarvelsGrantMan136/);
   assert.match((await c.get('/search?q=the&type=comments&t=week')).text, /No results found/);
   // new content is searchable inside the rollout, and gone after reset

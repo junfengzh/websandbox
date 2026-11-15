@@ -24,8 +24,24 @@ module.exports = async function (app, kit) {
 
     if (type === 'forums') {
       const s = kit.search.prepare(db, 'forums_fts', q, { weights: { name: 10, title: 5, description: 2, sidebar: 1 }, prefix: 'all' });
-      const rows = s.match ? kit.sql(`SELECT f.id, f.name, f.title, f.description, ${s.snippet('description', 20)} AS snip FROM forums_fts JOIN forums f ON f.id = forums_fts.rowid
-        WHERE forums_fts MATCH ? ORDER BY ${s.rank}, f.id LIMIT ? OFFSET ?`).all(s.match, PER_PAGE + 1, pg.offset) : [];
+      // Forum names are single tokens (MachineLearning, explainlikeimfive), so FTS alone misses
+      // "machine learning" / "learning". There are few forums: also match names and titles by
+      // substring (the query without spaces, or every word). Order: exact name, FTS rank, rest by name.
+      const all = s.match ? kit.sql(`SELECT f.id, f.name, f.title, f.description, ${s.snippet('description', 20)} AS snip FROM forums_fts JOIN forums f ON f.id = forums_fts.rowid
+        WHERE forums_fts MATCH ? ORDER BY ${s.rank}, f.id LIMIT 1000`).all(s.match) : [];
+      const words = q.toLowerCase().split(/[^\p{L}\p{N}_]+/u).filter(Boolean);
+      if (words.length) {
+        const seen = new Set(all.map((r) => r.id));
+        const joined = words.join('');
+        for (const f of kit.sql('SELECT id, name, title, description, description AS snip, normalized_name FROM forums ORDER BY normalized_name').all()) {
+          if (seen.has(f.id)) continue;
+          const hay = `${f.normalized_name} ${String(f.title || '').toLowerCase()}`;
+          if (f.normalized_name.includes(joined) || words.every((w) => hay.includes(w))) all.push(f);
+        }
+        const exact = all.findIndex((r) => r.name.toLowerCase() === joined);
+        if (exact > 0) all.unshift(...all.splice(exact, 1));
+      }
+      const rows = all.slice(pg.offset, pg.offset + PER_PAGE + 1);
       const get = F.forumCounts(null);
       for (const r of rows) Object.assign(r, get(r.id));
       data.rows = rows;

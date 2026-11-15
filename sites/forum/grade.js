@@ -64,12 +64,29 @@ const sql = {
 
 const first = async (query, q) => { const rows = await query(q); return rows.length ? rows[0] : null; };
 
-function grade(task, input = {}) {
+// url_match 'prefix' (forum addition): the final URL's canonical path equals a reference path
+// or lies below it (/f/space/134164/slug matches /f/space), query params as in 'subset'.
+// This is WebArena's url_match for the reddit tasks: it tests `ref_base_path in pred_base_path`
+// (substring), so ending on the new post / thread page under the forum passes.
+const splitPath = (u) => { const i = u.indexOf('?'); return i < 0 ? [u, ''] : [u.slice(0, i), u.slice(i)]; };
+async function grade(task, input = {}) {
   const ev = task.eval || task;
   if (!ev.url) return kit.grader.grade(task, input);
-  const canon = { ...ev, url: [].concat(ev.url).map(canonicalUrl) };
+  const refs = [].concat(ev.url).map(canonicalUrl);
+  const canon = { ...ev, url: refs };
+  let url = input.url ? canonicalUrl(input.url) : input.url;
+  if (ev.url_match === 'prefix') {
+    canon.url_match = 'subset';
+    if (url) {
+      const [up, uq] = splitPath(url);
+      const hit = refs.map((r) => splitPath(r)[0]).find((rp) => up.toLowerCase() === rp.toLowerCase() || up.toLowerCase().startsWith(rp.toLowerCase() + '/'));
+      if (hit) url = hit + uq;
+    }
+  }
   const t = task.eval ? { ...task, eval: canon } : canon;
-  return kit.grader.grade(t, { ...input, url: input.url ? canonicalUrl(input.url) : input.url });
+  const r = await kit.grader.grade(t, { ...input, url });
+  for (const c of r.checks) if (c.type === 'url') c.got = input.url;
+  return r;
 }
 
 module.exports = grade;
