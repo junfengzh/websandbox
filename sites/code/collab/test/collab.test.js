@@ -292,6 +292,29 @@ test('merge request with no changes can be created (GitLab allows it; WebArena t
   assert.match(r.text, /Nothing to merge/);
 });
 
+test('MR pages degrade gracefully: merge base outside the stored history, huge rewrites (REGRADE.md findings)', async () => {
+  // gcc-mirror/gcc is a truncated import: these forks branched off below the stored history (was HTTP 500)
+  for (const iid of [13, 15, 17, 21, 22, 29, 33, 48, 49, 51, 65, 67, 75]) {
+    const t0 = Date.now();
+    const r = await c.get(`/gcc-mirror/gcc/-/merge_requests/${iid}`);
+    assert.equal(r.status, 200, `gcc!${iid}: ${r.text.slice(0, 200)}`);
+    assert.match(r.text, /merge base of these branches is outside the history stored/);
+    assert.ok(Date.now() - t0 < 5000, `gcc!${iid} took ${Date.now() - t0} ms`);
+  }
+  // processwire!247 rewrites line endings of every file: the merge check gives up per file (was > 2 min)
+  for (const iid of [247, 248, 249, 250, 251]) {
+    const t0 = Date.now();
+    const r = await c.get(`/processwire/processwire/-/merge_requests/${iid}`);
+    assert.equal(r.status, 200);
+    assert.ok(Date.now() - t0 < 3000, `processwire!${iid} took ${Date.now() - t0} ms`);
+    if (iid === 247) assert.match(r.text, /Merge blocked: this merge request has conflicts/);
+  }
+  for (const tab of ['commits', 'diffs']) assert.equal((await c.get(`/processwire/processwire/-/merge_requests/247/${tab}`)).status, 200);
+  // second view of the same (head, target) pair comes from the merge-check cache
+  const t0 = Date.now(); await c.get('/gcc-mirror/gcc/-/merge_requests/13');
+  assert.ok(Date.now() - t0 < 500, `cached gcc!13 took ${Date.now() - t0} ms`);
+});
+
 test('wiki and project settings', async () => {
   const P = '/byteblaze/dotfiles';
   let r = await c.post(`${P}/-/wikis`, { title: 'Setup guide', content: '# Setup\nRun `make`.', format: 'markdown' }, `${P}/-/wikis/new`);

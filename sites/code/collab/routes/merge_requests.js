@@ -165,14 +165,15 @@ module.exports = function mergeRequests(app, ctx) {
     kit.sql('DELETE FROM mr_diff_files WHERE merge_request_id = ?').run(mr.id);
     kit.sql('DELETE FROM mr_commits WHERE merge_request_id = ?').run(mr.id);
     let adds = 0, dels = 0, total = 0;
+    let big = 0; // huge MRs: stop line-diffing after 10 rewritten / too large files (each costs up to ~0.2 s)
     cmp.files.slice(0, 100).forEach((f, ord) => {
       let d = { text: null, additions: 0, deletions: 0 };
       let omitted = 0, binary = 0, tooLarge = 0;
-      if (f.unavailable) omitted = 1;
+      if (f.unavailable || big >= 10) omitted = 1;
       else {
         d = git.fileDiff(f, { maxBytes: 400000 });
         if (d.binary) binary = 1;
-        if (d.tooLarge) tooLarge = 1;
+        if (d.tooLarge) { tooLarge = 1; big++; }
         if (d.text && (d.text.length > 32768 || total + d.text.length > 262144)) { omitted = 1; }
       }
       if (d.text && !omitted) total += d.text.length;
@@ -199,6 +200,31 @@ module.exports = function mergeRequests(app, ctx) {
       return renderMr(req, reply, project, mr, tab || 'overview');
     });
   }
+  // Git side of the merge status for (source head, target head). Commits and objects are
+  // content-addressed, so the answer for a pair of shas is the same in every tenant and never
+  // changes: cache it per process (walks on big truncated histories such as gcc take ~1 s).
+  const checkCache = new Map();
+  function mergeCheck(head, target) {
+    const key = `${head}..${target}`;
+    if (checkCache.has(key)) return checkCache.get(key);
+    const rv = git.revList(head, target, { limit: 50000 });
+    const baseC = rv.base ? git.getCommit(rv.base) : null;
+    const g = { nothing: !rv.only.length, baseMissing: false, ff: rv.base === target, conflicts: null, tooLarge: false, unavailable: false };
+    if (g.nothing) { /* nothing to merge */ } else if (!baseC) g.baseMissing = true;
+    else if (rv.base !== target) {
+      try {
+        const m = git.checkMerge(baseC.tree_sha, git.getCommit(target).tree_sha, git.getCommit(head).tree_sha);
+        if (m.conflicts) g.conflicts = m.conflicts;
+      } catch (e) {
+        if (e instanceof git.MergeTooLarge) g.tooLarge = true;
+        else if (e instanceof git.GitUnavailable) g.unavailable = true;
+        else throw e;
+      }
+    }
+    if (checkCache.size >= 5000) checkCache.delete(checkCache.keys().next().value);
+    checkCache.set(key, g);
+    return g;
+  }
   function mergeability(req, project, mr) {
     const sp = projectById(mr.source_project_id || project.id);
     const out = { canMerge: false, reasons: [], sourceExists: false, head: null };
@@ -210,18 +236,14 @@ module.exports = function mergeRequests(app, ctx) {
     if (!target) out.reasons.push('The target branch does not exist.');
     if (mr.draft) out.reasons.push("Merge blocked: merge request must not be draft. Select 'Mark as ready' to remove it from Draft status.");
     if (head && target) {
-      const rv = git.revList(head, target, { limit: 50000 });
-      if (!rv.only.length) out.reasons.push(`Nothing to merge: ${mr.target_branch} already contains all the commits of ${mr.source_branch}.`);
-      else if (rv.base !== target) {
-        try {
-          const m = git.checkMerge(git.getCommit(rv.base).tree_sha, git.getCommit(target).tree_sha, git.getCommit(head).tree_sha);
-          if (m.conflicts) { out.conflicts = m.conflicts; out.reasons.push(`Merge blocked: this merge request has conflicts (${m.conflicts.slice(0, 5).join(', ')}${m.conflicts.length > 5 ? ', …' : ''}).`); }
-        } catch (e) {
-          if (!(e instanceof git.GitUnavailable)) throw e;
-          out.reasons.push('Merge blocked: the file contents of these commits are not available in this sandbox.');
-        }
-      }
-      out.ffPossible = rv.base === target;
+      const g = mergeCheck(head, target);
+      if (g.nothing) out.reasons.push(`Nothing to merge: ${mr.target_branch} already contains all the commits of ${mr.source_branch}.`);
+      // truncated imports: the merge base is older than the stored history (or the walk hit its limit)
+      else if (g.baseMissing) out.reasons.push('Merge blocked: the merge base of these branches is outside the history stored in this sandbox.');
+      else if (g.conflicts) { out.conflicts = g.conflicts; out.reasons.push(`Merge blocked: this merge request has conflicts (${g.conflicts.slice(0, 5).join(', ')}${g.conflicts.length > 5 ? ', …' : ''}).`); }
+      else if (g.tooLarge) out.reasons.push('Merge blocked: the changes are too large to check for conflicts in this sandbox.');
+      else if (g.unavailable) out.reasons.push('Merge blocked: the file contents of these commits are not available in this sandbox.');
+      out.ffPossible = g.ff;
       out.behind = 0;
     }
     out.canMerge = !out.reasons.length;
@@ -431,7 +453,11 @@ module.exports = function mergeRequests(app, ctx) {
     const headC = git.getCommit(head);
     let tree = headC.tree_sha;
     if (rv.base !== target) {
-      const m = git.mergeTrees(git.getCommit(rv.base).tree_sha, git.getCommit(target).tree_sha, headC.tree_sha);
+      let m;
+      try { m = git.mergeTrees(git.getCommit(rv.base).tree_sha, git.getCommit(target).tree_sha, headC.tree_sha); } catch (e) {
+        if (!(e instanceof git.GitUnavailable)) throw e;
+        req.flash('error', 'Merge failed: the changes cannot be merged in this sandbox.'); return reply.redirect(mrUrl(project, mr));
+      }
       if (m.conflicts) { req.flash('error', 'Merge failed: there are conflicts.'); return reply.redirect(mrUrl(project, mr)); }
       tree = m.tree;
     }

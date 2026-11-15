@@ -8,6 +8,8 @@ const zlib = require('node:zlib');
 const kit = require('../../../../kit');
 
 class GitUnavailable extends Error {}
+// a 3-way merge (check) that would take longer than its time budget (huge rewrites, e.g. line endings)
+class MergeTooLarge extends GitUnavailable {}
 
 const sha1 = (buf) => crypto.createHash('sha1').update(buf).digest('hex');
 const objectId = (type, body) => sha1(Buffer.concat([Buffer.from(`${type} ${body.length}\0`), body]));
@@ -86,7 +88,8 @@ function writeCommit({ tree, parents = [], author, committer, message, at }) {
   try {
     const p0 = parents[0] ? getCommit(parents[0]) : null;
     files = diffTrees(p0 ? p0.tree_sha : EMPTY_TREE, tree);
-    for (const f of files) { const s = lineStats(f); f.additions = s.additions; f.deletions = s.deletions; adds += s.additions || 0; dels += s.deletions || 0; }
+    let big = 0; // stats are cosmetic: stop line-diffing a huge commit after 10 rewritten/too-large files
+    for (const f of files) { const s = big < 10 ? lineStats(f) : { additions: null, deletions: null }; if (s.tooLarge) big++; f.additions = s.additions; f.deletions = s.deletions; adds += s.additions || 0; dels += s.deletions || 0; }
   } catch (e) { if (!(e instanceof GitUnavailable)) throw e; }
   const title = msg.split('\n')[0];
   const r = kit.sql(`INSERT INTO commits (sha, tree_sha, parents, author_name, author_email, authored_at, author_tz, committer_name, committer_email, committed_at, committer_tz,
@@ -111,35 +114,49 @@ function pathId(p) {
 function revList(a, b, { limit = 20000 } = {}) {
   const A = 1, B = 2;
   const flags = new Map(); const info = new Map();
-  const queue = [];
+  // max-heap on committed_at, ties in insertion order (as the old linear scan); cnt[f] counts the
+  // queued entries painted f. The walk stops once a base is found and no A-only entry is left, or
+  // when no A-only and no A|B entry is left (no base can appear any more: e.g. the source branch
+  // forked off below a truncated import's stored history -- without this, gcc walked 50k commits).
+  const heap = []; const inQueue = new Map(); let seq = 0; const cnt = [0, 0, 0, 0];
+  const before = (x, y) => (x.d > y.d) || (x.d === y.d && x.s < y.s);
+  const hpush = (e) => { heap.push(e); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (!before(heap[i], heap[p])) break; [heap[i], heap[p]] = [heap[p], heap[i]]; i = p; } };
+  const hpop = () => {
+    const top = heap[0]; const last = heap.pop();
+    if (heap.length) {
+      heap[0] = last; let i = 0;
+      for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && before(heap[l], heap[m])) m = l; if (r < heap.length && before(heap[r], heap[m])) m = r; if (m === i) break; [heap[i], heap[m]] = [heap[m], heap[i]]; i = m; }
+    }
+    return top;
+  };
   const push = (sha, f) => {
     const old = flags.get(sha) || 0;
     if ((old | f) === old) return;
+    const k = inQueue.get(sha) || 0; cnt[old] -= k; cnt[old | f] += k;
     flags.set(sha, old | f);
     let c = info.get(sha);
     if (c === undefined) { c = getCommit(sha); info.set(sha, c); }
     if (!c) return;
-    queue.push(sha);
+    inQueue.set(sha, k + 1); cnt[old | f]++;
+    hpush({ sha, d: c.committed_at || '', s: seq++ });
   };
   if (a) push(a, A);
   if (b) push(b, B);
-  const only = []; const bases = []; let steps = 0; let truncated = false;
-  const stale = () => queue.every((s) => flags.get(s) === (A | B) || flags.get(s) === B);
-  while (queue.length) {
+  const only = []; const bases = new Set(); let base = null; let steps = 0; let truncated = false;
+  while (heap.length) {
     if (++steps > limit) { truncated = true; break; }
-    // pop newest
-    let bi = 0;
-    for (let i = 1; i < queue.length; i++) if ((info.get(queue[i]).committed_at || '') > (info.get(queue[bi]).committed_at || '')) bi = i;
-    const sha = queue.splice(bi, 1)[0];
+    const { sha } = hpop();
+    inQueue.set(sha, inQueue.get(sha) - 1);
     const f = flags.get(sha); const c = info.get(sha);
-    if (f === (A | B)) { if (!bases.length || !bases.some((x) => x === sha)) bases.push(sha); }
+    cnt[f]--;
+    if (f === (A | B) && !bases.has(sha)) { bases.add(sha); if (!base) base = sha; }
     for (const p of parentsOf(c)) push(p, f === (A | B) ? (A | B) : f);
     if (f === A) only.push(c);
-    if (bases.length && stale()) break;
+    if (cnt[A] === 0 && (base || cnt[A | B] === 0)) break;
   }
   // commits first seen as A-only but later painted A|B are not exclusive
   const exclusive = only.filter((c) => flags.get(c.sha) === A);
-  return { only: exclusive, base: bases[0] || null, truncated };
+  return { only: exclusive, base, truncated };
 }
 const mergeBase = (a, b) => revList(a, b).base;
 const isAncestor = (anc, desc) => anc === desc || revList(anc, desc).only.length === 0;
@@ -168,8 +185,18 @@ function diffTrees(aSha, bSha, prefix = '', out = []) {
   }
   return out;
 }
-// 3-way merge at entry level: returns { tree } or { conflicts: [paths] }
-function mergeTrees(base, ours, theirs, prefix = '') {
+// 3-way merge at entry level: returns { tree } or { conflicts: [paths] } (stops after
+// MAX_CONFLICTS paths). Every text file changed on both sides costs a line diff, so the work is
+// bounded deterministically (same answer under any load, and the merge check agrees with the
+// merge): at most MERGE_EDITS edit lines in total (a file that gives up costs BLOB_EDITS) and
+// MERGE_FILES file merges, else MergeTooLarge.
+const BLOB_EDITS = 500, MERGE_EDITS = 5000, MERGE_FILES = 300, MAX_CONFLICTS = 6;
+let BUDGET = null;
+function mergeTrees(base, ours, theirs) {
+  const prev = BUDGET; BUDGET = { edits: 0, files: 0, conflicts: 0 };
+  try { return mergeRec(base, ours, theirs, ''); } finally { BUDGET = prev; }
+}
+function mergeRec(base, ours, theirs, prefix) {
   if (ours === theirs) return { tree: ours };
   if (base === ours) return { tree: theirs };
   if (base === theirs) return { tree: ours };
@@ -179,21 +206,23 @@ function mergeTrees(base, ours, theirs, prefix = '') {
   const result = []; const conflicts = [];
   const same = (x, y) => (!x && !y) || (x && y && x.sha === y.sha && x.mode === y.mode);
   for (const n of names) {
+    if (BUDGET.conflicts >= MAX_CONFLICTS) break;
     const b = bm.get(n), o = om.get(n), t = tm.get(n);
     let pick;
     if (same(o, t)) pick = o;
     else if (same(b, o)) pick = t;
     else if (same(b, t)) pick = o;
     else if (o && t && o.type === 'tree' && t.type === 'tree') {
-      const r = mergeTrees(b && b.type === 'tree' ? b.sha : null, o.sha, t.sha, prefix + n + '/');
-      if (r.conflicts) { conflicts.push(...r.conflicts); continue; }
+      const r = mergeRec(b && b.type === 'tree' ? b.sha : null, o.sha, t.sha, prefix + n + '/');
+      if (r.conflicts) { conflicts.push(...r.conflicts); continue; } // (already counted)
       pick = { mode: '40000', name: n, sha: r.tree, type: 'tree' };
     } else if (o && t && b && o.type === 'blob' && t.type === 'blob' && b.type === 'blob' && o.mode === t.mode) {
       // both sides changed a text file: apply base->theirs hunks onto ours (clean only)
+      if (++BUDGET.files > MERGE_FILES || BUDGET.edits > MERGE_EDITS) throw new MergeTooLarge('merge too large to check');
       const sha = mergeBlobs(b.sha, o.sha, t.sha);
-      if (!sha) { conflicts.push(prefix + n); continue; }
+      if (!sha) { conflicts.push(prefix + n); BUDGET.conflicts++; continue; }
       pick = { mode: o.mode, name: n, sha, type: 'blob' };
-    } else { conflicts.push(prefix + n); continue; }
+    } else { conflicts.push(prefix + n); BUDGET.conflicts++; continue; }
     if (pick) result.push(pick);
   }
   if (conflicts.length) return { conflicts };
@@ -204,7 +233,12 @@ function mergeBlobs(base, ours, theirs) {
   const B = blobText(base), O = blobText(ours), T = blobText(theirs);
   if (B == null || O == null || T == null) return null;
   Diff = Diff || codeRequire('diff');
-  const patch = Diff.structuredPatch('a', 'b', B, T, '', '', { context: 3 });
+  if (B.length + T.length > 1000000) { BUDGET.edits += BLOB_EDITS; return null; }
+  // Myers diff is quadratic in the edit count (a rewrite, e.g. line endings, changes every line):
+  // give up past BLOB_EDITS -> treated as a conflict
+  const patch = Diff.structuredPatch('a', 'b', B, T, '', '', { context: 3, maxEditLength: BLOB_EDITS });
+  if (!patch) { BUDGET.edits += BLOB_EDITS; return null; }
+  for (const h of patch.hunks) for (const l of h.lines) if (l[0] === '+' || l[0] === '-') BUDGET.edits++;
   const out = Diff.applyPatch(O, patch, { fuzzFactor: 0 });
   if (out === false) return null;
   return writeObject('blob', Buffer.from(out, 'utf8'));
@@ -250,7 +284,8 @@ function fileDiff(f, { maxBytes = 200000 } = {}) {
   const b = f.newSha ? blobText(f.newSha) : '';
   if (a == null || b == null) return { binary: true, text: null, additions: 0, deletions: 0 };
   if (a.length + b.length > maxBytes) return { tooLarge: true, text: null, ...quickCounts(a, b) };
-  const p = Diff.structuredPatch('a', 'b', a, b, '', '', { context: 3 });
+  const p = Diff.structuredPatch('a', 'b', a, b, '', '', { context: 3, maxEditLength: 1000 });
+  if (!p) return { tooLarge: true, text: null, ...quickCounts(a, b) }; // rewrite too costly to diff
   let adds = 0, dels = 0; const lines = [];
   for (const h of p.hunks) {
     lines.push(`@@ -${h.oldStart},${h.oldLines} +${h.newStart},${h.newLines} @@`);
@@ -259,7 +294,7 @@ function fileDiff(f, { maxBytes = 200000 } = {}) {
   return { text: lines.join('\n'), additions: adds, deletions: dels };
 }
 function quickCounts(a, b) { const x = a.split('\n').length, y = b.split('\n').length; return { additions: Math.max(0, y - x), deletions: Math.max(0, x - y) }; }
-function lineStats(f) { try { const d = fileDiff(f, { maxBytes: 400000 }); return { additions: d.additions, deletions: d.deletions }; } catch { return { additions: null, deletions: null }; } }
+function lineStats(f) { try { const d = fileDiff(f, { maxBytes: 400000 }); return { additions: d.additions, deletions: d.deletions, tooLarge: !!d.tooLarge }; } catch { return { additions: null, deletions: null }; } }
 
 // ---------------------------------------------------------------- refs / branches
 const branchHead = (projectId, name) => kit.sql("SELECT sha FROM refs WHERE project_id = ? AND kind = 'branch' AND name = ?").pluck().get(projectId, name) || null;
@@ -329,7 +364,7 @@ function recomputeContributors(projectId, branch) {
 }
 
 module.exports = {
-  GitUnavailable, sha1, objectId, readObject, writeObject, parseTree, readTree, writeTree, EMPTY_TREE,
+  GitUnavailable, MergeTooLarge, sha1, objectId, readObject, writeObject, parseTree, readTree, writeTree, EMPTY_TREE,
   getCommit, parentsOf, writeCommit, pathId, revList, mergeBase, isAncestor, diffTrees, mergeTrees, checkMerge, blobAt, fileDiff, blobText,
   branchHead, branches, updateBranch, deleteBranch, recomputeContributors,
 };

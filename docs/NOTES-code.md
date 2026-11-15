@@ -255,3 +255,44 @@ SQL drift and an empty answer fails; write tasks fail on the untouched state). 4
   source vs target) are asked one value per task because must_include is order-free.
 - Site fixes: the profile header labels Job title / Organization / Location (they were unlabeled text); the MR
   Changes tab "View file @ sha" link pointed at `undefined/-/blob/...`.
+
+## MR page fixes + full MR/issue page scan (2026-11-15)
+
+Findings from tasks/REGRADE.md, fixed in `collab/lib/git.js` and `collab/routes/merge_requests.js`:
+- **gcc-mirror/gcc: 13 open MRs returned HTTP 500.** gcc is a truncated import: the forks' branches start below
+  the stored history, so the rev-list walk finds no merge base and `mergeability()` called
+  `git.getCommit(null).tree_sha`. The page now says "Merge blocked: the merge base of these branches is outside the
+  history stored in this sandbox." (merge button disabled; the merge action is refused the same way).
+- **processwire!247 (and !248-!264) took > 2 min.** Not rev-list: !247 rewrites the line endings of every file, and the
+  dry-run 3-way merge ran jsdiff's Myers diff (quadratic in the edit count) on every file changed on both sides.
+  `mergeBlobs` now passes `maxEditLength: 500` (a file past it counts as a conflict) and the whole merge has a
+  deterministic budget (5,000 edit lines, 300 file merges, stop after 6 conflicts; past the budget:
+  "Merge blocked: the changes are too large to check for conflicts in this sandbox."). Deterministic on purpose (no
+  timeouts): the same answer under any load, and the merge action agrees with the check. `fileDiff` (new MRs, commit
+  stats) uses `maxEditLength: 1000` (a rewrite is stored as "too large"), and MR creation / web commits stop
+  line-diffing after 10 too-large files.
+- `revList`: a binary heap instead of a linear scan of the queue per step, O(1) stale check (counts per paint
+  colour), and it stops as soon as no A-only and no A|B commit is queued (no base can appear any more); before, a
+  base-less walk went on to the 50,000-step limit.
+- The merge status of a (source head, target head) pair is cached per process (commits/objects are
+  content-addressed, so the answer is the same in every tenant and never changes): gcc pairs whose merge base is
+  12k-25k commits back cost 0.3-1.3 s on the first view in each worker process, ~10 ms after.
+
+Scan of every MR page (Overview, Commits, Changes tabs) and every issue page of every project as root (sees all
+projects), 4 tenants / 4 workers, one client per worker (`$WSB_TMP/codescan/scan.js`): **483,970 pages, all
+HTTP 200, none > 2 s** (before: 13 x 500 + 1 minutes-long + timeouts on the processwire MRs that followed).
+
+| page | n | p50 ms | p95 ms | p99 ms | max ms |
+|---|---|---|---|---|---|
+| MR overview | 134,336 | 4 | 11 | 23 | 1,258 |
+| MR commits | 134,336 | 4 | 9 | 19 | 1,248 |
+| MR changes | 134,336 | 4 | 12 | 22 | 1,187 |
+| issue | 80,962 | 12 | 26 | 29 | 376 |
+
+52 pages > 300 ms (48 gcc, 2 igraph, 2 Arachni): first views of open MRs with a deep or missing merge base, cached
+after. Tests: `collab/test/collab.test.js` "MR pages degrade gracefully" (the 13 gcc MRs + processwire!247-251 render
+with the new reasons within limits; cached second view < 500 ms).
+
+Also fixed in the kit (found by docs/BENCH-FULL.md): `/media/*` was served by a wildcard `@fastify/static`, which since
+10.1 re-reads every directory of the path per request to validate its spelling -- ~300 ms per store product image
+(194k files in one directory) and ~100 ms per forum thumbnail; now `reply.sendFile` (same `..` guards; kit test).

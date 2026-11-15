@@ -88,6 +88,11 @@ are marked `superseded` (the task ids now name other instances). The changed adm
   gcc-mirror/gcc MRs (13, 15, 17, 21, 22, 29, 33, 48, 49, 51, 65, 67, 75). processwire/processwire!247 (and possibly
   a few primer/design / lunaru/MongoRecord / amwhalen MRs under load) takes > 60-120 s (rev-list), holding the
   tenant lock. A scan of all 3,222 open MR pages: `$WSB_TMP/regrade/mrscan/`.
+  **Fixed 2026-11-15** (docs/NOTES-code.md "MR page fixes"): the gcc pages say the merge base is outside the stored
+  history; processwire!247 was the dry-run merge diffing line-ending rewrites (now bounded, deterministic); a scan of
+  every MR (3 tabs) and issue page of every project -- 483,970 pages -- is all HTTP 200, p95 <= 26 ms, max 1.3 s
+  (first view of a deep gcc merge base, cached after). The 14 MRs skipped by `gen-code-mr-request-review` render now
+  (the sampler still skips them; re-sampling would change task ids).
 - **code**: merged MR pages have no "Delete source branch" button; MR search finds `!6981` but not `6981`; for a fork
   the new-MR form targets the upstream project by default (as GitLab).
 - **store admin**: Categories and Customer Groups are plain multi-selects (Ctrl-click; `browse.js select` sets one
