@@ -118,7 +118,7 @@ class Geocoder {
     const street = a.street_id ? this.st.place.get(a.street_id) : null;
     const c = this.combo(a.combo != null ? a.combo : street ? street.combo : -1);
     const lat = a.lat_e7 / 1e7, lon = a.lon_e7 / 1e7;
-    a = { ...a, lat, lon, postcode: a.postcode || (street && a.combo == null ? street.postcode : null) };
+    a = { ...a, lat, lon, postcode: a.postcode || (street ? street.postcode : null) };
     const streetName = a.street || (street && street.name) || '';
     if (a.place_id) {
       const p = this.st.place.get(a.place_id);
