@@ -10,7 +10,7 @@
   </section>
   <section class="departments" aria-labelledby="dept-title">
     <h2 id="dept-title" class="title">Shop by Department</h2>
-    <ul class="dept-grid"><% for (const d of it.departments) { %><li><a href="<%= d.url %>"><% if (d.img) { %><img src="/media/<%= d.img %>" alt="" width="120" height="120"><% } %><span><%~ it.htmlName(d.c.name) %></span></a></li><% } %></ul>
+    <ul class="dept-grid"><% for (const d of it.departments) { %><li><a href="<%= d.url %>"><% if (d.img) { %><img src="<%= it.mediaUrl(d.img) %>" alt="" width="120" height="120"><% } %><span><%~ it.htmlName(d.c.name) %></span></a></li><% } %></ul>
   </section>
   <section class="block widget block-products-list grid" aria-labelledby="showcase-title">
     <h2 id="showcase-title" class="block-title"><strong>Product Showcases</strong></h2>

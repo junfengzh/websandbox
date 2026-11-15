@@ -4,7 +4,7 @@
 <%~ include('_account_nav', it) %>
 <div class="column main">
 <div class="customer-review view">
-  <div class="product-details"><% if (it.card && it.card.image) { %><img src="/media/<%= it.card.image %>" alt="" width="140" height="140"><% } %>
+  <div class="product-details"><% if (it.card && it.card.image) { %><img src="<%= it.mediaUrl(it.card.image) %>" alt="" width="140" height="140"><% } %>
     <strong class="product-name"><a href="/<%= r.url_key %>.html"><%~ it.htmlName(r.product_name) %></a></strong></div>
   <div class="review-details">
     <% for (const v of r.votes) { %><div class="rating-summary item"><span class="label"><%= v.code %>:</span> <div class="rating-result" role="img" aria-label="<%= v.value %> out of 5 stars"><span style="width:<%= v.percent %>%"><span><%= v.percent %>%</span></span></div></div><% } %>

@@ -8,7 +8,7 @@
   <div class="products-grid wishlist"><ol class="product-items">
   <% for (const w of it.items) { const p = w.p; %>
     <li class="product-item" id="item_<%= w.id %>"><div class="product-item-info">
-      <a class="product-item-photo" href="<%= p.url %>" title="<%= p.plain %>"><% if (p.image) { %><img src="/media/<%= p.image %>" alt="<%= p.plain %>" width="160" height="160"><% } %></a>
+      <a class="product-item-photo" href="<%= p.url %>" title="<%= p.plain %>"><% if (p.image) { %><img src="<%= it.mediaUrl(p.image) %>" alt="<%= p.plain %>" width="160" height="160"><% } %></a>
       <strong class="product-item-name"><a href="<%= p.url %>" title="<%= p.plain %>" class="product-item-link"><%~ it.htmlName(p.name) %></a></strong>
       <%~ include('_price', { ...it, p }) %>
       <div class="product-item-inner">

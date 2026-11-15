@@ -70,8 +70,8 @@
 <div class="product media">
   <div class="gallery" id="gallery" aria-label="Product images">
     <% if (it.images.length) { %>
-      <figure class="gallery-main"><img id="gallery-main" src="/media/<%= it.images[0].file %>" alt="<%= it.plainName(it.images[0].label && it.images[0].label !== 'Image' ? it.images[0].label : p.name) %>" width="<%= it.images[0].width || 600 %>" height="<%= it.images[0].height || 600 %>"></figure>
-      <% if (it.images.length > 1) { %><ul class="gallery-thumbs"><% it.images.forEach((im, i) => { %><li><button type="button" class="gallery-thumb<%= i === 0 ? ' active' : '' %>" data-src="/media/<%= im.file %>" aria-label="Image <%= i + 1 %> of <%= it.images.length %>"><img src="/media/<%= im.file %>" alt="" width="70" height="70" loading="lazy"></button></li><% }) %></ul><% } %>
+      <figure class="gallery-main"><img id="gallery-main" src="<%= it.mediaUrl(it.images[0].file) %>" alt="<%= it.plainName(it.images[0].label && it.images[0].label !== 'Image' ? it.images[0].label : p.name) %>" width="<%= it.images[0].width || 600 %>" height="<%= it.images[0].height || 600 %>"></figure>
+      <% if (it.images.length > 1) { %><ul class="gallery-thumbs"><% it.images.forEach((im, i) => { %><li><button type="button" class="gallery-thumb<%= i === 0 ? ' active' : '' %>" data-src="<%= it.mediaUrl(im.file) %>" aria-label="Image <%= i + 1 %> of <%= it.images.length %>"><img src="<%= it.mediaUrl(im.file) %>" alt="" width="70" height="70" loading="lazy"></button></li><% }) %></ul><% } %>
     <% } else { %><div class="product-image-placeholder large" role="img" aria-label="<%= it.plainName(p.name) %>">No image available</div><% } %>
   </div>
 </div>

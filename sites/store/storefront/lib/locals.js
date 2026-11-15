@@ -3,7 +3,9 @@
 const S = require('../../shared');
 
 module.exports = function locals(req) {
-  const base = { S, money: S.money, date: S.date, htmlName: S.htmlName, plainName: S.plainName };
+  // product_images.file: path under /media/, or a URL when it starts with '/' (admin uploads: /uploads/x)
+  const mediaUrl = (f) => (String(f || '').startsWith('/') ? String(f) : '/media/' + f);
+  const base = { S, mediaUrl, money: S.money, date: S.date, htmlName: S.htmlName, plainName: S.plainName };
   if (/^\/admin(\/|$|\?)/.test(req.url || '')) return base;
   if (!req.tenant || !req.session) return base;
   const catalog = require('./catalog');
