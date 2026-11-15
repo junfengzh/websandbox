@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Rebuild the code-hosting site's base.db from the WebArena GitLab squashfs image.
 # Usage: sites/code/build/build.sh [step...]
-#   steps: mount pgcopy pgstart export repocopy git templates assemble collab media verify licenses cleanup
+#   steps: mount pgcopy pgstart export repocopy git templates assemble collab redact media verify licenses cleanup
 #   (default: all, in that order). See README.md.
 set -euo pipefail
 
@@ -46,7 +46,7 @@ step_pgstart() {
     -v "$WORK/pgdata:/var/lib/postgresql/data" $PG_IMAGE \
     postgres -D /var/lib/postgresql/data -c listen_addresses='*' -c ssl=off -c ssl_ca_file='' \
       -c unix_socket_directories=/tmp -c shared_buffers=2GB -c work_mem=256MB >/dev/null
-  until docker exec $PG_NAME pg_isready -h /tmp -q; do sleep 1; done
+  until docker exec $PG_NAME pg_isready -h /tmp -U gitlab-psql -q; do sleep 1; done
 }
 
 step_export() { venv; "$VENV/bin/python" -I -B "$HERE/export_pg.py" --pg "$PG" --out "$WORK/rel.db"; }
@@ -66,6 +66,10 @@ step_assemble() { python3 -I -B "$HERE/assemble.py" --rel "$WORK/rel.db" --shard
 
 step_collab() {   # indexes + label_priorities + topics for the collaboration side (collab_indexes.sql)
   python3 -I -B -c 'import sqlite3,sys; d=sqlite3.connect(sys.argv[1]); d.executescript(open(sys.argv[2]).read()); d.close()' "$OUT/base.db" "$HERE/collab_indexes.sql"
+}
+
+step_redact() {   # credentials in issue/MR/note text + personal webmail users.email (redact.py)
+  python3 -I -B "$HERE/redact.py" --db "$OUT/base.db"
 }
 
 step_media() {    # the only uploaded avatars (2 bots); everyone else gets a letter avatar
@@ -89,7 +93,7 @@ step_cleanup() {
 }
 
 steps=("$@")
-[ ${#steps[@]} -eq 0 ] && steps=(mount pgcopy pgstart export repocopy git templates assemble collab media verify licenses cleanup)
+[ ${#steps[@]} -eq 0 ] && steps=(mount pgcopy pgstart export repocopy git templates assemble collab redact media verify licenses cleanup)
 for s in "${steps[@]}"; do
   echo "== $s ($(date +%T))"
   "step_$s"

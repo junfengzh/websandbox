@@ -28,6 +28,12 @@ projects and the task user `byteblaze`). In this extraction:
 - nothing was added. Secrets were dropped (all access tokens, SSH keys, OAuth/CI/runner
   tokens, OTP secrets, webhooks); the only token kept is byteblaze's RSS feed token, which a
   WebArena task asks for and which is published in the WebArena task file.
+- Redactions (`build/redact.py`): live-looking credentials pasted into imported issue/MR
+  descriptions and comments (GitHub tokens, Google API keys, AWS access key ids / secret keys,
+  Slack tokens, PEM private key bodies) are replaced with `[REDACTED]` (14 cells), and the 9
+  personal webmail addresses in `users.email` are replaced with `<username>@example.com` (no
+  task uses them). Git data (commit/tag author and committer emails, blobs, commit messages)
+  is left as recorded in the public repositories.
 
 ## Licences
 

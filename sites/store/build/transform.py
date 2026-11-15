@@ -972,7 +972,7 @@ class Builder:
                     'total_qty_ordered': num(r['total_qty_ordered']), 'total_item_count': r['total_item_count'],
                     'weight': num(r['weight']), 'shipping_method': r['shipping_method'],
                     'shipping_description': r['shipping_description'], 'payment_method': pm['method'] if pm else None,
-                    'coupon_code': r['coupon_code'], 'applied_rule_ids': r['applied_rule_ids'], 'remote_ip': r['remote_ip'],
+                    'coupon_code': r['coupon_code'], 'applied_rule_ids': r['applied_rule_ids'], 'remote_ip': None,  # redacted (WebArena customers' IPs)
                     'currency': r['order_currency_code'], 'store_name': r['store_name'],
                     'billing_address_id': r['billing_address_id'] + off['order_address'] if r['billing_address_id'] else None,
                     'shipping_address_id': r['shipping_address_id'] + off['order_address'] if r['shipping_address_id'] else None,

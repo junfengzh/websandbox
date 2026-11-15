@@ -19,6 +19,7 @@ sites/code/build/build.sh mount pgcopy pgstart export      # or individual steps
 | | `import_git.py --reuse` keeps existing shards' `git log` output (the slow part) and recomputes branches, contributors and objects -- use it after changing the object/branch policies | 5 min |
 | `templates` | `templates.py`: GitLab's built-in project templates (bundles) -> `shards/t_<name>.db` | 1 min |
 | `assemble` | `assemble.py`: rel.db + shards -> base.db (dedupe by sha), site_settings, FTS5 + triggers, ANALYZE, VACUUM, integrity_check | |
+| `redact` | `redact.py`: live-looking credentials (GitHub/Google/AWS/Slack tokens, PEM key bodies) in non-git text columns -> `[REDACTED]`; personal webmail `users.email` -> `<username>@example.com`; FTS kept in sync by the triggers; secure_delete + VACUUM | 3 min |
 | `media` | the 2 uploaded avatars -> `data/code/media/avatars/` | s |
 | `verify` | `verify.py`: counts vs source, git ref/commit counts vs `git`, orphans, 40+ WebArena task facts (base.db vs source vs reference answer) | |
 | `licenses` | `licenses.py`: `../SOURCES.repos.md` (upstream + licence per project) | s |
