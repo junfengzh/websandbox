@@ -2,6 +2,7 @@
 'use strict';
 // Wiki (wiki.wa) task generator: docs/GENERATOR.md. Read-only site, so every task is
 // information seeking or navigation (answer / url checks).
+//   (cd tasks/wiki/gen && npm install)   # node-html-parser
 //   node tasks/wiki/gen/index.js --seed 1 [--out tasks/wiki/generated.jsonl] [--only gen-wiki-x,...] [--stats]
 // Facts come from the stored article HTML (the HTML the site renders), parsed once into a cache
 // (cache.js; rebuilt when base.db changes). Deterministic for a seed and a base.db.

@@ -203,3 +203,39 @@ articles, max 542 KB HTML):
 
 At concurrency 8 on one event loop the search numbers are queueing; use `--workers` for many
 tenants (searches are CPU-bound in SQLite).
+
+## Generated tasks (`tasks/wiki/gen/`, 2026-11-15)
+
+`(cd tasks/wiki/gen && npm install)` (node-html-parser), then
+`node tasks/wiki/gen/index.js --seed 1` -> `tasks/wiki/generated.jsonl`: **35 templates, 1,950 tasks**
+(all read-only: answer / url checks; 160 url, 215 numeric, 175 with `answer_sql`), deterministic
+(same md5 on re-run). `node tasks/wiki/gen/check.js --site <wiki>` re-checks every task against a
+running site: answer_sql vs the static reference, each must_include reference present in the
+visible text of the rendered evidence article(s) (`task.evidence`), numeric shown values on the
+page, url targets 200 + section ids, reference passes / empty answer and Main Page fail (1950/1950).
+
+- **Facts from the stored HTML**: `cache.js` parses every article once (6 worker threads, ~6 min on
+  the loaded box) into `$WSB_WORK/wiki/gen-cache/articles.jsonl` (185 MB;
+  rebuilt when base.db size/mtime changes): first infobox rows (section header, label, visible text
+  lines without references / display:none, links, hidden ISO dates) and simple wikitables (one
+  header row, no row/col spans). Parsers in `facts.js` reject multi-valued, missing or ambiguous
+  values (one line, one number, one year, consistent ft/m pairs, one date ...).
+- Templates: infobox facts (birth date / place, age at death, alma mater, population, area, elevation,
+  river/road length, mayor, French commune department, headquarters city, founding year, coach,
+  capacity, film director / running time, capital), comparisons of 2-3 named articles (population,
+  birth, capacity; unique winner with a margin, no title inside another), link chains (film ->
+  director -> birthplace; team -> venue -> capacity; person -> alma mater -> founded; town -> county
+  -> seat), navigation by URL (director's article, redirect target, a section via the TOC),
+  TOC structure (first subsection, number of subsections), What links here (count, which of 3),
+  redirects (target title), tables (cell lookup by row key, count rows with a value, row with the
+  max/min number).
+- Entities are named by their exact article title (the Go box lands on them; parenthetical titles
+  kept, e.g. "Sense and Sensibility (film)"), so the weak ranking of question-style searches does not matter.
+- Grading quirks: areas use numeric unit `km` (the grader reads "151.12 km2" / "km²" as a km
+  quantity; bare numbers count too); small counts accept number words (`2 |OR| two`); dates accept
+  US/UK/ISO forms; diacritics are not folded (an answer "Stephane Peters" fails "Stéphane Peters").
+- Section tasks need the site grader `sites/wiki/grade.js` (fragment = section check; the kit
+  grader ignores fragments).
+- Validation: every template has 2 instances solved through the UI with browse.js (search box ->
+  article -> infobox / TOC / What links here / tables, clicking links for chains) and graded with
+  grade.js, plus 1 negative (`tasks/wiki/verify-generated.jsonl`, `gen/verified.json`).
