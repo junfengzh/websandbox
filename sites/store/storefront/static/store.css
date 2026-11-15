@@ -82,6 +82,7 @@ textarea { width: 100%; }
 .filter-options-title { font-weight: 600; text-transform: uppercase; font-size: .95rem; border-top: 1px solid var(--line); padding: 10px 0 6px; margin: 0; }
 .filter-options-content { margin: 0 0 8px; } .filter-options-content .item { padding: 3px 0; }
 .filter-options-content .count { color: var(--muted); } .filter-options-content .count::before { content: "("; } .filter-options-content .count::after { content: ")"; }
+.price-range { margin: 6px 0 4px; font-size: 13px; } .price-range input { width: 70px; }
 .filter-count-label { position: absolute; left: -9999px; }
 .filter-current .item { padding: 3px 0; } .filter-current .remove { color: var(--err); margin-left: 6px; }
 .filter-current .remove span { font-size: .85rem; }

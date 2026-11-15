@@ -10,5 +10,5 @@
     <%~ include('_field', { ...it, name: 'telephone', label: 'Phone Number', value: v.telephone, type: 'tel', title: 'Phone Number', errors: E }) %>
     <%~ include('_field', { ...it, name: 'comment', label: 'What’s on your mind?', value: v.comment, required: true, type: 'textarea', title: 'What’s on your mind?', errors: E }) %>
   </fieldset>
-  <div class="actions-toolbar"><div class="primary"><button type="submit" title="Submit" class="action submit primary"><span>Submit</span></button></div></div>
+  <div class="actions-toolbar"><p class="draft-status muted" id="contact-draft-status" aria-live="polite"><%= it.draftAt ? 'Draft restored (not sent yet).' : '' %></p><div class="primary"><button type="submit" title="Submit" class="action submit primary"><span>Submit</span></button></div></div>
 </form>

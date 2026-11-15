@@ -138,10 +138,27 @@ module.exports = async function miscRoutes(app, kit) {
   });
 
   // ---------------------------------------------------------------- contact
+  // The form autosaves an unsent draft to the session (POST /contact/draft from store.js), like
+  // a mail client: the page restores it, a successful submit clears it. Graders read
+  // kit_sessions.data -> '$.contact_draft' for "fill the form but don't submit" tasks.
+  const DRAFT_FIELDS = ['name', 'email', 'telephone', 'comment'];
   const contactPage = async (req, reply) => {
     const u = req.user;
-    return reply.render('contact', { title: 'Contact Us', values: { name: u ? `${u.firstname} ${u.lastname}` : '', email: u ? u.email : '', telephone: '', comment: '' }, errors: {}, bodyClass: 'contact-index-index' });
+    const values = { name: u ? `${u.firstname} ${u.lastname}` : '', email: u ? u.email : '', telephone: '', comment: '' };
+    const d = req.session && req.session.get('contact_draft');
+    if (d) for (const k of DRAFT_FIELDS) if (typeof d[k] === 'string') values[k] = d[k];
+    return reply.render('contact', { title: 'Contact Us', values, draftAt: d ? d.at : null, errors: {}, bodyClass: 'contact-index-index' });
   };
+  app.post('/contact/draft', async (req) => {
+    const b = req.body || {};
+    const prev = req.session.get('contact_draft');
+    const seq = Number(b.seq) || 0;
+    if (prev && prev.page === b.page && seq <= (prev.seq || 0)) return { ok: true, stale: true };
+    const d = { seq, page: String(b.page || '').slice(0, 40), at: kit.nowSql() };
+    for (const k of DRAFT_FIELDS) d[k] = String(b[k] ?? '').slice(0, 20000);
+    req.session.set('contact_draft', d);
+    return { ok: true, at: d.at };
+  });
   app.get('/contact', contactPage);
   app.get('/contact/index', contactPage);
   app.post('/contact/index/post', async (req, reply) => {
@@ -153,6 +170,7 @@ module.exports = async function miscRoutes(app, kit) {
     });
     if (!v.ok) return reply.render('contact', { title: 'Contact Us', values: v.values, errors: v.errors }, 422);
     db().prepare('INSERT INTO contact_messages (name, email, telephone, comment, created_at) VALUES (?, ?, ?, ?, ?)').run(v.values.name, v.values.email, v.values.telephone || null, v.values.comment, kit.nowSql());
+    if (req.session && req.session.get('contact_draft')) req.session.set('contact_draft', null);
     req.flash('success', "Thanks for contacting us with your comments and questions. We'll respond to you very soon.");
     return reply.redirect('/contact/');
   });

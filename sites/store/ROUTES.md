@@ -52,6 +52,7 @@ Trailing slashes are optional everywhere. POST forms need the CSRF token (`_csrf
 | `product_list_limit` | grid `12` (default) / `24` / `36`; list `10` (default) / `20` / `30` | page size |
 | `p` | 2, 3, ... | page (`page` also accepted) |
 | `price` | `10-20` (10 <= price < 20), `0-25`, `100-` (100 and above) | price filter; ranges in the "Price" facet use Magento's automatic step (10^n) |
+| `price_from`, `price_to` | numbers | the "From $ .. to $ .. Go" form under the Price facet: redirects to the canonical `price=<from>-<to>` (`price_to` exclusive, empty `price_from` = 0), e.g. `?price_to=25` -> `?price=0-25` |
 | `brand` | label, repeatable or comma list (`brand=Sony`) | brand filter (shop products: brand from the product details) |
 | `cat` | category id | category filter (search pages; categories link directly to the sub-category page) |
 | `color`, `size`, `material`, `activity`, `pattern`, `climate`, `style_*`, `gender`, `sleeve`, `collar`, `format`, ... | attribute option id (`color=49`); booleans `eco_collection`, `erin_recommends`, `new`, `sale`, `performance_fabric` take `1`/`0` | Luma attribute filters (configurables match by their children) |
@@ -158,7 +159,8 @@ is order `000001180`).
 | GET | `/review/customer/` | My Product Reviews (`?p=`) |
 | GET | `/review/customer/view/id/<id>/` | Review details |
 | GET | `/contact/` (also `/contact/index/`) | Contact Us form ("What’s on your mind?" textarea has that `title`) |
-| POST | `/contact/index/post/` | `name`, `email`, `telephone`, `comment` -> `contact_messages` |
+| POST | `/contact/index/post/` | `name`, `email`, `telephone`, `comment` -> `contact_messages` (clears the draft) |
+| POST | `/contact/draft` | JSON `{name, email, telephone, comment, seq, page}`: autosaved unsent draft (store.js, 150 ms after typing, on change and on pagehide) -> session `contact_draft` `{..fields, seq, page, at}` (`kit_sessions.data`); `/contact/` restores it. Graders of "fill the form, don't submit" tasks read it |
 
 ## Back office
 

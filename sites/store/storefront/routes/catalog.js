@@ -54,8 +54,19 @@ module.exports = async function catalogRoutes(app, kit) {
     return out;
   }
 
+  // Price range form of the layered navigation (?price_from=&price_to=) -> canonical ?price=<from>-<to>
+  // (Magento URL; from <= price < to, either end optional).
+  function priceFormRedirect(req, reply) {
+    const q = req.query || {};
+    if (!('price_from' in q) && !('price_to' in q)) return null;
+    const num = (v) => { const x = String(v ?? '').trim().replace(/^\$/, ''); return /^\d+(\.\d+)?$/.test(x) ? x : ''; };
+    const from = num(q.price_from); const to = num(q.price_to);
+    return reply.redirect(kit.urlWith(req, { price_from: null, price_to: null, p: null, price: from || to ? `${from || 0}-${to}` : null }));
+  }
+
   // ---------------------------------------------------------------- category
   function renderCategory(req, reply, c) {
+    const pf = priceFormRedirect(req, reply); if (pf) return pf;
     const t = C.tree(db());
     const list = C.listing(req, { category: c });
     const crumbs = [['Home', '/'], ...C.ancestors(t, c).map((a) => [a.name, C.catUrl(a)]), [c.name]];
@@ -147,6 +158,7 @@ module.exports = async function catalogRoutes(app, kit) {
   async function renderSearch(req, reply) {
     const q = String(req.query.q || '').trim();
     if (!q) { req.flash('error', 'Please enter a search term.'); return reply.redirect('/'); }
+    const pf = priceFormRedirect(req, reply); if (pf) return pf;
     const s = C.searchRows(db(), q);
     const list = C.listing(req, { search: s });
     let suggestion = null;

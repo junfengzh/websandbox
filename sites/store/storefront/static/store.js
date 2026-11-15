@@ -87,4 +87,23 @@
     };
     country.addEventListener('change', fill); fill();
   }
+  // ---- contact form: autosave the unsent draft (POST /contact/draft), restored by the page
+  var cform = document.getElementById('contact-form');
+  if (cform && window.fetch) {
+    var cseq = 0, ctimer = null, cpage = String(Date.now()) + Math.random().toString(36).slice(2, 6);
+    var cstatus = document.getElementById('contact-draft-status');
+    var csave = function (keepalive) {
+      clearTimeout(ctimer); ctimer = null;
+      var body = { seq: ++cseq, page: cpage };
+      ['name', 'email', 'telephone', 'comment'].forEach(function (k) { var el = cform.elements[k]; body[k] = el ? el.value : ''; });
+      var tok = document.querySelector('meta[name="csrf-token"]');
+      fetch('/contact/draft', { method: 'POST', keepalive: !!keepalive, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': tok ? tok.content : '' }, body: JSON.stringify(body) })
+        .then(function (r) { if (r.ok && cstatus) cstatus.textContent = 'Draft saved (not sent yet).'; }).catch(function () {});
+    };
+    var cdirty = function () { clearTimeout(ctimer); ctimer = setTimeout(csave, 150); };
+    cform.addEventListener('input', cdirty);
+    cform.addEventListener('change', function () { csave(); });
+    cform.addEventListener('submit', function () { clearTimeout(ctimer); ctimer = null; });
+    window.addEventListener('pagehide', function () { if (ctimer) csave(true); });
+  }
 })();
