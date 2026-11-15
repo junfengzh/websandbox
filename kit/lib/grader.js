@@ -1,6 +1,6 @@
 'use strict';
 // Task grader for the eval format in docs/CONVENTIONS.md ("WebArena tasks"):
-//   eval: { type: 'answer'|'url'|'state' | [...], answer: {exact|must_include|fuzzy: ...},
+//   eval: { type: 'answer'|'url'|'state' | [...], answer: {exact|must_include|fuzzy|numeric: ...} | [specs],
 //           answer_sql, url, state_sql, state_expect }
 // grade(task, {answer, url, query, fuzzy}) -> {pass: true|false|null, score, checks: [...]}
 // `query(sql)` -> rows (array of objects or arrays); see remoteQuery()/tenant.query().
@@ -39,6 +39,70 @@ function includesRef(p, ref) {
 function mustInclude(pred, refs) {
   const p = clean(pred);
   return [].concat(refs).every((r) => String(r).split(' |OR| ').some((alt) => includesRef(p, clean(alt))));
+}
+
+// ---- numeric answers with a unit and a tolerance (map distances/durations, ...):
+//   answer.numeric: {value, unit, tol_pct?, tol_abs?} | [specs] (each must be found in the answer)
+// The answer's quantities of the spec unit's kind are parsed ("1h 22min", "1 hour and 22
+// minutes", "82 mins", "1:22", "4.0km", "780 m", "0.5 miles", "1,200 ft"); compound
+// durations are summed ("1h 22min" is 82 min, not also 22 min). Bare numbers count in the
+// spec unit only when the answer has no number with a unit of that kind. A quantity passes
+// if |x - value| <= max(value * tol_pct / 100, tol_abs) (tol_abs in the spec unit;
+// default tol_pct 10 when neither is given).
+const UNITS = {
+  duration: { s: 1, sec: 1, secs: 1, second: 1, seconds: 1, m: 60, min: 60, mins: 60, minute: 60, minutes: 60,
+    h: 3600, hr: 3600, hrs: 3600, hour: 3600, hours: 3600, d: 86400, day: 86400, days: 86400 },
+  distance: { m: 1, meter: 1, meters: 1, metre: 1, metres: 1, km: 1000, kms: 1000, kilometer: 1000, kilometers: 1000,
+    kilometre: 1000, kilometres: 1000, mi: 1609.344, mile: 1609.344, miles: 1609.344, ft: 0.3048, foot: 0.3048, feet: 0.3048,
+    yd: 0.9144, yard: 0.9144, yards: 0.9144 },
+};
+function unitOf(u) {
+  const k = String(u || '').toLowerCase();
+  if (k === 'm') return { kind: 'distance', mult: 1 }; // spec unit 'm' = metres (minutes: 'min')
+  for (const [kind, t] of Object.entries(UNITS)) if (t[k]) return { kind, mult: t[k] };
+  throw new Error(`grader: unknown numeric unit '${u}'`);
+}
+/** quantities of one kind in a text, in the kind's base unit (seconds / metres) */
+function quantities(text, kind) {
+  const t = String(text ?? '');
+  const table = UNITS[kind];
+  const hits = [];
+  if (kind === 'duration') {
+    for (const m of t.matchAll(/(?<![\d.:])(\d{1,3}):([0-5]\d)(?::([0-5]\d))?(?![\d:])/g)) {
+      hits.push({ v: +m[1] * 3600 + +m[2] * 60 + (m[3] ? +m[3] : 0), mult: 3600, start: m.index, end: m.index + m[0].length, hm: true });
+    }
+  }
+  const re = /(?<![\w.])(\d[\d,]*(?:\.\d+)?|\.\d+)\s*([a-z]+)?/gi;
+  for (const m of t.matchAll(re)) {
+    if (hits.some((h) => h.hm && m.index >= h.start && m.index < h.end)) continue;
+    const n = Number(m[1].replace(/,/g, ''));
+    const u = m[2] && table[m[2].toLowerCase()];
+    if (!u && m[2] && Object.values(UNITS).some((tb) => tb[m[2].toLowerCase()])) continue; // a unit of another kind
+    hits.push({ v: u ? n * u : n, mult: u || 0, start: m.index, end: m.index + m[0].length, bare: !u });
+  }
+  hits.sort((a, b) => a.start - b.start);
+  const out = [];
+  const units = hits.filter((h) => !h.bare);
+  for (let i = 0; i < units.length; i++) {
+    let h = { ...units[i] };
+    // "1h 22min", "1 hour and 22 minutes", "2 km 300 m": smaller unit right after a larger one
+    while (i + 1 < units.length && !units[i].hm && units[i + 1].mult < h.mult && /^\s*(,|and)?\s*$/i.test(t.slice(units[i].end, units[i + 1].start))) {
+      h = { ...h, v: h.v + units[i + 1].v, mult: units[i + 1].mult, end: units[i + 1].end };
+      i++;
+    }
+    out.push(h.v);
+  }
+  return { withUnit: out, bare: hits.filter((h) => h.bare).map((h) => h.v) };
+}
+function numericMatch(pred, specs) {
+  return [].concat(specs).every((sp) => {
+    const { kind, mult } = unitOf(sp.unit);
+    const want = Number(sp.value) * mult;
+    const tol = Math.max(sp.tol_pct != null || sp.tol_abs != null ? Math.abs(want) * (sp.tol_pct || 0) / 100 : Math.abs(want) * 0.1, (sp.tol_abs || 0) * mult);
+    const q = quantities(pred, kind);
+    const xs = q.withUnit.length ? q.withUnit : q.bare.map((v) => v * mult);
+    return xs.some((x) => Math.abs(x - want) <= tol + 1e-9);
+  });
 }
 
 // ---- URLs: host ignored (placeholders / tenant addresses vary), path normalised,
@@ -124,29 +188,33 @@ async function grade(task, { answer = '', url = '', query, fuzzy } = {}) {
   for (const type of types) {
     try {
       if (type === 'answer') {
-        const spec = ev.answer || {};
+        // answer: one spec, or a list of specs (each its own check), e.g.
+        // [{must_include: ['Hyatt Regency']}, {numeric: {value: 15, unit: 'min'}}]
         let sqlRef = null;
         if (ev.answer_sql) sqlRef = firstCol(await needQuery()(ev.answer_sql)).map((v) => (v == null ? '' : String(v)));
-        const mode = ['exact', 'must_include', 'fuzzy'].find((m) => m in spec) || (sqlRef ? 'must_include' : null);
-        if (!mode) throw new Error('answer check without answer.exact/must_include/fuzzy or answer_sql');
-        let ref = spec[mode];
-        if (SQL_REF(ref)) {
-          if (!sqlRef) throw new Error(`answer.${mode} refers to answer_sql but there is none`);
-          ref = mode === 'exact' ? (sqlRef[0] ?? '') : mode === 'must_include' ? sqlRef : sqlRef.join(', ');
+        for (const spec of Array.isArray(ev.answer) ? ev.answer : [ev.answer || {}]) {
+          const mode = ['exact', 'must_include', 'fuzzy', 'numeric'].find((m) => m in spec) || (sqlRef ? 'must_include' : null);
+          if (!mode) throw new Error('answer check without answer.exact/must_include/fuzzy/numeric or answer_sql');
+          let ref = spec[mode];
+          if (mode !== 'numeric' && SQL_REF(ref)) {
+            if (!sqlRef) throw new Error(`answer.${mode} refers to answer_sql but there is none`);
+            ref = mode === 'exact' ? (sqlRef[0] ?? '') : mode === 'must_include' ? sqlRef : sqlRef.join(', ');
+          }
+          const c = { type, mode, reference: ref };
+          if (sqlRef && mode !== 'numeric' && !SQL_REF(spec[mode])) {
+            // Static reference and SQL both given: report drift between them.
+            const a = [].concat(ref).map(clean).sort().join('\n'); const b = sqlRef.map(clean).sort().join('\n');
+            c.sql_reference = sqlRef; c.drift = a !== b;
+          }
+          if (mode === 'exact') c.pass = exactMatch(answer, ref);
+          else if (mode === 'must_include') c.pass = mustInclude(answer, ref);
+          else if (mode === 'numeric') c.pass = numericMatch(answer, ref);
+          else if (fuzzy) {
+            const r = await fuzzy({ intent: task.intent, answer, reference: ref });
+            c.score = typeof r === 'number' ? r : r ? 1 : 0; c.pass = c.score >= 1;
+          } else { c.pass = null; c.pending = 'fuzzy'; }
+          checks.push(c);
         }
-        const c = { type, mode, reference: ref };
-        if (sqlRef && !SQL_REF(spec[mode])) {
-          // Static reference and SQL both given: report drift between them.
-          const a = [].concat(ref).map(clean).sort().join('\n'); const b = sqlRef.map(clean).sort().join('\n');
-          c.sql_reference = sqlRef; c.drift = a !== b;
-        }
-        if (mode === 'exact') c.pass = exactMatch(answer, ref);
-        else if (mode === 'must_include') c.pass = mustInclude(answer, ref);
-        else if (fuzzy) {
-          const r = await fuzzy({ intent: task.intent, answer, reference: ref });
-          c.score = typeof r === 'number' ? r : r ? 1 : 0; c.pass = c.score >= 1;
-        } else { c.pass = null; c.pending = 'fuzzy'; }
-        checks.push(c);
       } else if (type === 'url') {
         const refs = [].concat(ev.url);
         const ok = refs.some((r) => urlMatch(url, r, { mode: ev.url_match || 'subset', ignore: ev.url_ignore_params || [] }));
@@ -181,4 +249,4 @@ function remoteQuery(base, { tenant, token } = {}) {
   };
 }
 
-module.exports = { grade, remoteQuery, clean, exactMatch, mustInclude, urlMatch, normUrl, stateMatch };
+module.exports = { grade, remoteQuery, clean, exactMatch, mustInclude, numericMatch, quantities, urlMatch, normUrl, stateMatch };

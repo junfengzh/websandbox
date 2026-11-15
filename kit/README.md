@@ -354,13 +354,22 @@ curl -s -XPOST -H 'content-type: application/json' -d '{"sql":"SELECT count(*) n
 
 ## Grading
 
-`eval` format: CONVENTIONS.md "WebArena tasks". `kit.grader.grade(task, {answer, url, query, fuzzy})`
+`eval` format: CONVENTIONS.md "WebArena tasks" (plus `answer.numeric` and answer lists, below). `kit.grader.grade(task, {answer, url, query, fuzzy})`
 → `{pass: true|false|null, score, checks: [...]}` (`null` = waiting for the LLM judge).
 
 - `type`: `'answer' | 'url' | 'state'` or a list (all must pass); inferred from keys if absent.
 - `answer: {exact: s}` -- WebArena clean (trim, strip quotes, lowercase) then equal.
   `{must_include: [..]}` -- each item (with ` |OR| ` alternatives) is a substring.
   `{fuzzy: ..}` -- calls `fuzzy({intent, answer, reference})` (the RL stack's judge) or returns pending.
+  `{numeric: {value, unit, tol_pct?, tol_abs?}}` (or a list of such specs, all must be found) --
+  quantities of the unit's kind are parsed from the answer and compared with a tolerance:
+  durations (`s`, `min`, `h`; answers like `1h 22min`, `1 hour and 22 minutes`, `82 mins`, `1:22`,
+  compound forms summed) and distances (`m`, `km`, `mi`, `ft`; `0.78 km`, `780 m`, `1,200 meters`).
+  Pass if `|x - value| <= max(value * tol_pct / 100, tol_abs)` (tol_abs in the spec unit; default
+  tol_pct 10). Bare numbers count in the spec unit only if no number carries a unit of that kind;
+  spec unit `m` is metres (minutes: `min`). For map times/distances re-derived on the lite engines.
+  `answer` may also be a **list of specs**, each graded as its own check (all must pass), e.g.
+  `[{must_include: ['Hyatt Regency']}, {numeric: {value: 15, unit: 'min', tol_abs: 1}}]`.
   A value of `"$sql"` (or null) takes the reference from `answer_sql` (first column: one
   value for exact, all rows for must_include). With both a static reference and
   `answer_sql`, the check reports `sql_reference` and `drift` (use this in verification).

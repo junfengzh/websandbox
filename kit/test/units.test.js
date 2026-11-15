@@ -135,3 +135,40 @@ test('grader: answers, URLs, state', async () => {
   r = await grader.grade({ eval: { type: 'state', state_sql: 'DELETE FROM p', state_expect: 1 } }, { query: async () => { throw new Error('read-only'); } });
   assert.equal(r.pass, false); assert.match(r.checks[0].error, /read-only/);
 });
+
+test('grader: numeric answers with units and tolerance', async () => {
+  const n = (a, spec) => grader.numericMatch(a, spec);
+  // durations: compound forms are summed, h:mm, plural/abbreviated units
+  assert.ok(n('1h 22min', { value: 82, unit: 'min' }));
+  assert.ok(n('It takes 1 hour and 22 minutes.', { value: 82, unit: 'min' }));
+  assert.ok(n('about 82 mins', { value: 82, unit: 'min' }));
+  assert.ok(n('Time: 1:22 (h:mm)', { value: 82, unit: 'min' }));
+  assert.ok(n('5h 47min', { value: 346, unit: 'min', tol_abs: 2 }));
+  assert.ok(!n('5h 49min', { value: 346, unit: 'min', tol_abs: 2 }));
+  assert.ok(!n('1h 22min', { value: 22, unit: 'min' })); // the minutes part is not a quantity of its own
+  assert.ok(n('walking 14 min, driving 2 min', [{ value: 2, unit: 'min' }, { value: 14, unit: 'min' }]));
+  assert.ok(!n('walking 14 min, driving 3 min', [{ value: 2, unit: 'min' }, { value: 14, unit: 'min' }]));
+  assert.ok(n('1.5 hours', { value: 90, unit: 'min' }));
+  // distances: m vs km vs miles, thousands separators; spec unit 'm' = metres
+  assert.ok(n('The walking distance is 0.78 km', { value: 780, unit: 'm' }));
+  assert.ok(n('780 m', { value: 0.78, unit: 'km' }));
+  assert.ok(n('1,200 meters', { value: 1.2, unit: 'km', tol_pct: 5 }));
+  assert.ok(n('0.9 miles', { value: 1.45, unit: 'km' }));
+  assert.ok(!n('1.7 km', { value: 1.4, unit: 'km' }));
+  assert.ok(!n('22 min', { value: 22, unit: 'm' })); // minutes are not a distance
+  // tolerance: default 10 %, tol_pct and tol_abs (spec unit), the larger wins
+  assert.ok(n('16 min', { value: 15, unit: 'min' }) && !n('17 min', { value: 15, unit: 'min' }));
+  assert.ok(n('3 min', { value: 2, unit: 'min', tol_abs: 1 }) && !n('3 min', { value: 2, unit: 'min' }));
+  // bare numbers count only when no number carries a unit of that kind
+  assert.ok(n('15', { value: 15, unit: 'min' }));
+  assert.ok(!n('zip 15213, 20 min', { value: 15, unit: 'min' }));
+  assert.throws(() => n('3 min', { value: 3, unit: 'parsecs' }), /unknown numeric unit/);
+  // in grade(): answer as a list of specs, one check each
+  let r = await grader.grade({ eval: { type: 'answer', answer: [{ must_include: ['Hyatt Regency'] }, { numeric: { value: 15, unit: 'min', tol_abs: 1 } }] } },
+    { answer: 'Hyatt Regency Pittsburgh International Airport; 16 min by car' });
+  assert.equal(r.pass, true); assert.equal(r.checks.length, 2); assert.equal(r.checks[1].mode, 'numeric');
+  r = await grader.grade({ eval: { answer: [{ must_include: ['Hyatt Regency'] }, { numeric: { value: 15, unit: 'min', tol_abs: 1 } }] } }, { answer: 'Hyatt Regency, 25 min' });
+  assert.equal(r.pass, false); assert.equal(r.checks[0].pass, true); assert.equal(r.checks[1].pass, false);
+  r = await grader.grade({ eval: { answer: { numeric: { value: 4.0, unit: 'km' } } } }, { answer: '' });
+  assert.equal(r.pass, false);
+});
