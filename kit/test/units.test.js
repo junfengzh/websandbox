@@ -97,7 +97,11 @@ test('auth: scrypt, bcrypt, argon2, plain', async () => {
 test('grader: answers, URLs, state', async () => {
   assert.ok(grader.exactMatch(' "Yes" ', 'yes'));
   assert.ok(grader.mustInclude('The total is $55.00 for 2 items', ['55.00', '2 |OR| two']));
-  assert.ok(!grader.mustInclude('total 55', ['55.00']));
+  assert.ok(grader.mustInclude('total 55', ['55.00'])); // numbers compare by value
+  assert.ok(grader.mustInclude('order 000001170', ['1170']));
+  assert.ok(!grader.mustInclude('10 comments', ['1']));
+  assert.ok(!grader.mustInclude('$2.15', ['1']));
+  assert.ok(!grader.mustInclude('total 55.5', ['55']));
   assert.ok(grader.urlMatch('http://127.10.3.2/search?sort=price_desc&q=usb+hub&page=1', '__SHOPPING__/search?q=usb%20hub&sort=price_desc'));
   assert.ok(!grader.urlMatch('http://x/search?q=usb', '__SHOPPING__/search?q=usb&sort=price_desc'));
   assert.ok(!grader.urlMatch('http://x/search?q=usb&sort=price_desc&page=2', '__SHOPPING__/search?q=usb&sort=price_desc', { mode: 'exact' }));

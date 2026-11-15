@@ -20,9 +20,17 @@ const SQL_REF = (v) => v == null || v === '$sql';
 function exactMatch(pred, ref) { return clean(pred) === clean(ref); }
 // must_include entries may contain " |OR| " alternatives (WebArena).
 // A reference that ends/starts with a digit must not match inside a longer number
-// ("1" is not in "10" or "2.15"), unlike WebArena's plain substring test.
+// ("1" is not in "10" or "2.15"), unlike WebArena's plain substring test. A plain
+// number reference matches any number in the answer of equal value ("406" ~ "$406.00",
+// "1170" ~ "000001170").
+const NUM_REF = /^[$€£]?-?\d[\d,]*(\.\d+)?%?$/;
+const toNum = (s) => Number(s.replace(/[$€£,%]/g, ''));
 function includesRef(p, ref) {
   if (!/\d/.test(ref)) return p.includes(ref);
+  if (NUM_REF.test(ref)) {
+    const want = toNum(ref);
+    for (const m of p.matchAll(/-?\d[\d,]*(\.\d+)?/g)) if (toNum(m[0]) === want) return true;
+  }
   const esc = ref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pre = /^\d/.test(ref) ? '(?<![\\d.]|\\d,)' : '';
   const post = /\d$/.test(ref) ? '(?![\\d]|[.,]\\d)' : '';
