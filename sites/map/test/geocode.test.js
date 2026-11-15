@@ -103,3 +103,27 @@ test('WebArena task places: top hit matches', opt, () => {
   // a few places are not in the data (see docs/NOTES-map.md); everything else must hit
   assert.ok(miss.length <= 6, 'misses:\n' + miss.join('\n'));
 });
+
+test('state codes, comma segments, colloquial names', opt, () => {
+  assert.match(g.search('Scranton, PA', { center: CMU, limit: 1 })[0].display_name, /^Scranton, Lackawanna County/);
+  assert.match(g.search('Bridgeport, CT', { center: CMU, limit: 1 })[0].display_name, /^Bridgeport, Greater Bridgeport/);
+  assert.match(g.search('Portland, ME', { center: CMU, limit: 1 })[0].display_name, /^Portland, Cumberland County, Maine/);
+  assert.match(g.search('Carnegie Hall NYC', { center: CMU, limit: 1 })[0].display_name, /^Carnegie Hall, .*Manhattan/);
+});
+
+test('name words + place words ("AMC theatre pittsburgh", "CMU Hunt library")', opt, () => {
+  for (const [q, want] of [['AMC theatre pittsburgh', /^AMC Waterfront/], ['gates building at CMU', /^Gates and Hillman Centers/],
+    ['CMU gates building', /^Gates and Hillman Centers/], ['CMU Hunt library', /^Hunt Library/], ['CMU Posner Hall', /^Posner Hall/],
+    ['university center at Carnegie Mellon University', /^Cohon University Center/], ['starbucks on Craig Street', /^Starbucks, 428, South Craig/]]) {
+    const r = g.search(q, { center: CMU, limit: 3 });
+    assert.ok(r[0] && want.test(r[0].display_name), `${q} -> ${r[0] && r[0].display_name}`);
+  }
+  // a city name is not a place name near something ("... in New York" -> not "New York Street")
+  const r = g.search('Carnegie Music Hall in NYC', { center: CMU, limit: 3 });
+  assert.ok(!r.length || !/Street|Avenue/.test(r[0].display_name.split(',')[0]), r[0] && r[0].display_name);
+});
+
+test('rare category near a place widens the radius ("airports near CMU")', opt, () => {
+  const r = g.search('airports near Carnegie Mellon University', { center: CMU, limit: 10 });
+  assert.ok(r.some((x) => /^Pittsburgh International Airport/.test(x.display_name)), r.map((x) => x.name).join(', '));
+});

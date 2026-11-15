@@ -549,7 +549,7 @@
    ]
   },
   {
-   "q": "Carnegie Mellon Caf\u00e9",
+   "q": "Carnegie Mellon Café",
    "expect": "Carnegie Mellon Caf",
    "tasks": [
     248,
@@ -806,6 +806,99 @@
    "expect": "Target",
    "tasks": [
     764
+   ]
+  },
+  {
+   "q": "gates building at CMU",
+   "expect": "Gates and Hillman Centers",
+   "tasks": [
+    37,
+    154
+   ]
+  },
+  {
+   "q": "CMU gates building",
+   "expect": "Gates and Hillman Centers",
+   "tasks": [
+    154
+   ]
+  },
+  {
+   "q": "CMU Hunt library",
+   "expect": "Hunt Library",
+   "tasks": [
+    58,
+    59
+   ]
+  },
+  {
+   "q": "CMU Posner Hall",
+   "expect": "Posner Hall",
+   "tasks": [
+    60
+   ]
+  },
+  {
+   "q": "CMU Sorrells Library",
+   "expect": "Sorrells Library",
+   "tasks": [
+    61
+   ]
+  },
+  {
+   "q": "university center at Carnegie Mellon University",
+   "expect": "Cohon University Center",
+   "tasks": [
+    57
+   ]
+  },
+  {
+   "q": "amc theatre in pittsburgh",
+   "expect": "AMC Waterfront",
+   "tasks": [
+    40
+   ]
+  },
+  {
+   "q": "Scranton, PA",
+   "expect": "Scranton, Lackawanna County",
+   "tasks": [
+    139
+   ]
+  },
+  {
+   "q": "Bridgeport, CT",
+   "expect": "Bridgeport, Greater Bridgeport",
+   "tasks": [
+    139
+   ]
+  },
+  {
+   "q": "Portland, ME",
+   "expect": "Portland, Cumberland County",
+   "tasks": [
+    758
+   ]
+  },
+  {
+   "q": "Carnegie Science Museum",
+   "expect": "Kamin Science Center",
+   "tasks": [
+    761
+   ]
+  },
+  {
+   "q": "Japanese food market near 401 Shady Ave",
+   "expect": "Tokyo Japanese Food Store",
+   "tasks": [
+    765
+   ]
+  },
+  {
+   "q": "Piada restaurant near Pitt",
+   "expect": "Piada Italian Street Food, 3600",
+   "tasks": [
+    371
    ]
   }
  ]

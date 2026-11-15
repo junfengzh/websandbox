@@ -29,9 +29,10 @@ const CAT = new Map();
 for (const [k, v] of Object.entries(CATS)) for (const p of k.split('|')) CAT.set(norm(p), v);
 const KEY_RANK = { neighbourhood: 24, quarter: 22, suburb: 20, hamlet: 20, borough: 20, city_district: 19, village: 19,
   town: 18, island: 17, city: 16, municipality: 14, county: 12, state_district: 10, state: 8 };
-const LOW_CLASSES = new Set(['public_transport', 'railway', 'highway:bus_stop', 'man_made']);
+const LOW_CLASSES = new Set(['public_transport', 'railway', 'highway:bus_stop', 'man_made', 'amenity:parking_entrance']);
 const CAT_WORDS = new Set(['theatre', 'theater', 'cinema', 'movie', 'restaurant', 'cafe', 'coffee', 'hotel', 'store', 'shop',
   'market', 'supermarket', 'station', 'museum', 'park', 'library', 'hospital', 'pharmacy', 'bar', 'pub', 'mall', 'center', 'ctr']);
+const GENERIC_WORDS = new Set(['building', 'bldg', 'hall', 'place', 'location', 'office', 'the', 'grocery', 'groceries', 'food', 'foods']);
 const MAX_CAT_WORDS = Math.max(...[...CAT.keys()].map((k) => k.split(' ').length));
 
 function hav(lon1, lat1, lon2, lat2) {
@@ -41,6 +42,27 @@ function hav(lon1, lat1, lon2, lat2) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 const q = (t) => '"' + t.replace(/"/g, '""') + '"';
+
+// US state codes after a comma or at the end ("Scranton, PA", "Bridgeport CT") -> full names
+// (addresses carry the full state name; "ct" would otherwise fold to "court")
+const STATES = { AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut',
+  DE: 'Delaware', DC: 'District of Columbia', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana',
+  IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan',
+  MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey',
+  NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
+  RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia',
+  WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming' };
+// a few colloquial city names
+const CITY_ALIASES = { nyc: 'New York', philly: 'Philadelphia' };
+function expandStates(qs) {
+  qs = qs.replace(/\b(nyc|philly)\b/gi, (m) => CITY_ALIASES[m.toLowerCase()]);
+  return qs.replace(/(,\s*|\s)([A-Za-z]{2})(?=\s*(?:,|\d{5}(?:-\d{4})?)?\s*(?:,\s*(?:USA?|United States))?\s*$|\s*,)/g, (m, pre, code, off) => {
+    const st = STATES[code.toUpperCase()];
+    // a bare trailing code needs a comma before it or an upper-case code ("Bridgeport CT", not "Penn ct")
+    if (!st || (!pre.includes(',') && code !== code.toUpperCase()) || off === 0) return m;
+    return pre + st;
+  });
+}
 
 class Geocoder {
   constructor(dbPath = DEFAULT_DB) {
@@ -59,6 +81,10 @@ class Geocoder {
                  ORDER BY rank LIMIT ?`),
       box: P(`SELECT p.* FROM places_rtree r JOIN places p ON p.id = r.id
               WHERE r.minlon >= ? AND r.maxlon <= ? AND r.minlat >= ? AND r.maxlat <= ?`),
+      // same, filtered in SQL by "class:type" / class (JSON lists): ~10x faster for wide boxes
+      boxCls: P(`SELECT p.* FROM places_rtree r JOIN places p ON p.id = r.id
+              WHERE r.minlon >= ? AND r.maxlon <= ? AND r.minlat >= ? AND r.maxlat <= ?
+                AND ((p.class || ':' || p.type) IN (SELECT value FROM json_each(?)) OR p.class IN (SELECT value FROM json_each(?)))`),
       addrByStreet: P('SELECT * FROM addresses WHERE street_id = ? AND hn_key = ?'),
       addrNumbers: P('SELECT * FROM addresses WHERE street_id = ?'),
       addrById: P('SELECT * FROM addresses WHERE street_id = ? AND id = ?'),
@@ -164,15 +190,15 @@ class Geocoder {
   /**
    * Forward search. opts: limit (10), center [lon,lat] or viewbox [minlon,minlat,maxlon,maxlat]
    * (ranking boost by proximity), bounded (only inside viewbox), autocomplete (prefix match of the
-   * last word), countrycodes ['us', ...].
+   * last word), countrycodes ['us', ...]. (_search: nameOnly = all words in the name only.)
    */
   search(query, opts = {}) {
     const limit = opts.limit || 10;
-    const qs = String(query || '').trim();
+    const qs = expandStates(String(query || '').trim());
     if (!qs) return [];
     const ref = this._ref(opts);
     // "X near Y", "X around Y", "X close to Y", "X nearby Y"
-    let m = qs.match(/^(.*?)\s+(?:near(?:by)?|around|close to|next to|by)\s+(.+)$/i);
+    let m = qs.match(/^(.*?)\s+(?:near(?:by)?|around|close to|next to|by|at)\s+(.+)$/i);
     if (m) {
       const r = this._nearQuery(m[1], m[2], limit, opts, false);
       if (r) return r;
@@ -219,7 +245,59 @@ class Geocoder {
           - (catHits.some(([c, t]) => b.class === c && b.type === t) ? 0 : 1));
       }
     }
+    // nothing has all the words in its name ("CMU Hunt library", "AMC theatre pittsburgh"):
+    // try <name words> + <place words>
+    if (!res.length || !this._covers(res[0], toks)) res = this._nameNearPlace(toks, opts, limit) || res;
     return res.slice(0, limit).map(clean);
+  }
+
+  /** every content word of the query is in the result's name(s) or address */
+  _covers(r, toks) {
+    const have = new Set(tokens(r.display_name));
+    for (const v of Object.values(r.namedetails || {})) for (const t of tokens(v)) have.add(t);
+    return toks.filter((t) => !STOP.has(t)).every((t) => have.has(t));
+  }
+
+  /**
+   * Last resort for "<name words> <place>" where the place is not in the object's address
+   * ("AMC theatre pittsburgh" -> AMC Waterfront 22 in West Homestead, "gates building CMU" ->
+   * Gates and Hillman Centers): the trailing words name a place, the leading words (minus
+   * generic words such as theatre/building) are searched in names near it (within 30 km).
+   */
+  _nameNearPlace(toks, opts, limit) {
+    const words = toks.filter((t) => !STOP.has(t));
+    if (words.length > 6) return null;
+    const tries = [];
+    // name ... place (place of up to 3 words), then a short place first ("CMU gates building")
+    for (let k = words.length - 1; k >= Math.max(1, words.length - 3); k--) tries.push([words.slice(0, k), words.slice(k), true]);
+    for (let k = 1; k <= Math.min(2, words.length - 1); k++) tries.push([words.slice(k), words.slice(0, k), true]);
+    // prefer the split that matches the most name words ("CMU Hunt library": name "hunt library"
+    // near "CMU", not name "CMU" near "Hunt Library")
+    let best = null;
+    const places = new Map();
+    for (const [h, p, strip] of tries) {
+      if (best && h.length <= best.n) continue;
+      const pq = p.join(' ');
+      if (!places.has(pq)) places.set(pq, this._bestPlace(pq, { ...opts, nameOnly: true }, 30));
+      const loc = places.get(pq);
+      if (!loc) continue;
+      // the name words as typed ("posner hall"), else without generic words ("gates building" -> "gates")
+      const heads = strip ? [h, h.filter((t) => !CAT_WORDS.has(t) && !GENERIC_WORDS.has(t))] : [h];
+      for (const head of heads) {
+        if (!head.length) continue;
+        const hq = head.join(' ');
+        // POIs only (no streets / areas): "Carnegie Music Hall in New York" must not become
+        // "New York Street" near Carnegie Music Hall
+        const res = this._search(hq, { ...opts, center: [loc.lon, loc.lat], proximityKm: 3, nameOnly: true }, 200)
+          .filter((x) => x._cov >= 1 && x.distance <= 30000 && x.place_id !== loc.place_id && x.place_rank >= 28 && x.class !== 'highway');
+        if (!res.length) continue;
+        // ... and the name words must not be a city/state themselves ("Lash New York" for "... in New York")
+        if (this._search(hq, { ...opts, nameOnly: true }, 3).some((x) => x._cov >= 1 && x.place_rank <= 16 && norm(x.name) === hq)) continue;
+        best = { n: h.length, res: res.slice(0, limit) };
+        break;
+      }
+    }
+    return best ? best.res : null;
   }
 
   /** prefix search for search-as-you-type */
@@ -245,11 +323,21 @@ class Geocoder {
     if (!loc) return null;
     const cat = this._category(what);
     if (cat) {
-      return this.nearby(loc.lat, loc.lon, { classes: cat, limit, radius: inside ? 3000 : 1000, maxRadius: inside ? 30000 : 10000, within: inside ? loc : null });
+      const r = this.nearby(loc.lat, loc.lon, { classes: cat, limit, radius: inside ? 3000 : 1000, maxRadius: inside ? 30000 : 10000, within: inside ? loc : null });
+      // rare categories ("airports near CMU"): look further rather than finding nothing
+      if (!r.length && !inside) return this.nearby(loc.lat, loc.lon, { classes: cat, limit, radius: 25000, maxRadius: 50000 });
+      return r;
     }
     // a name near a place: rank name matches by distance to the place
-    const res = this._search(what, { ...opts, center: [loc.lon, loc.lat], proximityKm: 2 }, 50)
-      .filter((x) => x._cov >= 1);
+    // (within 30 km of the place; "gates building at CMU" -> "gates" if "gates building" is not there)
+    const wt = tokens(what).filter((t) => !STOP.has(t));
+    let res = [];
+    for (const w of [what, wt.filter((t) => !CAT_WORDS.has(t) && !GENERIC_WORDS.has(t)).join(' ')]) {
+      if (!w) continue;
+      res = this._search(w, { ...opts, center: [loc.lon, loc.lat], proximityKm: 2 }, 50)
+        .filter((x) => x._cov >= 1 && x.distance <= 30000);
+      if (res.length) break;
+    }
     if (!res.length) return null;
     res.sort((a, b) => a.distance - b.distance);
     return res.slice(0, limit).map(clean);
@@ -296,18 +384,18 @@ class Geocoder {
     // 1. all words in the name
     add(this._candidates(this._ftsExpr(toks, ac, 'name'), ref, 200));
     // 2. name = leading words, address = the rest (comma split first)
-    if (segs.length > 1) {
+    if (segs.length > 1 && !opts.nameOnly) {
       const nt = tokens(segs[0]).filter((t) => !STOP.has(t));
       const at = tokens(segs.slice(1).join(' ')).filter((t) => !STOP.has(t));
       if (nt.length && at.length) add(this._candidates(this._ftsExpr(nt, false, 'name') + ' AND ' + this._ftsExpr(at, ac, '{addr name}'), ref, 200));
     }
-    if (cand.size < limit && toks.length > 1) {
+    if (cand.size < limit && toks.length > 1 && !opts.nameOnly) {
       for (let k = toks.length - 1; k >= 1 && cand.size < limit * 3; k--) {
         add(this._candidates(this._ftsExpr(toks.slice(0, k), false, 'name') + ' AND ' + this._ftsExpr(toks.slice(k), ac, '{addr cat}'), ref, 200));
       }
     }
     // 3. anything (name, address, category words)
-    if (cand.size < limit) add(this._candidates(this._ftsExpr(toks, ac, null), ref, 200));
+    if (cand.size < limit && !opts.nameOnly) add(this._candidates(this._ftsExpr(toks, ac, null), ref, 200));
     const rows = [];
     for (const id of cand.keys()) {
       const r = this.st.place.get(id);
@@ -316,6 +404,7 @@ class Geocoder {
     const viewbox = opts.viewbox;
     const scored = [];
     const qset = toks;
+    const seg0 = segs.length > 1 ? tokens(segs[0]).filter((t) => !STOP.has(t)).join(' ') : null;
     for (const r of rows) {
       if (opts.countrycodes) {
         const c = this.combo(r.combo);
@@ -333,7 +422,8 @@ class Geocoder {
       const mainToks = tokens(r.name);
       const cov = inName / qset.length;
       const qn = qset.join(' ');
-      let exact = norm(r.name) === qn ? 1 : 0;
+      // exact name: the whole query, or its first comma segment ("Scranton, Pennsylvania")
+      let exact = norm(r.name) === qn || (seg0 && norm(r.name) === seg0) ? 1 : 0;
       if (!exact && r.names) {
         for (const v of Object.values(JSON.parse(r.names))) if (String(v).split(';').some((x) => norm(x) === qn)) { exact = 0.9; break; }
       }
@@ -448,7 +538,9 @@ class Geocoder {
     let res = [];
     for (;;) {
       const dlat = radius / 111320, dlon = dlat / Math.cos(lat * Math.PI / 180);
-      const rows = this.st.box.all(lon - dlon, lon + dlon, lat - dlat, lat + dlat);
+      const rows = classes
+        ? this.st.boxCls.all(lon - dlon, lon + dlon, lat - dlat, lat + dlat, JSON.stringify(classes.filter(([, t]) => t).map(([c, t]) => c + ':' + t)), JSON.stringify(classes.filter(([, t]) => !t).map(([c]) => c)))
+        : this.st.box.all(lon - dlon, lon + dlon, lat - dlat, lat + dlat);
       res = [];
       for (const r of rows) {
         if (classes && !classes.some(([c, t]) => r.class === c && (!t || r.type === t))) continue;
