@@ -42,7 +42,9 @@ Regrade with the final graders ([../tasks/REGRADE.md](../tasks/REGRADE.md)): all
 answer / no actions, all 7,780 stored reference answers and 746 reference URLs pass, 994/997 recorded answer/URL runs
 and 198/198 per-check replays keep their outcome (the 3 others predate a task fix), 321 state tasks (2 per template)
 re-done through the UI; 10 groups of tasks fixed (restored `url_match: 'prefix'` checks on gitlab templates 327/328/335/337/339,
-admin start URLs, two re-sampled generated templates, ...).
+admin start URLs, two re-sampled generated templates, ...). RL scan fixes (same results after): map "What's nearby?"
+`/query` pages pass search tasks, phone numbers compare by digits, quotes/backslashes are ignored, count breakdowns and
+scope sentences no longer trip strict numbers, 5 wiki birthplaces accept the article text's place, 23 map intents reworded.
 
 Splits ([../tasks/splits/SPLITS.md](../tasks/splits/SPLITS.md), template-disjoint, seed 20261115): **train 10,452
 tasks / 329 templates, held-out 2,638 / 76** (WebArena 140 tasks / 33 templates, of which the RL stack's 103 stage-2
@@ -55,8 +57,10 @@ Collected from docs/NOTES-*.md:
   `must_include` on numbers accepts any equal number in the answer, but count/amount questions are
   graded with strict numbers (kit/README.md "Grading"): any other number not in the intent fails, so
   listing numbers no longer guesses a count -- and an extra legit number ("3 orders, total $45") fails
-  too; non-count numeric questions (ids, zip codes, prices asked as "what is") still accept extra
-  numbers; order-sensitive pairs are asked one value per task. Vote tasks do not penalise extra votes on
+  too; an itemised breakdown that adds up to the answer ("4 units (1 X, 1 Y, 2 Z)") is allowed, but
+  "1 unit each of ...", ids and digits in product names next to a count still fail. The trigger reads the
+  question itself, not a trailing scope sentence (tasks/REGRADE.md "RL scan fixes"); non-count numeric
+  questions (ids, zip codes, prices asked as "what is") still accept extra numbers; order-sensitive pairs are asked one value per task. Vote tasks do not penalise extra votes on
   other posts (as WebArena). Map "nearest" is straight-line distance (what the UI lists).
 - **Store.** Search relevance is untuned against Magento; Reorder adds separate cart rows; no rating sort;
   complete orders have no `total_paid`; listing ratings are only in an aria-label; few invoices/shipments in the

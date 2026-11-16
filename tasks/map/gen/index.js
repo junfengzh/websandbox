@@ -61,7 +61,9 @@ async function main() {
       };
       if (x.answer != null) line.reference_answer = x.answer;
       if (x.url != null) line.reference_url = x.url;
-      Object.assign(line, { changes: x.changes || [], status: 'verified', drop_reason: null });
+      // phrasingChanges: {<phrasing index>: note} -- a note on the tasks that use that phrasing
+      const pc = t.phrasingChanges && t.phrasingChanges[k];
+      Object.assign(line, { changes: (x.changes || []).concat(pc ? [pc] : []), status: 'verified', drop_reason: null });
       lines.push(line);
       if (n >= max) break;
     }

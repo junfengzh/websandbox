@@ -16,7 +16,10 @@ const clean = (s) => {
   let a = String(s ?? '').trim();
   if ((a.startsWith("'") && a.endsWith("'")) || (a.startsWith('"') && a.endsWith('"'))) a = a.slice(1, -1);
   // also fold accents, so "Stephane" matches "Stéphane"
-  return a.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  a = a.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  // and drop quote marks and backslashes (then collapse spaces), so a title with 4' / 4"
+  // matches an answer that dropped them, typed curly quotes, or escaped them (4\' , 4\\")
+  return a.replace(/[\\'"‘’‚‛“”„‟′″`´]/g, '').replace(/\s+/g, ' ').trim();
 };
 
 const firstCol = (rows) => rows.map((r) => (Array.isArray(r) ? r[0] : r && typeof r === 'object' ? Object.values(r)[0] : r));
@@ -30,8 +33,33 @@ function exactMatch(pred, ref) { return clean(pred) === clean(ref); }
 // "1170" ~ "000001170").
 const NUM_REF = /^[$€£]?-?\d[\d,]*(\.\d+)?%?$/;
 const toNum = (s) => Number(s.replace(/[$€£,%]/g, ''));
+// A phone-like reference (10-15 digits, only phone punctuation: "4121111111", "412-111-1111",
+// "+1 (412) 111-1111") also matches a phone-formatted number in the answer with the same
+// digits, optionally with a country code on either side (+<1-3 digits>, or a leading 1) ("412-111-1111",
+// "(412) 111 1111", "+1 412.111.1111" ~ "4121111111").
+const PHONE_REF = /^\+?[\d\s().-]+$/;
+const PHONE_RUN = /(?<![\w.,])[+(]?\d[\d\s().-]*\d(?![\w]|[.,]\d)/g;
+const digits = (s) => s.replace(/\D/g, '');
+function phoneMatch(p, ref) {
+  if (!PHONE_REF.test(ref)) return false;
+  const want = digits(ref);
+  if (want.length < 10 || want.length > 15) return false;
+  for (const m of p.matchAll(PHONE_RUN)) {
+    // the whole run ("+1 (412) 111-1111") or one of its space-separated tokens
+    for (const cand of [m[0], ...m[0].split(/\s+/)]) {
+      const got = digits(cand);
+      if (got === want) return true;
+      // a country code on one side: "+<1-3 digits>" or a leading 1 (NANP)
+      const [long, short, raw] = got.length > want.length ? [got, want, cand] : [want, got, ref];
+      const cc = long.slice(0, long.length - short.length);
+      if (short.length >= 10 && cc.length <= 3 && long.endsWith(short) && (cc === '1' || /^\s*\+/.test(raw))) return true;
+    }
+  }
+  return false;
+}
 function includesRef(p, ref) {
   if (!/\d/.test(ref)) return p.includes(ref);
+  if (phoneMatch(p, ref)) return true;
   if (NUM_REF.test(ref)) {
     const want = toNum(ref);
     for (const m of p.matchAll(/-?\d[\d,]*(\.\d+)?/g)) if (toNum(m[0]) === want) return true;
@@ -54,7 +82,9 @@ function mustInclude(pred, refs) {
 // and date/time tokens built only from such numbers ("2022-05-01" when the intent says
 // "May 1, 2022"). Ordinals and list markers ("1st", "1.") are numbers like any other unless
 // their value is a reference or intent value. Default: on when every must_include item has a
-// plain-number alternative and the intent asks for a count or amount (COUNT_INTENT);
+// plain-number alternative and the asked part of the intent (askedPart) asks for a count or
+// amount (COUNT_INTENT); numbers of an itemised breakdown that adds up to the answer are ignored
+// (breakdownSpans);
 // `answer.strict_numbers: true|false` (or `eval.strict_numbers`) overrides.
 // "number of" as a count, not an identifier ("the phone number of", "the order number of");
 // "total" as the asked amount, not a sort key ("the highest grand total", "by order total")
@@ -77,20 +107,60 @@ function intentNumbers(intent) {
 }
 // every item has a plain-number alternative
 const numericRefs = (refs) => [].concat(refs).length > 0 && [].concat(refs).every((r) => String(r).split(' |OR| ').some((alt) => NUM_REF.test(clean(alt))));
+// The asked part of an intent: with a question mark (outside double-quoted titles), the text up
+// to the last one plus any trailing answer-format instruction ("Give the number only."); other
+// trailing sentences only define the scope ("What is the price range for products from X?
+// Count every product whose brand ... starts with X." asks for a range, not a count).
+const FORMAT_SENTENCE = /^(give|answer|report|tell|reply|respond|state|list|return|provide|write|enter|include|use|express|round|name|format|just|only|please)\b/i;
+function askedPart(intent) {
+  const s = String(intent || '');
+  const i = s.replace(/"[^"]*"|“[^”]*”/g, (m) => '_'.repeat(m.length)).lastIndexOf('?');
+  if (i < 0) return s;
+  const tail = s.slice(i + 1).trim();
+  const keep = tail ? tail.split(/(?<=[.!])\s+(?=[A-Z])/).filter((x) => FORMAT_SENTENCE.test(x.trim())) : [];
+  return [s.slice(0, i + 1), ...keep].join(' ');
+}
 function strictNumbersOn(task, spec, refs) {
   const ev = task.eval || task;
   const flag = spec && 'strict_numbers' in spec ? spec.strict_numbers : ev.strict_numbers;
   if (flag === false) return false;
   if (!numericRefs(refs)) return false;
-  return flag === true || COUNT_INTENT.test(String(task.intent || ''));
+  return flag === true || COUNT_INTENT.test(askedPart(task.intent));
+}
+// An itemised breakdown right after the answer number: "4 units (1 Zoltan Gym Tee, 1 Layla Tee,
+// 1 Chaz Hoodie and 1 Argus Tank)", "3 comments (2 on X's post, 1 on Y's)". Its numbers are not
+// candidate counts when (a) the parenthesis follows a reference-valued number with only words in
+// between, (b) every number in it is a whole number followed by a word (an item), (c) it has no
+// hedging words, and (d) its numbers add up to that reference value. "3 (or 4)", "3 (2 or 4)",
+// "3 (IDs 117, 155, 160)" and "$45 (2 items)" stay extra numbers.
+const HEDGE = /\b(or|maybe|perhaps|possibly|probably|approx|approximately|about|around|roughly|nearly|almost|either|might|could|unsure|not sure|between)\b|[?~≈]|\d\s*([-–+/x*]|to|and|&)\s*\d/;
+function breakdownSpans(p, allowedRefs) {
+  const spans = [];
+  for (const m of p.matchAll(/\(([^()]*)\)/g)) {
+    const inner = m[1];
+    const before = p.slice(0, m.index);
+    const lead = /(\d[\d,]*(?:\.\d+)?)([^\d()]{0,60})$/.exec(before);
+    if (!lead || !/^[\sa-z_&'-]*$/.test(lead[2])) continue;
+    const total = toNum(lead[1].replace(/,$/, ''));
+    if (!allowedRefs.has(total) || HEDGE.test(inner)) continue;
+    const nums = [...inner.matchAll(NUM_TOKEN)];
+    if (!nums.length) continue;
+    if (!nums.every((n) => /^\d+$/.test(n[0]) && /^\s*[a-z]/.test(inner.slice(n.index + n[0].length)))) continue;
+    if (nums.reduce((a, n) => a + +n[0], 0) !== total) continue;
+    spans.push([m.index + 1, m.index + 1 + inner.length]);
+  }
+  return spans;
 }
 /** numbers in the answer that are neither a reference value nor mentioned in the intent */
 function extraNumbers(pred, refs, intent) {
-  const allowed = new Set([].concat(refs).flatMap((r) => String(r).split(' |OR| ').flatMap((alt) => numsIn(clean(alt)))));
+  const refVals = new Set([].concat(refs).flatMap((r) => String(r).split(' |OR| ').flatMap((alt) => numsIn(clean(alt)))));
+  const allowed = new Set(refVals);
   for (const v of intentNumbers(intent)) allowed.add(v);
   const p = clean(pred);
+  const skip = breakdownSpans(p, refVals);
   const extra = [];
   for (const m of p.matchAll(NUM_TOKEN)) {
+    if (skip.some(([a, b]) => m.index >= a && m.index < b)) continue;
     const v = toNum(m[0].replace(/,$/, ''));
     if (Number.isFinite(v) && !allowed.has(v)) extra.push(m[0].replace(/,$/, ''));
   }
@@ -344,4 +414,4 @@ function remoteQuery(base, { tenant, token } = {}) {
   };
 }
 
-module.exports = { grade, remoteQuery, clean, exactMatch, mustInclude, extraNumbers, strictNumbersOn, COUNT_INTENT, numericMatch, quantities, urlMatch, normUrl, stateMatch };
+module.exports = { grade, remoteQuery, clean, exactMatch, mustInclude, extraNumbers, strictNumbersOn, askedPart, COUNT_INTENT, numericMatch, quantities, urlMatch, normUrl, stateMatch };

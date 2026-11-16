@@ -48,6 +48,20 @@ test('search: category wording and place name near the expected one', opt, async
   assert.equal((await grade(t2, { url: 'http://map.wa/search?query=restaurants%20near%20CMU%20Hunt%20Library', query })).pass, true);
 });
 
+test('search: the place page\'s "What\'s nearby?" result (/query) near the expected place', async () => {
+  const t = { eval: { type: 'search', search: { category: [['amenity', 'fast_food']], near: [41.780223, -71.437802], radius_m: 300 } } };
+  const g = async (u) => (await grade(t, { url: u })).pass;
+  assert.equal(await g('http://map.wa/query?lat=41.7802227&lon=-71.4378016&category=fast+food'), true);
+  assert.equal(await g('http://map.wa/query?category=fast%20food&lon=-71.4378016&lat=41.7802227'), true);
+  assert.equal(await g('http://map.wa/query?lat=41.7802227&lon=-71.4378016&category=restaurant'), false); // other category
+  assert.equal(await g('http://map.wa/query?lat=41.7902227&lon=-71.4378016&category=fast+food'), false); // 1.1 km away
+  assert.equal(await g('http://map.wa/query?lat=41.7802227&lon=-71.4378016'), false); // query features, no category
+  assert.equal(await g('http://map.wa/query?lat=41.7802227&category=fast+food'), false);
+  assert.equal(await g('http://map.wa/query?lat=41.7802227&lon=-71.4378016&category=nonsense'), false);
+  const bars = { eval: { type: 'search', search: { category: [['amenity', 'pub']], near: [41.780223, -71.437802] } } };
+  assert.equal((await grade(bars, { url: 'http://map.wa/query?lat=41.7802227&lon=-71.4378016&category=bar' })).pass, true); // "bar" = bar or pub
+});
+
 test('answer checks still go to the kit grader', async () => {
   const t = { eval: { type: 'answer', answer: { numeric: { value: 14, unit: 'min', tol_abs: 1 } } } };
   assert.equal((await grade(t, { answer: 'about 15 minutes' })).pass, true);

@@ -118,10 +118,11 @@ T.push({
       const b = F.bornDied(F.one(x.rec2, /^Born$/));
       const cty = b && F.city(b.place);
       if (!cty || b.place.split(',').length < 2) continue;
-      out.push({ vars: { title: x.m.title }, eval: ans(cty), ref: `${x.m2.title}: ${b.place}`, evidence: [x.m2.path] });
+      out.push({ vars: { title: x.m.title }, eval: ans(cty), ref: `${x.m2.title}: ${b.place}`, evidence: [x.m2.path], born: { id: x.m2.id, place: b.place, name: x.m2.title } });
     }
     return out;
   },
+  finish: I.textBirthplaceAlt,
 });
 
 T.push({

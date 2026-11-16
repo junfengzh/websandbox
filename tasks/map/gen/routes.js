@@ -27,9 +27,9 @@ const nm = (p) => p.name;
 const routeOk = (l) => l && !l.ferry && l.meters > 0;
 
 /** a simple A -> B question for one mode */
-function single(name, mode, metric, { lo, hi, phrasings, difficulty = 1, max = 50 }) {
+function single(name, mode, metric, { lo, hi, phrasings, phrasingChanges, difficulty = 1, max = 50 }) {
   return {
-    name, kind: 'read', skills: ['search', 'navigate', 'read-detail'], difficulty, max, phrasings,
+    name, kind: 'read', skills: ['search', 'navigate', 'read-detail'], difficulty, max, phrasings, phrasingChanges,
     generate: (r) => L.loop(r, {
       max: max + 5, filter: () => true,
       make: async (A, a, used) => {
@@ -67,8 +67,8 @@ module.exports = [
   single('walk-distance', 'foot', 'distance', { lo: 400, hi: 4000, phrasings: [
     'What is the walking distance from {{a}}{{where}} to {{b}}?',
     'How far is the walk from {{a}}{{where}} to {{b}}, according to the walking directions?',
-    'Get walking directions from {{a}}{{where}} to {{b}}. How long is the route?',
-  ] }),
+    'Get walking directions from {{a}}{{where}} to {{b}}. How far is it along the route?',
+  ], phrasingChanges: { 2: 'regrade 2026-11-15 (RL scan analysis): intent was "... How long is the route?", which also reads as the walking time; reworded to "How far is it along the route?" (the reference is the distance)' } }),
   single('bike-time', 'bike', 'time', { lo: 1500, hi: 15000, phrasings: [
     'How long does it take to cycle from {{a}}{{where}} to {{b}}?',
     'What is the cycling time from {{a}}{{where}} to {{b}} according to the bicycle directions?',

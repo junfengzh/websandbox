@@ -46,6 +46,7 @@ const DEFAULT_OUT = path.join(__dirname, '..', 'generated.jsonl');
         task.status = VERIFIED.has(t.id) ? 'verified' : 'unverified';
         task.ref = inst.ref;
         if (t.changes) task.changes = [].concat(t.changes);
+        if (inst.changes) task.changes = (task.changes || []).concat(inst.changes);
         // articles holding the reference (check.js reads them through the site)
         const ev = inst.evidence || (inst.vars.title ? [c.meta.get(c.byNorm.get(L.norm(inst.vars.title))).path] : null);
         if (ev) task.evidence = ev;

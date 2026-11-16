@@ -147,5 +147,29 @@ const city = (place) => {
   if (c.length < 3 || /\b(near|outside|suburb|unknown)\b/i.test(c)) return null;
   return c;
 };
+// The article text's own birthplace when it names another place than the infobox's city: the first
+// "born [on <date>] in <Place>" of the text (infobox "Wuhan, Hubei" vs "Born in Huangpi, Hubei" in the
+// biography; Huangpi is a district of Wuhan). Returns the place, or null when the text agrees with the
+// infobox, names one of the infobox place's larger parts (region, country), or has no such phrase.
+function textBirthplace(db, id, place, name) {
+  const h = L.html(db, id);
+  if (!h || !place) return null;
+  // plain text, one line per block (paragraph, heading, list item, table cell)
+  const t = h.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, ' ').replace(/<\/?(p|h\d|li|td|th|tr|div|dd|dt|br)\b[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&').replace(/[^\S\n]+/g, ' ')
+    .replace(/ ?\n[\s]*/g, '\n').replace(/ ([,.;:)])/g, '$1');
+  const M = L.MONTHS.join('|');
+  // the subject must be the person: a sentence starting "Born ... in X", or "<he|she|their name> was born ... in X"
+  const words = String(name || '').replace(/\s*\(.*\)$/, '').split(/\s+/).filter((w) => w.length > 2).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const subj = ['He', 'She', 'he', 'she', ...words].join('|');
+  const date = `(?:on )?(?:(?:${M}) \\d{1,2},? \\d{4},? |\\d{1,2} (?:${M}) \\d{4},? |(?:in )?\\d{4},? )?`;
+  const re = new RegExp(`(?:(?:^|\\n|[.!?] )Born|\\b(?:${subj}) (?:was|is) born) ${date}in (?:the (?:town|city|village|district) of )?(\\p{Lu}[\\p{L}'’-]*(?: (?:de |da |del |di |am |upon |on |la |le )?\\p{Lu}[\\p{L}'’-]*){0,3})(?=[,;( ]|\\.(?: |$))`, 'u');
+  const m = re.exec(t);
+  if (!m) return null;
+  const x = m[1].trim();
+  const parts = place.split(',').map((v) => L.norm(v));
+  if (x.length < 3 || parts.includes(L.norm(x)) || L.MONTHS.includes(x)) return null;
+  return x;
+}
 
-module.exports = { textDate, context, usable, rows, one, singleName, singleLink, year, count, lengthM, areaKm2, minutes, bornDied, city, NAME_BAD };
+module.exports = { textDate, context, usable, rows, one, singleName, singleLink, year, count, lengthM, areaKm2, minutes, bornDied, city, textBirthplace, NAME_BAD };

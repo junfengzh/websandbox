@@ -13,6 +13,17 @@ const ans = (s) => ({ type: 'answer', answer: { must_include: [s] } });
 const ansSql = (s, sql) => ({ type: 'answer', answer: { must_include: [s] }, answer_sql: sql });
 
 const T = [];
+// birthplace templates: also accept the place the article text gives when it differs from the
+// infobox city (F.textBirthplace), as a ` |OR| ` alternative; only for the chosen instances
+function textBirthplaceAlt(inst) {
+  const born = inst.born;
+  delete inst.born;
+  const x = born && F.textBirthplace(L.openDb(), born.id, born.place, born.name);
+  if (!x) return;
+  const r = inst.eval.answer.must_include[0];
+  inst.eval = { ...inst.eval, answer: { ...inst.eval.answer, must_include: [`${r} |OR| ${x}`] } };
+  inst.changes = [`regrade 2026-11-15 (RL scan analysis): the article text gives the birthplace as ${x} (infobox: ${born.place}); both accepted`];
+}
 // first row of an Area / Population block that is not the total
 const NOT_TOTAL = /^(Land|Water|Urban|Metro|Rural|CSA|MSA|Rank|Density|Elevation|Highest elevation|Lowest elevation|Demonym|Estimate|Ethnicity|Religion|Language)/i;
 
@@ -51,10 +62,11 @@ T.push({
       const b = F.bornDied(F.one(rec, /^Born$/));
       const cty = b && F.city(b.place);
       if (!cty || b.place.split(',').length < 2) continue;
-      out.push({ vars: { title: m.title }, eval: ans(cty), ref: b.place });
+      out.push({ vars: { title: m.title }, eval: ans(cty), ref: b.place, born: { id: m.id, place: b.place, name: m.title } });
     }
     return out;
   },
+  finish: textBirthplaceAlt,
 });
 
 T.push({
@@ -379,6 +391,7 @@ T.push({
 });
 
 module.exports = T;
+module.exports.textBirthplaceAlt = textBirthplaceAlt;
 module.exports.ents = ents;
 module.exports.isPerson = isPerson;
 module.exports.isSettlement = isSettlement;

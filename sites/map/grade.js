@@ -22,6 +22,8 @@
 //       name has all the place words (else the longest run of them) -- an exact name match, else
 //       the most important (geocoder name index, via SQL) -- must lie within radius_m (default
 //       600 m) of `near`).
+//       Also passes: the place page's "What's nearby?" result /query?lat=..&lon=..&category=<phrase>
+//       when the phrase is the category and lat/lon lie within radius_m of `near`.
 //
 //   grade(task, {answer, url, query, fuzzy}) -> {pass, score, checks}
 const kit = require('../../kit');
@@ -100,9 +102,31 @@ async function checkPlace(spec, url, query) {
 
 const NEAR_RE = /^(.*?)\s+(?:near(?:by)?|around|close to|next to|by|at|in)\s+(.+)$/i;
 const ftsq = (toks) => toks.map((t) => '"' + t.replace(/"/g, '""') + '"').join(' AND ');
+const catOk = (cat, want) => !want.length || cat.some(([k, t]) => want.some(([wk, wt]) => wk === k && (!wt || wt === t)));
+// The place page's "What's nearby?" form leads to /query?lat=..&lon=..&category=<phrase>: the
+// same POI list as a category search around that point. It passes when the category phrase maps
+// (categories.json) to the expected category and the point lies within radius_m of `near` (the
+// same radius the /search place must resolve to). /query without a category (Query Features) fails.
+function checkNearbyQuery(spec, u, c) {
+  const q = u.searchParams;
+  const lat = Number(q.get('lat')), lon = Number(q.get('lon'));
+  const phrase = (q.get('category') || '').trim();
+  if (!phrase) return { ...c, pass: false, why: 'a query-features page without a category' };
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || q.get('lat') == null || q.get('lon') == null) return { ...c, pass: false, why: 'no lat/lon' };
+  const fails = [];
+  const cat = CAT.get(norm(phrase).replace(/\b(the|a|an|some|any|all)\b/g, '').trim().replace(/\s+/g, ' ')) || [];
+  if (!cat.length || !catOk(cat, spec.category || [])) fails.push(`category "${phrase}" is not ${JSON.stringify(spec.category || [])}`);
+  if (spec.near) {
+    const n = Math.round(hav(lat, lon, spec.near[0], spec.near[1]));
+    c.place_match = `${lat},${lon} (${n} m)`;
+    if (n > (spec.radius_m || 600)) fails.push(`the nearby search point is ${n} m from the expected place`);
+  }
+  return { ...c, pass: !fails.length, why: fails.join('; ') || undefined };
+}
 async function checkSearch(spec, url, query) {
   const c = { type: 'search', reference: spec, got: url };
   const u = parseUrl(url);
+  if (u && u.pathname.replace(/\/+$/, '') === '/query') return checkNearbyQuery(spec, u, c);
   if (!u || u.pathname.replace(/\/+$/, '') !== '/search') return { ...c, pass: false, why: 'not a search page' };
   const text = (u.searchParams.get('query') ?? u.searchParams.get('q') ?? '').trim();
   const m = NEAR_RE.exec(text);
@@ -110,7 +134,7 @@ async function checkSearch(spec, url, query) {
   const fails = [];
   const cat = CAT.get(norm(m[1]).replace(/\b(the|a|an|some|any|all)\b/g, '').trim().replace(/\s+/g, ' ')) || [];
   const want = spec.category || [];
-  if (want.length && !cat.some(([k, t]) => want.some(([wk, wt]) => wk === k && (!wt || wt === t)))) fails.push(`"${m[1]}" is not the category ${JSON.stringify(want)}`);
+  if (want.length && !catOk(cat, want)) fails.push(`"${m[1]}" is not the category ${JSON.stringify(want)}`);
   if (spec.near) {
     const toks = tokens(m[2]).filter((t) => !STOP.has(t));
     if (!toks.length) fails.push('no place');

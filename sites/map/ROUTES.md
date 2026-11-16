@@ -59,7 +59,8 @@ The site is read-only, so WebArena's DOM checks of the last page are checks of t
 `directions` (engine + From/To names = the `from`/`to` params + route end points near the
 expected places), `place` (the final URL is the page of one of the listed OSM objects / its
 name+address contain given strings) and `search` (`/search?query=<category> near <place>`, any
-category wording, any name of the place). Answers go to the kit grader (`answer.numeric` for
+category wording, any name of the place; or the place page's "What's nearby?" result
+`/query?lat=..&lon=..&category=<category>` with the point within the task's radius of the place). Answers go to the kit grader (`answer.numeric` for
 times, distances and coordinates). Tasks start at `__MAP__/#map=15/40.4443/-79.9436` (CMU).
 
 ## JSON API

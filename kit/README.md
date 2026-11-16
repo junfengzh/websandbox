@@ -360,10 +360,15 @@ curl -s -XPOST -H 'content-type: application/json' -d '{"sql":"SELECT count(*) n
 → `{pass: true|false|null, score, checks: [...]}` (`null` = waiting for the LLM judge).
 
 - `type`: `'answer' | 'url' | 'state'` or a list (all must pass); inferred from keys if absent.
-- `answer: {exact: s}` -- WebArena clean (trim, strip quotes, lowercase) then equal.
+- `answer: {exact: s}` -- WebArena clean (trim, strip enclosing quotes, lowercase; also accents
+  folded, quote marks / backslashes dropped and spaces collapsed, so `4' Cypress` ~ `4\' Cypress`
+  ~ `4 Cypress`, `Men's` ~ `Mens`) then equal.
   `{must_include: [..]}` -- each item (with ` |OR| ` alternatives) is a substring. References
   with digits match whole numbers only (`1` is not in `10` or `2.15`); a plain-number reference
-  matches any number of equal value (`406` ~ `$406.00`, `1170` ~ `000001170`).
+  matches any number of equal value (`406` ~ `$406.00`, `1170` ~ `000001170`). A phone-like
+  reference (10-15 digits and only phone punctuation) also matches a phone number with the same
+  digits in any format, with an optional country code (`4121111111` ~ `412-111-1111` ~
+  `(412) 111 1111` ~ `+1 412.111.1111`).
   **Strict numbers**: when every item has a plain-number alternative and the task's `intent`
   asks for a count or amount (`how many`, `how much`, `number of`, `count`, `total`, `amount`,
   `sum`), the answer also fails if it contains any *other* number -- a value that is neither a
@@ -375,6 +380,18 @@ curl -s -XPOST -H 'content-type: application/json' -d '{"sql":"SELECT count(*) n
   numbers like any other. `answer.strict_numbers: true` (or `eval.strict_numbers`) forces the
   rule for a numeric reference whatever the intent; `false` turns it off for a task that
   legitimately wants several numbers. The check reports `strict_numbers` and `extra_numbers`.
+  The trigger reads the *asked part* of the intent: with a `?` (outside double-quoted titles), the
+  text up to the last `?` plus trailing answer-format sentences ("Give ...", "Answer ..."); a
+  trailing scope sentence is not the question ("What is the price range for products from X?
+  Count every product whose brand ... starts with X." asks for a range: not strict).
+  An **itemised breakdown** right after the answer number is not a list of candidates: numbers in
+  a parenthesis that follows a reference-valued number (only words in between), where every
+  number is a whole number followed by a word, nothing hedges (`or`, `maybe`, `about`, `3-4`,
+  ...) and the numbers add up to that value, are ignored: `4 units (1 Zoltan Tee, 1 Layla Tee,
+  2 Argus Tanks)` and `3 comments (2 on X's post, 1 on Y's)` pass; `4 (or 5)`, `4 (3 or 1)`,
+  `4 (1, 2, 3, 4)`, `4 units (2 tees, 3 hoodies)`, `4 units (1 unit each of A, B, C, D)` and
+  `3 comments (IDs 1171393, 1171554, ...)` still fail, as do digits in product names next to a
+  count (`2 orders of Sprite Stasis Ball 75 cm`), which the grader cannot tell from hedging.
   Text references (`must_include: ['Circe', '55']`) are unchanged.
   `{fuzzy: ..}` -- calls `fuzzy({intent, answer, reference})` (the RL stack's judge) or returns pending.
   `{numeric: {value, unit, tol_pct?, tol_abs?}}` (or a list of such specs, all must be found) --

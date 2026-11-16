@@ -127,3 +127,31 @@ because of extra numbers:
 Both templates were regenerated (same seed): only those 95 tasks changed. `consolidate.py` (seed 20261115) rebuilt
 `tasks/all.jsonl` and the splits with identical membership (train 10,452 / held-out 2,638, templates.json
 unchanged).
+
+## RL scan fixes (2026-11-15, third pass)
+
+An analysis of RL scan rollouts (start policy, 600 train tasks x 4) found correct answers that the graders failed. Grader
+fixes (kit/README.md "Grading", sites/map/ROUTES.md "Grading"; unit tests in kit/test/units.test.js and
+sites/map/test/grade.test.js) and task fixes:
+
+| Tasks | Change | Why |
+|---|---|---|
+| every map `search` task (55 `gen-map-search-category-near`, 5 WebArena of template 59) | the place page's "What's nearby?" result `/query?lat=..&lon=..&category=<c>` passes when `<c>` maps to the task's category (categories.json) and the point lies within `radius_m` of `near` | the most natural UI path ends there with the right list; only `/search?query=` passed |
+| wa-226..230 (template 370, "What is the price range ...? Count every product whose brand ... starts with ...") | strict numbers are triggered by the asked part of the intent (up to the last `?` outside quoted titles, plus answer-format sentences), not by a trailing scope sentence: no longer strict | "price range from $6.99 to $38.99. There are 18 products" and product names with "iPhone 7 iPhone 8" failed as extra numbers; only these 5 tasks change (2,012 -> 2,007 strict tasks) |
+| count answers with an itemised breakdown | numbers in a parenthesis right after the answer number are ignored when each is a whole number followed by an item word, nothing hedges, and they add up to the answer | "4 units (1 Zoltan Gym Tee, 1 Layla Tee, ...)" failed; "4 (or 5)", "4 (3 or 1)", "(1, 2, 3, 4)", "1 unit each of ...", comment ids still fail |
+| phone-like references (10-15 digits; 213 reference values, e.g. `gen-admin-order-view-field`, `gen-shopping-address-field`) | digits-only comparison with any phone formatting and an optional country code | `412-111-1111` failed against `4121111111` |
+| every answer check | `clean()` also drops quote marks and backslashes and collapses spaces (both sides) | wa-360's titles contain `4'` and `4"`; answers that escaped (`4\'`) or dropped them failed. Side effect: quotes no longer matter in line-content answers (`gen-code-file-line`) |
+| `gen-wiki-person-birthplace` -008, -017, -026, -034; `gen-wiki-chain-director-birthplace-011` | the place the article text gives ("Born in Huangpi, Hubei", "Lanthimos was born in Pangrati, Athens") is accepted next to the infobox city (tasks/wiki/gen/facts.js `textBirthplace`, `changes` note) | -017: the infobox says Wuhan, the biography Huangpi (a district of Wuhan) |
+| `gen-map-walk-distance` phrasing 2 (23 tasks) | "... How long is the route?" -> "... How far is it along the route?" (tasks/map/gen/routes.js, `changes` note) | the reference is the distance; "How long" also reads as the walking time |
+
+Not changed: digits inside product names next to a count (a grader cannot tell them from hedged counts without page
+data), "N units (1 unit each of A, B, ...)" and id lists after a count stay strict-number failures ("answer
+concisely").
+
+Both generators were re-run (same seed): wiki changes exactly the 5 tasks above, map exactly the 23 intents above
+(plus their `changes` note). `consolidate.py` rebuilt `tasks/all.jsonl` and the splits with identical membership.
+Full regrade (`sites.sh up --tenants 2 --base 7900 --bind rl --port 7999`, `regrade.js`): the results table above is
+unchanged (13,090/13,090 empty fail, 7,780/7,780 ref, 746/746 url ref, 994/997 full replays with the same 1 lenient +
+2 superseded, 198/198 per-check replays). The scan's failing answers were graded again: the grader-defect rows now
+pass (5 map `/query` URLs, wa-227 x3, wa-229, admin 0029, wiki birthplace 017, wa-360, admin 0092), while the genuine
+agent errors still fail (wrong ranges for wa-229, wrong counts, wrong distances, a duration for a distance).

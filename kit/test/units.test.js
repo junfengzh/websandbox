@@ -103,6 +103,20 @@ test('grader: answers, URLs, state', async () => {
   assert.ok(!grader.mustInclude('10 comments', ['1']));
   assert.ok(!grader.mustInclude('$2.15', ['1']));
   assert.ok(!grader.mustInclude('total 55.5', ['55']));
+  // phone-like references compare by digits (country code optional)
+  assert.ok(grader.mustInclude('412-111-1111', ['4121111111']));
+  assert.ok(grader.mustInclude('Phone: (412) 111 1111.', ['4121111111']));
+  assert.ok(grader.mustInclude('+1 412.111.1111', ['4121111111']));
+  assert.ok(grader.mustInclude('call 4121111111', ['+1 (412) 111-1111']));
+  assert.ok(!grader.mustInclude('412-111-1112', ['4121111111']));
+  assert.ok(!grader.mustInclude('412 111', ['4121111111']));
+  // quote marks and backslashes are dropped on both sides
+  const titles = ["Topiary Trees (2 Pack, 4' Cypress)", 'Russound 5B45W 4" Indoor Outdoor Speakers'];
+  assert.ok(grader.mustInclude('Topiary Trees (2 Pack, 4\\\' Cypress), Russound 5B45W 4\\" Indoor Outdoor Speakers', titles));
+  assert.ok(grader.mustInclude('Topiary Trees (2 Pack, 4 Cypress); Russound 5B45W 4 Indoor Outdoor Speakers', titles));
+  assert.ok(grader.mustInclude('Topiary Trees (2 Pack, 4’ Cypress), Russound 5B45W 4” Indoor  Outdoor Speakers', titles));
+  assert.ok(!grader.mustInclude('Topiary Trees (2 Pack, 5 Cypress), Russound 5B45W 4 Indoor Outdoor Speakers', titles));
+  assert.ok(grader.exactMatch("Men's", 'mens'));
   assert.ok(grader.urlMatch('http://127.10.3.2/search?sort=price_desc&q=usb+hub&page=1', '__SHOPPING__/search?q=usb%20hub&sort=price_desc'));
   assert.ok(!grader.urlMatch('http://x/search?q=usb', '__SHOPPING__/search?q=usb&sort=price_desc'));
   assert.ok(!grader.urlMatch('http://x/search?q=usb&sort=price_desc&page=2', '__SHOPPING__/search?q=usb&sort=price_desc', { mode: 'exact' }));
@@ -239,6 +253,23 @@ test('grader: strict numbers for count/amount questions', async () => {
   assert.equal((await g('What is the phone number of Western Pennsylvania Hospital', '+1 412 578 5000', { must_include: ['412', '578', '5000'] })).pass, true);
   assert.equal((await g('Which of her orders has the highest grand total? Give the order #.', 'Order #1036 ($245.10)', { must_include: ['1036'] })).pass, true);
   assert.equal((await g('Tell me the grand total of order 12', '$45 (2 items)', { must_include: ['45'] })).pass, false);
+  // the trigger reads the asked part: a trailing scope sentence after the question is not the question
+  const range = 'What is the price range for products from ugreen? Count every product whose brand or product name starts with "ugreen".';
+  assert.equal((await g(range, 'from $6.99 to $38.99. There are 18 products', { must_include: ['6.99', '38.99'] })).pass, true);
+  assert.equal(grader.askedPart(range), 'What is the price range for products from ugreen?');
+  assert.equal(grader.askedPart('In the thread "Why?" (books forum), count the comments by X.'), 'In the thread "Why?" (books forum), count the comments by X.');
+  assert.equal(grader.askedPart('How large is X? Give its total area in km².'), 'How large is X? Give its total area in km².');
+  assert.equal((await g('Which forum is it? Count their posts per forum.', '3 or 4', three)).pass, true); // not a count question
+  // an itemised breakdown after the answer number that adds up to it is not a list of candidates
+  const units = 'Open order 000000164 in the admin and tell me its total number of units ordered.';
+  const four = { must_include: ['4'] };
+  assert.equal((await g(units, 'Order 000000164 has a total of 4 units ordered (1 Zoltan Gym Tee, 1 Layla Tee, 1 Chaz Kangeroo Hoodie, and 1 Argus All-Weather Tank).', four)).pass, true);
+  assert.equal((await g('In the thread X, count the comments by Y.', "Y made 3 comments (2 on [deleted]'s comment, 1 on Z's reply)", three)).pass, true);
+  for (const a of ['4 units (or 5)', '4 units (3 or 1)', '4 units (1, 2, 3, 4)', '4 units (2 tees, 3 hoodies)', '4 units (maybe 3 tees, 1 tank)',
+    '4 units (3-4 tees)', '3 or 4 units (1 tee, 3 hoodies)', '4 units (1 unit each of A, B, C, D)', '4 (1 tee, 3 Sprite Ball 75 cm)']) {
+    assert.equal((await g(units, a, four)).pass, false, a);
+  }
+  assert.equal((await g('In the thread X, count the comments by Y.', 'Y wrote 3 comments (comment IDs: 1171393, 1171554, 1171600)', three)).pass, false);
   // the reference may come from answer_sql
   const query = async () => [{ n: 3 }];
   r = await grader.grade({ intent: 'Count the reviews', eval: { answer: { must_include: '$sql' }, answer_sql: 'SELECT 3' } }, { answer: '2 or 3', query });
